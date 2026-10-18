@@ -354,8 +354,8 @@ commit_base: b7dfb6a
 | T3 | hecha |
 | T4 | hecha |
 | T5 | hecha |
-| T6 | en curso (implementador en `worktrees/separacion-web-T6`) |
-| T7 | en curso (commits `T7:` cd43e8b y 58c3bd3 en la rama de T6) |
+| T6 | en curso (integrada; criterios 27/27 PASA, FALLA formal por contrato modificado: decide el usuario) |
+| T7 | en curso (criterios 5/5 PASA, FALLA formal por contrato modificado: decide el usuario) |
 | T8 | pendiente |
 | T9 | pendiente |
 | T10 | pendiente |
@@ -378,6 +378,10 @@ commit_base: b7dfb6a
 | 2026-10-18 | T3, T4, T5 (auditor-seguridad) | dc31bc4 | sin hallazgos | 2 observaciones (P-separacion-web-5) |
 | 2026-10-18 | contrato modificado | 9d8aef7 | — | T12 (`X-Robots-Tag` en `/q/`, ola 4) por decisión del usuario; desde acá `congelado.sh` da CONTRATO MODIFICADO (exit 1) y el criterio de cierre global queda en FALLA formal |
 | 2026-10-18 | T5 paso 5 | 58c3bd3 | — | `worktree-crear.sh` T6 exit 0; `T7:` desconecta `apps.web` (cd43e8b) y corrige ruff E501 (58c3bd3) en la rama de T6. Incidentes: el principal hizo `cd` a los worktrees de T4 y T6 dos veces; corregido en el acto con `git status` en raíz y worktrees, sin daño |
+| 2026-10-18 | T6 (integración) | 93a4eb9 | — | revisión con `cambios.sh` contra 58c3bd3 (todo dentro de Puede tocar), spot check `test_rutas_del_sitio_publico_dan_404`; `worktree-integrar.sh` exit 0, 653 tests OK |
+| 2026-10-18 | T6, T7 (verificador) | 93a4eb9 | FALLA formal | 32/32 criterios PASA (suite 653 OK); FALLA solo por CONTRATO MODIFICADO (9d8aef7) |
+| 2026-10-18 | T6, T7 (verificador-b) | 93a4eb9 | FALLA formal | todos los criterios PASA (informa 41 por conteo propio); FALLA solo por CONTRATO MODIFICADO |
+| 2026-10-18 | T6, T7 (auditor-seguridad) | 93a4eb9 | sin bloqueantes | 4 observaciones (P-separacion-web-7) |
 
 ## Pendientes que deja este plan
 
@@ -388,6 +392,7 @@ commit_base: b7dfb6a
 - P-separacion-web-3 [observación] Sin `SITE_URL`, los QR de la demo pasan de `https://macontrol.com.ar/q/…` a `http://localhost:8000/q/…`, que un teléfono de la red tampoco abre; se podría fijar `SITE_URL=http://<IP>:8000` en `demo.bat` y `empaquetar_demo.py` (T9, decisión de producto). `docs/despliegue.md` (T10) debe avisar que sin `SITE_URL` falla también el build de Railway. T3, T4 y T6 no deben envolver `NOMBRE_EMPRESA` con `|safe`/`mark_safe`.
 - P-separacion-web-5 [observación] Al quitar `apps.web` (T6) desaparece `robots.txt` y con él `Disallow: /q/`; solo queda el `<meta name="robots" content="noindex">` de `sitios/publico/qr.html`. El auditor sugiere `X-Robots-Tag: noindex` en `apps/sitios/publico_views.py::qr` (fuera de lo que T6 puede tocar). `web:qr` y su vista quedan sin uso hasta T6.
 - P-separacion-web-6 [observación] `/q/` muestra dos logos (el de la cabecera de `templates/base.html` y el de `qr.html`); T6 cambia el `alt` de la cabecera a `NOMBRE_EMPRESA`, pero el logo duplicado sigue (implementador T3).
+- P-separacion-web-7 [observación] Tras T6 (auditor-seguridad e implementador): tablas `web_*`, `auth_permission` y `django_content_type` de `web` y archivos `MEDIA_ROOT/servicios/*` y `MEDIA_ROOT/clientes/*` quedan huérfanos en bases existentes (inalcanzables; `remove_stale_contenttypes` los limpia); `docs/contrato-api.md` marca `schema/` y `docs/` solo con JWT, pero también aceptan sesión; `{% block tema %}` huérfano en `templates/panel/base.html` y en `sitios/publico/qr.html` (más su `noindex` duplicado); el logo de la cabecera enlaza a `/`, que redirige al login; `test_contrato_doc` no detecta cambios de método, rol o throttle.
 - P-separacion-web-4 [observación] `docs/bitacora.md` mezcla finales CRLF y CR desde 8325925 y su línea `Plan activo:` apunta a `2026-10-17-separacion-web.md`, que no existe.
 
 ### Decisiones
