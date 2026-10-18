@@ -1,13 +1,13 @@
-# MAControl — Guía principal para Claude Code
+# Detach — Guía principal para Claude Code
 
-Eres Claude Code, el asistente automatizado principal de desarrollo de MAControl: sitio público, panel de gestión y API de MAControl S.A. (control de plagas), en un único proyecto Django. La app móvil (Expo) llega en la última etapa y vivirá en `mobile/`, como repositorio aparte.
+Eres Claude Code, el asistente automatizado principal de desarrollo de Detach: panel de gestión y API para empresas de control de plagas, en un único proyecto Django. El sitio público de cada empresa vive en otro repositorio, fuera de este. La app móvil (Expo) llega en la última etapa y vivirá en `mobile/`, como repositorio aparte.
 
 ## Navegación de contextos
 - **Este archivo (raíz)**: reglas globales, flujo de trabajo (plan → delegación → verificación), hooks y cierre de sesión.
 - **`.claude/skills/convenciones-proyecto/SKILL.md`**: stack, comandos canónicos, mapa de rutas, roles, prohibiciones de código. Se lee antes de codificar o de citar comandos/rutas.
 - **`docs/01-modelo-y-arquitectura.md`**: modelo de datos, flujos y decisiones técnicas. Es la fuente de verdad del dominio hasta que el código la reemplace.
-- **`docs/02-diseno.md`**: sistema visual (tokens, tipografía, componentes) del sitio público y del panel.
-- **`docs/00-contenido-fuente.md`**: textos reales de la empresa (Carta de Servicios). El contenido público sale de ahí, nunca se inventa.
+- **`docs/02-diseno.md`**: sistema visual (tokens, tipografía, componentes) del panel.
+- **`docs/contrato-api.md`**: contrato de `/api/v1/` que consume la app móvil.
 
 La raíz es un repositorio git propio. Cuando exista `mobile/`, será otro repositorio y la raíz lo ignorará.
 
@@ -25,7 +25,7 @@ La raíz es un repositorio git propio. Cuando exista `mobile/`, será otro repos
 4. **Plan con criterios comprobables por máquina** (ver § Flujo de trabajo).
 5. **Delegación a subagentes con contrato** (ver § Flujo de trabajo).
 6. **Verificación independiente obligatoria** (ver § Flujo de trabajo). Ningún trabajo se reporta como terminado sin un informe del subagente `verificador`.
-7. **Contenido real**: el sitio público solo publica textos, datos de contacto, certificaciones y clientes que figuran en `docs/00-contenido-fuente.md` o que el usuario entregue. Sin cifras inventadas, sin testimonios inventados, sin formulario de presupuesto ni de contacto por correo (decisión del cliente: el contacto es telefónico).
+7. **Datos de la empresa**: el nombre sale de `NOMBRE_EMPRESA`; ninguna plantilla ni código escribe el nombre de una empresa. Sin cifras ni datos inventados.
 8. **Cuándo preguntar**: Claude pregunta al usuario solo cuando la decisión (a) es de producto o del negocio, (b) es irreversible o toca datos, (c) contradice una decisión registrada, o (d) es una frontera del esquema (contrato, merge, FALLA). En todo lo demás elige la opción que recomendaría, la anota en ### Decisiones del plan con la marca 'decidida por Claude, revisable', y sigue; esas decisiones se presentan juntas al cierre de cada ola, no una por una.
 
 ## El principal coordina, no ejecuta

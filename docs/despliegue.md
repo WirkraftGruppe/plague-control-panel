@@ -1,6 +1,6 @@
 # Despliegue en Railway (a mano)
 
-Guía para alojar una instancia de MAControl. Nada de esto se ejecuta solo: lo hace el usuario desde su cuenta. La configuración ya está en el repositorio (`railway.json`, `.python-version`, `config/settings/prod.py`).
+Guía para alojar una instancia de Detach. Nada de esto se ejecuta solo: lo hace el usuario desde su cuenta. La configuración ya está en el repositorio (`railway.json`, `.python-version`, `config/settings/prod.py`).
 
 ## 1. Cuenta y proyecto
 1. Crear la cuenta en railway.com y conectar el repositorio de GitHub.
@@ -23,8 +23,12 @@ Guía para alojar una instancia de MAControl. Nada de esto se ejecuta solo: lo h
 | `DATABASE_URL` | referencia a Postgres (punto 2) |
 | `ALLOWED_HOSTS` | el dominio público, p. ej. `demo.up.railway.app` (si queda vacío, el arranque aborta) |
 | `CSRF_TRUSTED_ORIGINS` | el mismo dominio con esquema, p. ej. `https://demo.up.railway.app` (varios, separados por comas) |
-| `SITE_URL` | `https://demo.up.railway.app` (base del contenido de los QR) |
+| `SITE_URL` | `https://demo.up.railway.app` (base del contenido de los QR). **Obligatoria**: sin ella el arranque aborta |
+| `NOMBRE_EMPRESA` | nombre de la empresa que aparece en el panel, los PDF y la página `/q/<uuid>/` (opcional; vacía usa el valor por defecto de `base.py`) |
+| `CORREO_CONTACTO` | correo de contacto de la empresa (opcional; vacío usa el valor por defecto de `base.py`) |
 | `MEDIA_ROOT` | `/data/media` (ruta del volumen, punto 4) |
+
+`SITE_URL` también debe estar definida **antes del build**: `prod.py` aborta con `ImproperlyConfigured` al importar los settings con `DJANGO_ENV=production`, y el build de Railway corre `collectstatic` (y el despliegue, `migrate`) con esas variables; sin `SITE_URL` fallan el build y el despliegue, no solo el arranque.
 
 El dominio público se genera en `Settings` -> `Networking` -> `Generate Domain`. Las variables no se versionan: `.env.example` solo lista los nombres.
 
