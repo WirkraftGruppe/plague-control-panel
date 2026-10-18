@@ -52,7 +52,7 @@
 | 1 | T1, T2 (integración) | config (ninguna) |
 | 2 | T3, T4, T5 (integración) | sitios; accounts, clientes, productos, visitas (ninguna) |
 | 3 | T6, T7 (integración) | web (se borra), panel, api, diseño (ninguna) |
-| 4 | T8, T9, T10, T12, T11 (integración y cierre) | servicios (0004); herramientas; documentación; sitios (ninguna) |
+| 4 | T8, T9, T10, T12, T11 (integración y cierre) | servicios (0004); demo portátil (se borra); documentación; sitios (ninguna) |
 
 ## Subtareas
 
@@ -231,8 +231,8 @@ Worktree: sí (`worktrees/separacion-web-T<n>`, base `plan/separacion-web`). Rut
 
 - **Ola**: 4
 - **Depende de**: T7
-- **Puede tocar**: `apps/servicios/models.py`, `apps/servicios/migrations/0004_*.py` (generada con `makemigrations`), `apps/servicios/fixtures/tipos_servicio.json`, `apps/servicios/templates/servicios/panel/*.html`, `apps/servicios/tests/test_sin_descripcion.py` (nuevo)
-- **No puede tocar**: `docs/planes/`, `config/`, migraciones existentes, `apps/servicios/urls.py`, otras apps
+- **Puede tocar**: `apps/servicios/models.py`, `apps/servicios/migrations/0004_*.py` (generada con `makemigrations`), `apps/servicios/fixtures/tipos_servicio.json`, `apps/servicios/templates/servicios/panel/*.html`, `apps/servicios/tests/test_sin_descripcion.py` (nuevo), `apps/sitios/tests/test_migraciones.py` (solo el estado `ANTES` de `QuitarPropuestaTests`: suma `("servicios", "0003_campoplanilla_ambito")`; agregado por contrato modificado tras rechazarse la integración)
+- **No puede tocar**: `docs/planes/`, `config/`, migraciones existentes, `apps/servicios/urls.py`, otras apps (salvo lo indicado de `apps/sitios/tests/test_migraciones.py`)
 - **Skill a leer antes**: `.claude/skills/convenciones-proyecto/SKILL.md`; `.agents/skills/django-conventions/SKILL.md` § Models
 - **Presupuesto**: 150 líneas agregadas
 - **Qué hacer**: quitar el campo y generar la migración; quitar `descripcion` de los 9 objetos del fixture; `· MAControl` → `· Detach` en los títulos; tests nuevos en `SinDescripcionTests`.
@@ -244,47 +244,53 @@ Worktree: sí (`worktrees/separacion-web-T<n>`, base `plan/separacion-web`). Rut
   - `[grep-0]` `grep -rIli macontrol apps/servicios --exclude-dir=__pycache__`
   - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py makemigrations --check --dry-run`
   - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.servicios apps.panel --keepdb`
+  - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_migraciones --keepdb`
   - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 150 --subtarea T8`
 
-### T9 — Demo: nombre del paquete, textos y humo con `/` → login
+### T9 — Quitar la demo portátil
 
 - **Ola**: 4
 - **Depende de**: T7
-- **Puede tocar**: `herramientas/empaquetar_demo.py`, `herramientas/humo_demo.py`, `demo.bat`
-- **No puede tocar**: `docs/planes/`, `config/`, `apps/`, `templates/`, `static/`, `docs/`
-- **Skill a leer antes**: `.claude/skills/convenciones-proyecto/SKILL.md`; `.agents/skills/python-best-practices/SKILL.md` (subprocess)
-- **Presupuesto**: 150 líneas agregadas
-- **Qué hacer**: `NOMBRE_PAQUETE = "detach-demo"` y textos (docstring, `LEEME`, `demo.bat` portátil) con Detach; en `demo.bat` de la raíz, comentario con Detach y sin la línea "Sitio publico"; `humo_demo.py`: el primer chequeo pasa a `GET / -> 302 al login` con el abridor sin redirección y `Location` con `/panel/ingresar/`.
+- **Modificada**: contrato modificado tras la ola 3 por decisión del usuario (opción A): la demo portátil ya se usó y se borra; `cargar_demo` queda como datos de desarrollo.
+- **Puede tocar**: se borran `herramientas/empaquetar_demo.py`, `herramientas/humo_demo.py`, `demo.bat`, `docs/demo-cliente.md`; `apps/panel/tests/test_sin_weasyprint.py` (solo el docstring)
+- **No puede tocar**: `docs/planes/`, `config/`, el resto de `apps/`, `templates/`, `static/`, los demás `docs/`, `.gitignore`, `dist/`, `demo.sqlite3`
+- **Skill a leer antes**: `.claude/skills/convenciones-proyecto/SKILL.md`
+- **Presupuesto**: 30 líneas agregadas
+- **Qué hacer**: borrar los cuatro archivos con `git rm`; el docstring de `test_sin_weasyprint.py` deja de nombrar el paquete portátil (el test sigue: el arranque no depende de WeasyPrint). No se tocan `cargar_demo`, sus módulos ni sus tests.
 - **Criterios**:
-  - `[cmd]` `./venv/Scripts/python.exe herramientas/empaquetar_demo.py --sin-descarga --destino dist/prueba-separacion-T9 && ./venv/Scripts/python.exe herramientas/humo_demo.py dist/prueba-separacion-T9/detach-demo`
-  - `[grep-1]` `grep -n 'NOMBRE_PAQUETE = "detach-demo"' herramientas/empaquetar_demo.py`
-  - `[grep-1]` `grep -n "GET / -> 302 al login" herramientas/humo_demo.py`
-  - `[grep-0]` `grep -ni "macontrol\|sitio publico" herramientas/empaquetar_demo.py herramientas/humo_demo.py demo.bat`
-  - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 150 --subtarea T9`
+  - `[no-existe]` `herramientas/empaquetar_demo.py`
+  - `[no-existe]` `herramientas/humo_demo.py`
+  - `[no-existe]` `demo.bat`
+  - `[no-existe]` `docs/demo-cliente.md`
+  - `[existe]` `apps/panel/management/commands/cargar_demo.py`
+  - `[grep-0]` `grep -rIni "empaquetar_demo\|humo_demo\|demo\.bat\|paquete port" apps config --exclude-dir=__pycache__`
+  - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.panel --keepdb`
+  - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 30 --subtarea T9`
 
 ### T10 — Documentación: Detach, sin sitio público
 
 - **Ola**: 4
 - **Depende de**: T7
-- **Puede tocar**: `CLAUDE.md`, `README.md` (nuevo), `.claude/skills/convenciones-proyecto/SKILL.md`, `.claude/agents/verificador.md`, `.claude/agents/verificador-b.md`, `.claude/agents/refutador.md`, `.claude/agents/juez-plan.md`, `.claude/agents/implementador.md`, `.claude/agents/auditor-seguridad.md`, `docs/01-modelo-y-arquitectura.md`, `docs/02-diseno.md`, `docs/demo-cliente.md`, `docs/despliegue.md`, `docs/00-contenido-fuente.md` (se borra)
-- **No puede tocar**: `docs/planes/`, `docs/bitacora.md`, `docs/decisiones.md`, `docs/contrato-api.md`, `docs/api/`, código
+- **Puede tocar**: `CLAUDE.md`, `README.md` (nuevo), `.claude/skills/convenciones-proyecto/SKILL.md`, `.claude/agents/verificador.md`, `.claude/agents/verificador-b.md`, `.claude/agents/refutador.md`, `.claude/agents/juez-plan.md`, `.claude/agents/implementador.md`, `.claude/agents/auditor-seguridad.md`, `docs/01-modelo-y-arquitectura.md`, `docs/02-diseno.md`, `docs/despliegue.md`, `docs/00-contenido-fuente.md` (se borra)
+- **No puede tocar**: `docs/planes/`, `docs/bitacora.md`, `docs/decisiones.md`, `docs/contrato-api.md`, `docs/api/`, `docs/demo-cliente.md` (la borra T9), código
 - **Skill a leer antes**: `.claude/skills/convenciones-proyecto/SKILL.md`
 - **Presupuesto**: 300 líneas agregadas
 - **Qué hacer**:
   - `CLAUDE.md`: "Detach" en lugar de MAControl; navegación sin `00` y con `docs/contrato-api.md`; `02` acotado al panel; la regla 7 pasa a "Datos de la empresa: el nombre sale de `NOMBRE_EMPRESA`; ninguna plantilla ni código escribe el nombre de una empresa"; el sitio público vive en otro repositorio.
   - Skill: qué es, estructura (sin `web/`; `publico_views.py` y `publico_urls.py` en sitios), mapa de rutas (`/` → login; `/q/<uuid>/` en `apps.sitios`), variables (`NOMBRE_EMPRESA`, `CORREO_CONTACTO`, `SITE_URL` obligatoria en producción), prohibiciones y tabla de propiedad sin el sitio público. Agentes: nombre del proyecto y referencias a `docs/00` y `apps.web`.
-  - `README.md`: qué es Detach, arranque con los comandos canónicos, la demo, el contrato de la API y el aviso de `migrate web zero` para bases anteriores.
-  - `docs/01`: §3.3 sin `descripcion`, §3.10 con los datos legales del certificado sin modelo, se quitan §3.12, la fila de la web, `web/` del árbol y las menciones del sitio. `docs/02`: tokens claros, tipografía y componentes del panel, sin páginas web ni tema oscuro. `docs/demo-cliente.md`: sin el recorrido del sitio. `docs/despliegue.md`: `NOMBRE_EMPRESA`, `CORREO_CONTACTO`, `SITE_URL` obligatoria.
+  - `README.md`: qué es Detach, arranque con los comandos canónicos, los datos de demostración (`manage.py cargar_demo`, sin paquete portátil), el contrato de la API y el aviso de `migrate web zero` para bases anteriores.
+  - `docs/01`: §3.3 sin `descripcion`, §3.10 con los datos legales del certificado sin modelo, se quitan §3.12, la fila de la web, `web/` del árbol y las menciones del sitio. `docs/02`: tokens claros, tipografía y componentes del panel, sin páginas web ni tema oscuro. `docs/despliegue.md`: `NOMBRE_EMPRESA`, `CORREO_CONTACTO`, `SITE_URL` obligatoria.
 - **Criterios**:
   - `[no-existe]` `docs/00-contenido-fuente.md`
   - `[grep-1]` `grep -n "^# Detach" README.md`
   - `[grep-1]` `grep -n "docs/contrato-api.md" CLAUDE.md`
   - `[grep-1]` `grep -n "NOMBRE_EMPRESA" CLAUDE.md`
   - `[grep-1]` `grep -n "NOMBRE_EMPRESA" .claude/skills/convenciones-proyecto/SKILL.md`
-  - `[grep-0]` `grep -rIli macontrol CLAUDE.md README.md .claude/agents .claude/skills/convenciones-proyecto docs/02-diseno.md docs/demo-cliente.md`
-  - `[grep-0]` `grep -rIn "00-contenido-fuente\|apps/web\|apps\.web" CLAUDE.md README.md .claude/agents .claude/skills/convenciones-proyecto docs/01-modelo-y-arquitectura.md docs/02-diseno.md docs/demo-cliente.md`
+  - `[grep-0]` `grep -rIli macontrol CLAUDE.md README.md .claude/agents .claude/skills/convenciones-proyecto docs/02-diseno.md`
+  - `[grep-0]` `grep -rIn "00-contenido-fuente\|apps/web\|apps\.web" CLAUDE.md README.md .claude/agents .claude/skills/convenciones-proyecto docs/01-modelo-y-arquitectura.md docs/02-diseno.md`
   - `[grep-0]` `grep -n "Contenido real\|Tema oscuro" CLAUDE.md docs/02-diseno.md`
-  - `[grep-0]` `grep -n "Sitio público\|/empresa/\|/contacto/" docs/demo-cliente.md`
+  - `[grep-1]` `grep -n "cargar_demo" README.md`
+  - `[grep-0]` `grep -rIn "demo\.bat\|empaquetar_demo\|humo_demo\|demo-cliente\.md" CLAUDE.md README.md .claude/agents .claude/skills/convenciones-proyecto docs/01-modelo-y-arquitectura.md docs/02-diseno.md docs/despliegue.md`
   - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 300 --subtarea T10`
 
 ### T12 — Sitios: `X-Robots-Tag: noindex` en la página del QR
@@ -309,9 +315,9 @@ Worktree: sí (`worktrees/separacion-web-T<n>`, base `plan/separacion-web`). Rut
 - **Depende de**: T8, T9, T10, T12
 - **Pasos**:
   1. Revisar `cambios.sh` de T8, T9, T10 y T12.
-  2. Desde la raíz: `worktree-integrar.sh separacion-web T8 plan/separacion-web apps/servicios`; `… T9 … herramientas demo.bat`; `… T10 … CLAUDE.md README.md .claude/agents .claude/skills/convenciones-proyecto docs/00-contenido-fuente.md docs/01-modelo-y-arquitectura.md docs/02-diseno.md docs/demo-cliente.md docs/despliegue.md`; `… T12 … apps/sitios`.
+  2. Desde la raíz: `worktree-integrar.sh separacion-web T8 plan/separacion-web apps/servicios apps/sitios/tests/test_migraciones.py`; `… T9 … herramientas demo.bat docs/demo-cliente.md apps/panel/tests/test_sin_weasyprint.py`; `… T10 … CLAUDE.md README.md .claude/agents .claude/skills/convenciones-proyecto docs/00-contenido-fuente.md docs/01-modelo-y-arquitectura.md docs/02-diseno.md docs/despliegue.md`; `… T12 … apps/sitios`.
   3. En la raíz, si `find apps/web -type f -not -name '*.pyc'` no devuelve nada, borrar los `__pycache__` residuales de `apps/web` (el `[no-existe]` del cierre lo exige).
-  4. Al cierre, `docs/bitacora.md`: `00-contenido-fuente.md` y la parte web de `02-diseno.md` se movieron a `../macontrol-web`; aviso de `migrate web zero` antes de actualizar. Completar `### Cierra` con: P-sitio-publico-1, -2, -4, -5, -6, -7 (sigue como P-separacion-web-1), -8, -10, -11, -12, -14, -15; P-demo-cliente-8; P-robustez-panel-4, -5; P-pendientes-heredados-31.
+  4. Al cierre, `docs/bitacora.md`: `00-contenido-fuente.md` y la parte web de `02-diseno.md` se movieron a `../macontrol-web`; aviso de `migrate web zero` antes de actualizar. Completar `### Cierra` con: P-sitio-publico-1, -2, -4, -5, -6, -7 (sigue como P-separacion-web-1), -8, -10, -11, -12, -14, -15; P-demo-cliente-8; P-demo-portatil-1, -2, -3, -4, -5 (se borra la demo portátil); P-robustez-panel-4, -5; P-pendientes-heredados-31.
   5. `verificador`, `verificador-b` y `auditor-seguridad` sobre `TODO`. El merge a `main` lo decide el usuario.
 - **Presupuesto**: no aplica (solo merges y commits `registro:`)
 - **Criterios**:
@@ -336,7 +342,7 @@ Worktree: sí (`worktrees/separacion-web-T<n>`, base `plan/separacion-web`). Rut
 - `[grep-0]` `grep -rIn "apps\.web" config --exclude-dir=__pycache__`
 - `[grep-0]` `grep -rIli macontrol apps templates static --exclude='demo*' --exclude-dir=__pycache__`
 - `[cmd]` `T=$(mktemp) && PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py spectacular --validate --file "$(cygpath -w "$T")" && diff -q --strip-trailing-cr "$T" docs/api/openapi-v1.yaml; r=$?; rm -f "$T"; exit $r`
-- `[cmd]` `./venv/Scripts/python.exe herramientas/empaquetar_demo.py --sin-descarga --destino dist/prueba-separacion-cierre && ./venv/Scripts/python.exe herramientas/humo_demo.py dist/prueba-separacion-cierre/detach-demo`
+- `[no-existe]` `demo.bat`
 
 ## Registro de verificación
 
@@ -406,6 +412,7 @@ commit_base: b7dfb6a
 
 ### Decisiones
 
+- 2026-10-18 — Se borra la demo portátil (`herramientas/`, `demo.bat`, `docs/demo-cliente.md`); `cargar_demo` y sus módulos quedan como datos de desarrollo; `dist/` y `demo.sqlite3` locales no se borran (son del usuario) y `dist/` sigue en `.gitignore` — la demo ya se usó — decisión del usuario (opción A) — reemplaza a: 2026-10-18 (la demo es solo del panel; una carpeta `dist/prueba-separacion-<id>` por criterio de humo)
 - 2026-10-18 — `NOMBRE_EMPRESA`, `CORREO_CONTACTO` y `SITE_URL` se recortan (`.strip()`) y con solo espacios caen al valor por defecto; `DESCRIPTION` de la API quita el punto final del nombre para no dejar `S.A..` — decidida por Claude, revisable — reemplaza a: (nada)
 - 2026-10-18 — El User-Agent de Nominatim es la función `geocodificacion.user_agent()` (se evalúa en cada consulta) en lugar de la constante `USER_AGENT` — así toma `SITE_URL` y `CORREO_CONTACTO` vigentes y se prueba con `override_settings` — decidida por Claude (implementador T3), revisable — reemplaza a: (nada)
 - 2026-10-18 — `CuentaAdmin` deja `""` como título estático de la sección propia y `get_fieldsets` le pone `settings.NOMBRE_EMPRESA` en cada llamada — un título calculado al importar no seguiría a `override_settings` ni a un cambio de entorno sin reinicio — decidida por Claude (implementador T4), revisable — reemplaza a: (nada)
