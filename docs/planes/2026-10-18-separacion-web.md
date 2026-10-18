@@ -326,7 +326,7 @@ Worktree: sí (`worktrees/separacion-web-T<n>`, base `plan/separacion-web`). Rut
 <!-- Corte del congelado: desde este encabezado hacia abajo, el principal lo actualiza durante la
 ejecución. Lo de arriba no se toca sin un commit `docs(plan): separacion-web — modificado: <motivo>`. -->
 
-commit_base: <hash del commit docs(plan): separacion-web>
+commit_base: b7dfb6a
 
 ### Estado de subtareas
 
@@ -348,6 +348,8 @@ commit_base: <hash del commit docs(plan): separacion-web>
 
 | Fecha/hora | Alcance | HEAD verificado | Veredicto | Notas |
 |---|---|---|---|---|
+| 2026-10-18 | juez-plan ronda 1 | (sin commit) | RECHAZADO | 2 bloqueantes (T3 con apps.web; T1 delegada con config/), corregidos |
+| 2026-10-18 | juez-plan ronda 2 | (sin commit) | RECHAZADO | 1 bloqueante (criterio de T2 pasaba siempre), corregido a `" T1: .*NOMBRE_EMPRESA"` sin tercera ronda; observación menor abierta: `--exclude='demo*'` |
 
 ## Pendientes que deja este plan
 
