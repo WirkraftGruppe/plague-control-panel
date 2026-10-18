@@ -354,8 +354,8 @@ commit_base: b7dfb6a
 | T3 | hecha |
 | T4 | hecha |
 | T5 | hecha |
-| T6 | en curso (integrada; criterios 27/27 PASA, FALLA formal por contrato modificado: decide el usuario) |
-| T7 | en curso (criterios 5/5 PASA, FALLA formal por contrato modificado: decide el usuario) |
+| T6 | hecha (FALLA formal por contrato modificado aceptado por el usuario el 2026-10-18) |
+| T7 | hecha (FALLA formal por contrato modificado aceptado por el usuario el 2026-10-18) |
 | T8 | pendiente |
 | T9 | pendiente |
 | T10 | pendiente |
