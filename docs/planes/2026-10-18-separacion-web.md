@@ -362,10 +362,10 @@ commit_base: b7dfb6a
 | T5 | hecha |
 | T6 | hecha (FALLA formal por contrato modificado aceptado por el usuario el 2026-10-18) |
 | T7 | hecha (FALLA formal por contrato modificado aceptado por el usuario el 2026-10-18) |
-| T8 | en curso (criterios 8/8 PASA en el worktree; integración rechazada: 9 errores en `sitios.tests.test_migraciones.QuitarPropuestaTests`, fuera de su Puede tocar; espera contrato modificado) |
-| T9 | pendiente (en espera: el usuario analiza borrar la demo) |
-| T10 | pendiente (en espera: depende de la decisión sobre la demo) |
-| T11 | pendiente |
+| T8 | hecha (integrada en 5ddf3cd tras la corrección e90cdc7; FALLA formal por contrato modificado aceptado por el usuario) |
+| T9 | hecha (integrada en 04d1cd9; criterios PASA; FALLA formal por el contrato modificado a60430e que aprobó el usuario) |
+| T10 | hecha (integrada en e8894ba; criterios PASA; FALLA formal por el contrato modificado a60430e que aprobó el usuario) |
+| T11 | en curso (integración hecha; falta la verificación TODO y la decisión de merge del usuario) |
 | T12 | hecha (integrada en dab35e2; FALLA formal por contrato modificado aceptado por el usuario) |
 
 ### Corridas
@@ -396,6 +396,11 @@ commit_base: b7dfb6a
 | 2026-10-18 | T8, T12 | 74e3e73 | — | el usuario acepta el FALLA formal de T8 y T12 y elige la opción A para la demo (borrar solo el paquete portátil) |
 | 2026-10-18 | T8 (integración) | 74e3e73 | FALLA | `worktree-integrar.sh` exit 1 y merge deshecho: suite 655, 9 errores en `QuitarPropuestaTests` (`table servicios_tiposervicio has no column named descripcion`: el test vuelve `sitios` a 0006 sin volver `servicios` a 0003) |
 | 2026-10-18 | T12 (integración) | dab35e2 | — | `worktree-integrar.sh` exit 0, 654 tests OK |
+| 2026-10-18 | contrato modificado | a60430e | — | T9 pasa a borrar la demo portátil (opción A), T8 puede corregir `test_migraciones` de sitios; ajustes de T10, T11 y cierre global; aprobado por el usuario |
+| 2026-10-18 | T8 corrección, T9, T10 (spot check) | e90cdc7 / b592b88 / ad0efb7 | — | `QuitarPropuestaTests` 9 OK; presupuesto de T9 tras el commit del principal (b592b88): 0/30; `grep macontrol` de T10 sin coincidencias |
+| 2026-10-18 | T8, T9, T10 (verificador) | e90cdc7 / b592b88 / ad0efb7 | FALLA formal | 28/28 criterios PASA; FALLA solo por CONTRATO MODIFICADO (9d8aef7, a60430e) |
+| 2026-10-18 | T8, T9, T10 (verificador-b) | e90cdc7 / b592b88 / ad0efb7 | FALLA formal | 28/28 criterios PASA; misma causa |
+| 2026-10-18 | T11 pasos 1-3 | e8894ba | — | `cambios.sh` sin rutas fuera de Puede tocar; `worktree-integrar.sh` T8 (656 OK), T9 (656 OK), T10 (656 OK); `apps/web` solo tenía `__pycache__` y se borró |
 
 ## Pendientes que deja este plan
 
@@ -408,6 +413,7 @@ commit_base: b7dfb6a
 - P-separacion-web-6 [observación] `/q/` muestra dos logos (el de la cabecera de `templates/base.html` y el de `qr.html`); T6 cambia el `alt` de la cabecera a `NOMBRE_EMPRESA`, pero el logo duplicado sigue (implementador T3).
 - P-separacion-web-7 [observación] Tras T6 (auditor-seguridad e implementador): tablas `web_*`, `auth_permission` y `django_content_type` de `web` y archivos `MEDIA_ROOT/servicios/*` y `MEDIA_ROOT/clientes/*` quedan huérfanos en bases existentes (inalcanzables; `remove_stale_contenttypes` los limpia); `docs/contrato-api.md` marca `schema/` y `docs/` solo con JWT, pero también aceptan sesión; `{% block tema %}` huérfano en `templates/panel/base.html` y en `sitios/publico/qr.html` (más su `noindex` duplicado); el logo de la cabecera enlaza a `/`, que redirige al login; `test_contrato_doc` no detecta cambios de método, rol o throttle.
 - P-separacion-web-8 [observación] Auditor T8/T12: `sitios/publico/qr.html` dice `noindex` y la cabecera `noindex, nofollow` (efecto correcto, texto distinto); la migración 0004 hace `DROP COLUMN descripcion` sin respaldo, irrelevante mientras no haya producción.
+- P-separacion-web-9 [observación] Tras T10: `docs/ARRANQUE.md` (fuera de su alcance) todavía nombra MAControl o el sitio; `docs/01-modelo-y-arquitectura.md` conserva el encabezado de versión v0.3 del 06/10/2026 y la frase de §1 "Fuera de alcance (etapa 1)".
 - P-separacion-web-4 [observación] `docs/bitacora.md` mezcla finales CRLF y CR desde 8325925 y su línea `Plan activo:` apunta a `2026-10-17-separacion-web.md`, que no existe.
 
 ### Decisiones
@@ -418,3 +424,24 @@ commit_base: b7dfb6a
 - 2026-10-18 — `CuentaAdmin` deja `""` como título estático de la sección propia y `get_fieldsets` le pone `settings.NOMBRE_EMPRESA` en cada llamada — un título calculado al importar no seguiría a `override_settings` ni a un cambio de entorno sin reinicio — decidida por Claude (implementador T4), revisable — reemplaza a: (nada)
 
 ### Cierra
+
+- cierra: P-sitio-publico-1 — sin sitio público no hay logos ni portadas que servir desde `media/`; el panel no los muestra
+- cierra: P-sitio-publico-2 — se quitó `panel:web:*` (T6)
+- cierra: P-sitio-publico-4 — los datos de la empresa para el sitio pasan al repositorio del sitio público
+- cierra: P-sitio-publico-5 — `docs/02-diseno.md` quedó acotado al panel (T10)
+- cierra: P-sitio-publico-6 — `contenido_inicial.json` se borró y `cargar_demo` carga `tipos_servicio` solo si no hay ninguno (T6)
+- cierra: P-sitio-publico-7 — sigue como P-separacion-web-1
+- cierra: P-sitio-publico-8 — `web.Configuracion` se borró (T6)
+- cierra: P-sitio-publico-10 — `PORTADA_POR_SLUG` se borró con `apps/web` (T6)
+- cierra: P-sitio-publico-11 — la home se borró (T6); el contenido es del repositorio del sitio
+- cierra: P-sitio-publico-12 — `apps/web/admin.py` se borró (T6)
+- cierra: P-sitio-publico-14 — el procesado de logos y portadas de web se borró (T6)
+- cierra: P-sitio-publico-15 — la home y `web.css` se borraron (T6)
+- cierra: P-demo-cliente-8 — sin plantillas públicas que enlacen a `/media/` (T6)
+- cierra: P-demo-portatil-1, P-demo-portatil-2, P-demo-portatil-3, P-demo-portatil-4, P-demo-portatil-5 — se borró la demo portátil (T9)
+- cierra: P-robustez-panel-4 — la 404 dice "Volver al admin" o "Volver al panel" según la ruta (T6)
+- cierra: P-robustez-panel-5 — `ConfiguracionAdmin` se borró con `apps/web` (T6)
+- cierra: P-pendientes-heredados-31 — WhatsApp y horario son contenido del sitio público, fuera de este repositorio
+- cierra: P-separacion-web-3 — la demo portátil se borró (T9); `docs/despliegue.md` avisa que sin `SITE_URL` falla el build (T10); ninguna plantilla envuelve `NOMBRE_EMPRESA` con `|safe`
+- cierra: P-separacion-web-4 — `docs/bitacora.md` normalizada a CRLF y `Plan activo:` apunta a `2026-10-18-separacion-web.md` (T11)
+- cierra: P-separacion-web-5 — `X-Robots-Tag: noindex, nofollow` en `/q/` (T12)
