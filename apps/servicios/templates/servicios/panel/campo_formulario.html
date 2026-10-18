@@ -1,5 +1,5 @@
 {% extends "panel/base.html" %}
-{% block title %}{{ view.titulo }} · MAControl{% endblock %}
+{% block title %}{{ view.titulo }} · Detach{% endblock %}
 {% block panel_contenido %}
   <h1>{{ view.titulo }} · {{ tipo.nombre }}</h1>
   {% url 'panel:servicios:campos' tipo.pk as campos_url %}
