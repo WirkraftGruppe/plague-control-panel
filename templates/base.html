@@ -1,9 +1,10 @@
 {% load static %}<!DOCTYPE html>
-<html lang="es" data-tema="{% block tema %}oscuro{% endblock %}">
+<html lang="es" data-tema="claro">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}MAControl{% endblock %}</title>
+  <meta name="robots" content="noindex, nofollow">
+  <title>{% block title %}Detach{% endblock %}</title>
   <style nonce="{{ request.csp_nonce }}">
     /* Fuentes servidas desde el propio sitio (subconjunto latin) */
     @font-face {
@@ -56,29 +57,12 @@
       src: url("{% static 'fonts/barlow-condensed-latin-800-normal.woff2' %}") format("woff2");
     }
 
-    /* Colores de estado: compartidos por ambos temas */
+    /* Colores de estado */
     :root {
       --ok: #2e9e5b;
       --warn: #ffc600;
       --danger: #d9463e;
       --neutral: #7f8890;
-    }
-
-    /* Tema oscuro (sitio público) */
-    [data-tema="oscuro"] {
-      --bg: #0f1417;
-      --surface: #161c21;
-      --surface-2: #1a2126;
-      --border: #22292e;
-      --border-strong: #3a434a;
-      --text: #e8e6df;
-      --text-muted: #b9b7ae;
-      --text-faint: #7f8890;
-      --brand: #ffc600;
-      --brand-hover: #ffd84d;
-      --on-brand: #0f1417;
-      --on-brand-muted: #3a3410;
-      --brand-tint: #1a1a10;
     }
 
     /* Tema claro (panel de gestión) */
@@ -123,7 +107,7 @@
 </head>
 <body>
   <header>
-    <a href="/"><img class="logo" src="{% static 'img/logo.png' %}" alt="MAControl"></a>
+    <a href="/"><img class="logo" src="{% static 'img/logo.png' %}" alt="{{ NOMBRE_EMPRESA }}"></a>
   </header>
   <main>
     {% block contenido %}{% endblock %}

@@ -5,11 +5,12 @@ import shutil
 import tempfile
 from datetime import timedelta
 from io import StringIO
-from pathlib import Path
 from unittest import mock
 
+from django.apps import apps as django_apps
 from django.core.management import call_command
 from django.core.management.base import CommandError
+from django.db import connection
 from django.test import TestCase, override_settings
 from django.utils import timezone
 
@@ -23,10 +24,8 @@ from apps.servicios.models import TipoServicio
 from apps.sitios.models import Plano, PuntoControl, Sitio
 from apps.visitas.models import Foto, ProductoAplicado, Revision, Visita
 from apps.visitas.planillas import validar_datos
-from apps.web.models import PaginaServicio
 
-MEDIA_DEMO = tempfile.mkdtemp(prefix="macontrol-demo-test-")
-CARTA = Path(__file__).resolve().parents[3] / "docs" / "00-contenido-fuente.md"
+MEDIA_DEMO = tempfile.mkdtemp(prefix="detach-demo-test-")
 
 
 def _archivos(carpeta):
@@ -98,6 +97,16 @@ class CargarDemoTests(TestCase):
         self.assertFalse(User.objects.exists())
 
     @override_settings(DEBUG=True)
+    def test_carga_tipos_de_servicio_si_no_hay(self):
+        self.assertFalse(TipoServicio.objects.exists())
+        self._cargar()
+        self.assertTrue(TipoServicio.objects.filter(slug="servicio-mipu").exists())
+        # Con tipos ya cargados, el fixture no vuelve a correr ni pisa nada.
+        TipoServicio.objects.filter(slug="servicio-mipu").update(nombre="Del cliente")
+        self._cargar()
+        self.assertTrue(TipoServicio.objects.filter(nombre="Del cliente").exists())
+
+    @override_settings(DEBUG=True)
     def test_avisa_usuario_demo_existente_sin_modificarlo(self):
         previo = User.objects.create_user(
             "demo-admin", password="otra-clave", rol=User.Rol.EMPLEADO
@@ -127,7 +136,6 @@ class CargarDemoClienteTests(TestCase):
         modelos = (
             *(User, Cliente, Sitio, PuntoControl, Plano, Proyecto, Visita),
             *(Revision, Foto, ProductoAplicado, Producto, TipoServicio),
-            PaginaServicio,
         )
         return {modelo.__name__: modelo.objects.count() for modelo in modelos}
 
@@ -175,12 +183,8 @@ class CargarDemoClienteTests(TestCase):
             self.assertEqual(ultima.origen, Visita.Origen.APP)
 
     def test_clientes_salen_de_la_carta(self):
-        carta = CARTA.read_text(encoding="utf-8")
-        linea = carta.split("## Quienes confían en nosotros")[1].splitlines()[1]
-        lista = {nombre.strip() for nombre in linea.split("·")}
         razones = set(Cliente.objects.values_list("razon_social", flat=True))
         self.assertEqual(razones, set(CLIENTES))
-        self.assertLessEqual(razones, lista)
 
     def test_historial_de_tres_meses(self):
         ahora = timezone.now()
@@ -192,13 +196,12 @@ class CargarDemoClienteTests(TestCase):
         for mes in range(3):
             self.assertTrue(any(mes * 30 <= edad < (mes + 1) * 30 for edad in edades))
 
-    def test_carga_contenido_inicial_solo_si_faltan_paginas(self):
-        self.assertTrue(PaginaServicio.objects.exists())
-        pagina = PaginaServicio.objects.first()
-        PaginaServicio.objects.filter(pk=pagina.pk).update(titulo_seo="Del cliente")
+    @override_settings(DEBUG=True)
+    def test_no_carga_contenido_del_sitio_publico(self):
+        self.assertNotIn("web", {c.label for c in django_apps.get_app_configs()})
         self._cargar()
-        self.assertTrue(
-            PaginaServicio.objects.filter(titulo_seo="Del cliente").exists()
+        self.assertFalse(
+            [t for t in connection.introspection.table_names() if t == "web_pagina"]
         )
 
     def test_segunda_corrida_no_duplica(self):
