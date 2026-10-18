@@ -91,3 +91,4 @@ class EmpresaTests(SimpleTestCase):
             settings.NOMBRE_EMPRESA, settings.SPECTACULAR_SETTINGS["DESCRIPTION"]
         )
         self.assertNotIn("MAControl", settings.SPECTACULAR_SETTINGS["TITLE"])
+        self.assertNotIn("..", settings.SPECTACULAR_SETTINGS["DESCRIPTION"])

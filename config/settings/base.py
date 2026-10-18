@@ -235,7 +235,9 @@ REST_FRAMEWORK = {
 # explotable mientras `SESSION_COOKIE_SAMESITE` siga en "Lax" (ver arriba).
 SPECTACULAR_SETTINGS = {
     "TITLE": "API de Detach",
-    "DESCRIPTION": f"API de la app móvil de los empleados de {NOMBRE_EMPRESA}.",
+    # Sin doble punto cuando el nombre termina en "S.A." o similar.
+    "DESCRIPTION": "API de la app móvil de los empleados de "
+    f"{NOMBRE_EMPRESA.rstrip('.')}.",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "SERVE_PERMISSIONS": ["rest_framework.permissions.IsAuthenticated"],

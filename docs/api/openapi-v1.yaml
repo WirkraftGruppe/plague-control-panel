@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: API de MAControl
+  title: API de Detach
   version: 1.0.0
   description: API de la app móvil de los empleados de MAControl S.A.
 paths:
@@ -385,7 +385,8 @@ paths:
       operationId: sitios_puntos_create
       description: Solo administradores. Sin coordenadas el punto nace sin ubicación;
         con ellas, `precision_m` es obligatoria y no puede superar `PRECISION_MAXIMA_M`.
-        La foto es opcional (multipart).
+        La foto es opcional (multipart). Un pedido mayor que una foto más 1 MiB, o
+        con demasiados campos, da 400.
       summary: Crear un punto de control en campo
       parameters:
       - in: path
