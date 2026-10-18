@@ -97,6 +97,14 @@ class CargarDemoTests(TestCase):
         self.assertFalse(User.objects.exists())
 
     @override_settings(DEBUG=True)
+    def test_no_carga_contenido_del_sitio_publico(self):
+        self.assertNotIn("web", {c.label for c in django_apps.get_app_configs()})
+        self._cargar()
+        self.assertFalse(
+            [t for t in connection.introspection.table_names() if t == "web_pagina"]
+        )
+
+    @override_settings(DEBUG=True)
     def test_carga_tipos_de_servicio_si_no_hay(self):
         self.assertFalse(TipoServicio.objects.exists())
         self._cargar()
@@ -195,14 +203,6 @@ class CargarDemoClienteTests(TestCase):
         self.assertGreaterEqual(max(edades), 85)
         for mes in range(3):
             self.assertTrue(any(mes * 30 <= edad < (mes + 1) * 30 for edad in edades))
-
-    @override_settings(DEBUG=True)
-    def test_no_carga_contenido_del_sitio_publico(self):
-        self.assertNotIn("web", {c.label for c in django_apps.get_app_configs()})
-        self._cargar()
-        self.assertFalse(
-            [t for t in connection.introspection.table_names() if t == "web_pagina"]
-        )
 
     def test_segunda_corrida_no_duplica(self):
         with (
