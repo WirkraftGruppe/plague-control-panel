@@ -334,9 +334,9 @@ commit_base: b7dfb6a
 |---|---|
 | T1 | hecha |
 | T2 | hecha |
-| T3 | pendiente |
-| T4 | pendiente |
-| T5 | pendiente |
+| T3 | hecha |
+| T4 | hecha |
+| T5 | en curso (pasos 1-4 hechos; falta el 5: crear T6 y su commit `T7:`) |
 | T6 | pendiente |
 | T7 | pendiente |
 | T8 | pendiente |
@@ -354,6 +354,10 @@ commit_base: b7dfb6a
 | 2026-10-18 | T1, T2 (verificador-b) | 4a01cd8 | PASA 15/15 | |
 | 2026-10-18 | T1 (auditor-seguridad) | 4a01cd8 | sin bloqueantes | 1 menor (P-separacion-web-2), 3 observaciones (P-separacion-web-3) |
 | 2026-10-18 | T2 paso 3 | 4a01cd8 | — | `worktree-crear.sh` T3 y T4: exit 0, `manage.py check` sin problemas |
+| 2026-10-18 | T3, T4 (integración) | fa310e2 | — | `worktree-integrar.sh` T3 exit 0 (679 tests OK) y T4 exit 0 (681 tests OK); revisión previa con `cambios.sh` y spot check de un `[test]` de cada una |
+| 2026-10-18 | T3, T4, T5 (verificador) | dc31bc4 | PASA 20/20 | suite completa (paso 3 de T5): 681 tests OK |
+| 2026-10-18 | T3, T4, T5 (verificador-b) | dc31bc4 | PASA 20/20 | |
+| 2026-10-18 | T3, T4, T5 (auditor-seguridad) | dc31bc4 | sin hallazgos | 2 observaciones (P-separacion-web-5) |
 
 ## Pendientes que deja este plan
 
@@ -362,10 +366,14 @@ commit_base: b7dfb6a
 - P-separacion-web-1 [importante] Los datos legales, habilitaciones y director técnico del certificado (`docs/01-modelo-y-arquitectura.md` §3.10) no tienen modelo desde que se quita `web.Configuracion`; van al plan multiempresa.
 - P-separacion-web-2 [menor] `prod.py` solo rechaza `SITE_URL` vacía: con `http://…`, sin esquema o `localhost` producción arranca y los QR impresos quedarían en texto plano o sin abrir; exigir origen `https` sin ruta (auditor-seguridad T1, PLAUSIBLE).
 - P-separacion-web-3 [observación] Sin `SITE_URL`, los QR de la demo pasan de `https://macontrol.com.ar/q/…` a `http://localhost:8000/q/…`, que un teléfono de la red tampoco abre; se podría fijar `SITE_URL=http://<IP>:8000` en `demo.bat` y `empaquetar_demo.py` (T9, decisión de producto). `docs/despliegue.md` (T10) debe avisar que sin `SITE_URL` falla también el build de Railway. T3, T4 y T6 no deben envolver `NOMBRE_EMPRESA` con `|safe`/`mark_safe`.
+- P-separacion-web-5 [observación] Al quitar `apps.web` (T6) desaparece `robots.txt` y con él `Disallow: /q/`; solo queda el `<meta name="robots" content="noindex">` de `sitios/publico/qr.html`. El auditor sugiere `X-Robots-Tag: noindex` en `apps/sitios/publico_views.py::qr` (fuera de lo que T6 puede tocar). `web:qr` y su vista quedan sin uso hasta T6.
+- P-separacion-web-6 [observación] `/q/` muestra dos logos (el de la cabecera de `templates/base.html` y el de `qr.html`); T6 cambia el `alt` de la cabecera a `NOMBRE_EMPRESA`, pero el logo duplicado sigue (implementador T3).
 - P-separacion-web-4 [observación] `docs/bitacora.md` mezcla finales CRLF y CR desde 8325925 y su línea `Plan activo:` apunta a `2026-10-17-separacion-web.md`, que no existe.
 
 ### Decisiones
 
 - 2026-10-18 — `NOMBRE_EMPRESA`, `CORREO_CONTACTO` y `SITE_URL` se recortan (`.strip()`) y con solo espacios caen al valor por defecto; `DESCRIPTION` de la API quita el punto final del nombre para no dejar `S.A..` — decidida por Claude, revisable — reemplaza a: (nada)
+- 2026-10-18 — El User-Agent de Nominatim es la función `geocodificacion.user_agent()` (se evalúa en cada consulta) en lugar de la constante `USER_AGENT` — así toma `SITE_URL` y `CORREO_CONTACTO` vigentes y se prueba con `override_settings` — decidida por Claude (implementador T3), revisable — reemplaza a: (nada)
+- 2026-10-18 — `CuentaAdmin` deja `""` como título estático de la sección propia y `get_fieldsets` le pone `settings.NOMBRE_EMPRESA` en cada llamada — un título calculado al importar no seguiría a `override_settings` ni a un cambio de entorno sin reinicio — decidida por Claude (implementador T4), revisable — reemplaza a: (nada)
 
 ### Cierra
