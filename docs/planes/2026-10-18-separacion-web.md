@@ -401,6 +401,9 @@ commit_base: b7dfb6a
 | 2026-10-18 | T8, T9, T10 (verificador) | e90cdc7 / b592b88 / ad0efb7 | FALLA formal | 28/28 criterios PASA; FALLA solo por CONTRATO MODIFICADO (9d8aef7, a60430e) |
 | 2026-10-18 | T8, T9, T10 (verificador-b) | e90cdc7 / b592b88 / ad0efb7 | FALLA formal | 28/28 criterios PASA; misma causa |
 | 2026-10-18 | T11 pasos 1-3 | e8894ba | — | `cambios.sh` sin rutas fuera de Puede tocar; `worktree-integrar.sh` T8 (656 OK), T9 (656 OK), T10 (656 OK); `apps/web` solo tenía `__pycache__` y se borró |
+| 2026-10-18 | TODO (verificador) | 6a9ea05 | FALLA formal | 117/118 PASA; único FALLA `congelado.sh` (CONTRATO MODIFICADO 9d8aef7, a60430e); suite 656 OK |
+| 2026-10-18 | TODO (verificador-b) | 6a9ea05 | FALLA formal | 117/118 PASA; misma causa |
+| 2026-10-18 | TODO (auditor-seguridad) | 6a9ea05 | sin bloqueantes | superficie pública probada con DEBUG=False; 1 menor (P-separacion-web-10), 4 observaciones (P-separacion-web-11) |
 
 ## Pendientes que deja este plan
 
@@ -414,6 +417,8 @@ commit_base: b7dfb6a
 - P-separacion-web-7 [observación] Tras T6 (auditor-seguridad e implementador): tablas `web_*`, `auth_permission` y `django_content_type` de `web` y archivos `MEDIA_ROOT/servicios/*` y `MEDIA_ROOT/clientes/*` quedan huérfanos en bases existentes (inalcanzables; `remove_stale_contenttypes` los limpia); `docs/contrato-api.md` marca `schema/` y `docs/` solo con JWT, pero también aceptan sesión; `{% block tema %}` huérfano en `templates/panel/base.html` y en `sitios/publico/qr.html` (más su `noindex` duplicado); el logo de la cabecera enlaza a `/`, que redirige al login; `test_contrato_doc` no detecta cambios de método, rol o throttle.
 - P-separacion-web-8 [observación] Auditor T8/T12: `sitios/publico/qr.html` dice `noindex` y la cabecera `noindex, nofollow` (efecto correcto, texto distinto); la migración 0004 hace `DROP COLUMN descripcion` sin respaldo, irrelevante mientras no haya producción.
 - P-separacion-web-9 [observación] Tras T10: `docs/ARRANQUE.md` (fuera de su alcance) todavía nombra MAControl o el sitio; `docs/01-modelo-y-arquitectura.md` conserva el encabezado de versión v0.3 del 06/10/2026 y la frase de §1 "Fuera de alcance (etapa 1)".
+- P-separacion-web-10 [menor] T10 quitó de `CLAUDE.md` (regla 7) y de las Prohibiciones de la skill la regla de no tener formularios públicos que escriban en la base o envíen correo; solo queda en `.claude/agents/auditor-seguridad.md`. Agregar a la skill: "Ninguna ruta pública (`/`, `/q/<uuid>/`) tiene formularios que escriban en la base ni envíen correo" (auditor-seguridad TODO).
+- P-separacion-web-11 [observación] Auditor TODO: `.claude/agents/auditor-seguridad.md:20,84` todavía nombra el sitio público; `docs/despliegue.md:27` dice que `NOMBRE_EMPRESA` sale en los PDF (ninguno lo usa aún) y `:36` habla de logos subidos; `NOMBRE_EMPRESA` cae a "MAControl S.A." si falta en producción (decidir si se exige como `SITE_URL`); `.gitignore:33` nombra el empaquetador borrado y `dist/` local guarda el paquete viejo.
 - P-separacion-web-4 [observación] `docs/bitacora.md` mezcla finales CRLF y CR desde 8325925 y su línea `Plan activo:` apunta a `2026-10-17-separacion-web.md`, que no existe.
 
 ### Decisiones
