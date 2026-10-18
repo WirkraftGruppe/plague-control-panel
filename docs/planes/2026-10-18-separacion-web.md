@@ -332,8 +332,8 @@ commit_base: b7dfb6a
 
 | Tarea | Estado |
 |---|---|
-| T1 | pendiente |
-| T2 | pendiente |
+| T1 | hecha |
+| T2 | hecha |
 | T3 | pendiente |
 | T4 | pendiente |
 | T5 | pendiente |
@@ -350,13 +350,22 @@ commit_base: b7dfb6a
 |---|---|---|---|---|
 | 2026-10-18 | juez-plan ronda 1 | (sin commit) | RECHAZADO | 2 bloqueantes (T3 con apps.web; T1 delegada con config/), corregidos |
 | 2026-10-18 | juez-plan ronda 2 | (sin commit) | RECHAZADO | 1 bloqueante (criterio de T2 pasaba siempre), corregido a `" T1: .*NOMBRE_EMPRESA"` sin tercera ronda; observación menor abierta: `--exclude='demo*'` |
+| 2026-10-18 | T1, T2 (verificador) | 4a01cd8 | PASA 15/15 | suite completa (paso 2 de T2): 675 tests OK |
+| 2026-10-18 | T1, T2 (verificador-b) | 4a01cd8 | PASA 15/15 | |
+| 2026-10-18 | T1 (auditor-seguridad) | 4a01cd8 | sin bloqueantes | 1 menor (P-separacion-web-2), 3 observaciones (P-separacion-web-3) |
+| 2026-10-18 | T2 paso 3 | 4a01cd8 | — | `worktree-crear.sh` T3 y T4: exit 0, `manage.py check` sin problemas |
 
 ## Pendientes que deja este plan
 
 ### Problemas
 
 - P-separacion-web-1 [importante] Los datos legales, habilitaciones y director técnico del certificado (`docs/01-modelo-y-arquitectura.md` §3.10) no tienen modelo desde que se quita `web.Configuracion`; van al plan multiempresa.
+- P-separacion-web-2 [menor] `prod.py` solo rechaza `SITE_URL` vacía: con `http://…`, sin esquema o `localhost` producción arranca y los QR impresos quedarían en texto plano o sin abrir; exigir origen `https` sin ruta (auditor-seguridad T1, PLAUSIBLE).
+- P-separacion-web-3 [observación] Sin `SITE_URL`, los QR de la demo pasan de `https://macontrol.com.ar/q/…` a `http://localhost:8000/q/…`, que un teléfono de la red tampoco abre; se podría fijar `SITE_URL=http://<IP>:8000` en `demo.bat` y `empaquetar_demo.py` (T9, decisión de producto). `docs/despliegue.md` (T10) debe avisar que sin `SITE_URL` falla también el build de Railway. T3, T4 y T6 no deben envolver `NOMBRE_EMPRESA` con `|safe`/`mark_safe`.
+- P-separacion-web-4 [observación] `docs/bitacora.md` mezcla finales CRLF y CR desde 8325925 y su línea `Plan activo:` apunta a `2026-10-17-separacion-web.md`, que no existe.
 
 ### Decisiones
+
+- 2026-10-18 — `NOMBRE_EMPRESA`, `CORREO_CONTACTO` y `SITE_URL` se recortan (`.strip()`) y con solo espacios caen al valor por defecto; `DESCRIPTION` de la API quita el punto final del nombre para no dejar `S.A..` — decidida por Claude, revisable — reemplaza a: (nada)
 
 ### Cierra
