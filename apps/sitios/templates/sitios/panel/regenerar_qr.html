@@ -1,5 +1,5 @@
 {% extends "panel/base.html" %}
-{% block title %}Regenerar QR · MAControl{% endblock %}
+{% block title %}Regenerar QR · Detach{% endblock %}
 {% block panel_contenido %}
 {% url 'panel:sitios:ficha' object.sitio_id as ficha_url %}
 {% include "panel/partials/confirmar.html" with titulo="Regenerar el QR de "|add:object.nombre mensaje="La etiqueta impresa actual dejará de funcionar y habrá que imprimir una nueva. Esta acción no se puede deshacer." accion_url=request.path cancelar_url=ficha_url enviar="Regenerar QR" %}

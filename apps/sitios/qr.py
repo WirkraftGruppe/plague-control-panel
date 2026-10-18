@@ -16,7 +16,8 @@ RUTA_FUENTE = settings.BASE_DIR / "static/fonts/barlow-latin-600-normal.woff2"
 
 def contenido_qr(punto):
     """URL pública que codifica el QR del punto."""
-    return settings.SITE_URL + reverse("web:qr", args=[punto.qr_codigo])
+    ruta = reverse("qr", urlconf="apps.sitios.publico_urls", args=[punto.qr_codigo])
+    return settings.SITE_URL + ruta
 
 
 def png_qr(punto):
