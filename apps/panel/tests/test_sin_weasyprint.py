@@ -1,4 +1,4 @@
-"""El arranque de Django no depende de WeasyPrint (el paquete portátil no lo trae)."""
+"""El arranque de Django no depende de WeasyPrint."""
 
 import subprocess
 import sys
