@@ -353,9 +353,9 @@ commit_base: b7dfb6a
 | T2 | hecha |
 | T3 | hecha |
 | T4 | hecha |
-| T5 | en curso (pasos 1-4 hechos; falta el 5: crear T6 y su commit `T7:`) |
-| T6 | pendiente |
-| T7 | pendiente |
+| T5 | hecha |
+| T6 | en curso (implementador en `worktrees/separacion-web-T6`) |
+| T7 | en curso (commits `T7:` cd43e8b y 58c3bd3 en la rama de T6) |
 | T8 | pendiente |
 | T9 | pendiente |
 | T10 | pendiente |
@@ -376,6 +376,8 @@ commit_base: b7dfb6a
 | 2026-10-18 | T3, T4, T5 (verificador) | dc31bc4 | PASA 20/20 | suite completa (paso 3 de T5): 681 tests OK |
 | 2026-10-18 | T3, T4, T5 (verificador-b) | dc31bc4 | PASA 20/20 | |
 | 2026-10-18 | T3, T4, T5 (auditor-seguridad) | dc31bc4 | sin hallazgos | 2 observaciones (P-separacion-web-5) |
+| 2026-10-18 | contrato modificado | 9d8aef7 | — | T12 (`X-Robots-Tag` en `/q/`, ola 4) por decisión del usuario; desde acá `congelado.sh` da CONTRATO MODIFICADO (exit 1) y el criterio de cierre global queda en FALLA formal |
+| 2026-10-18 | T5 paso 5 | 58c3bd3 | — | `worktree-crear.sh` T6 exit 0; `T7:` desconecta `apps.web` (cd43e8b) y corrige ruff E501 (58c3bd3) en la rama de T6. Incidentes: el principal hizo `cd` a los worktrees de T4 y T6 dos veces; corregido en el acto con `git status` en raíz y worktrees, sin daño |
 
 ## Pendientes que deja este plan
 
