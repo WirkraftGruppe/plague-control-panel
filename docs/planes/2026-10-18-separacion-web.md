@@ -356,11 +356,11 @@ commit_base: b7dfb6a
 | T5 | hecha |
 | T6 | hecha (FALLA formal por contrato modificado aceptado por el usuario el 2026-10-18) |
 | T7 | hecha (FALLA formal por contrato modificado aceptado por el usuario el 2026-10-18) |
-| T8 | pendiente |
-| T9 | pendiente |
-| T10 | pendiente |
+| T8 | en curso (criterios 8/8 PASA en el worktree, FALLA formal por contrato modificado; sin integrar) |
+| T9 | pendiente (en espera: el usuario analiza borrar la demo) |
+| T10 | pendiente (en espera: depende de la decisión sobre la demo) |
 | T11 | pendiente |
-| T12 | pendiente |
+| T12 | en curso (criterios 4/4 PASA en el worktree, FALLA formal por contrato modificado; sin integrar) |
 
 ### Corridas
 
@@ -382,6 +382,11 @@ commit_base: b7dfb6a
 | 2026-10-18 | T6, T7 (verificador) | 93a4eb9 | FALLA formal | 32/32 criterios PASA (suite 653 OK); FALLA solo por CONTRATO MODIFICADO (9d8aef7) |
 | 2026-10-18 | T6, T7 (verificador-b) | 93a4eb9 | FALLA formal | todos los criterios PASA (informa 41 por conteo propio); FALLA solo por CONTRATO MODIFICADO |
 | 2026-10-18 | T6, T7 (auditor-seguridad) | 93a4eb9 | sin bloqueantes | 4 observaciones (P-separacion-web-7) |
+| 2026-10-18 | T6, T7 | 35b88a9 | — | el usuario acepta el FALLA formal por contrato modificado; worktree-crear.sh T8 y T12 exit 0 |
+| 2026-10-18 | T8, T12 (spot check) | dfeee8c / 1a76ebf | — | `test_sin_descripcion` y `PaginaQRTests` repetidos OK; `cambios.sh`: todo dentro de Puede tocar |
+| 2026-10-18 | T8, T12 (verificador) | dfeee8c / 1a76ebf | FALLA formal | 12/12 criterios PASA; FALLA solo por CONTRATO MODIFICADO (9d8aef7) |
+| 2026-10-18 | T8, T12 (verificador-b) | dfeee8c / 1a76ebf | FALLA formal | 12/12 criterios PASA; misma causa |
+| 2026-10-18 | T8, T12 (auditor-seguridad) | dfeee8c / 1a76ebf | sin bloqueantes | 2 observaciones (P-separacion-web-8) |
 
 ## Pendientes que deja este plan
 
@@ -393,6 +398,7 @@ commit_base: b7dfb6a
 - P-separacion-web-5 [observación] Al quitar `apps.web` (T6) desaparece `robots.txt` y con él `Disallow: /q/`; solo queda el `<meta name="robots" content="noindex">` de `sitios/publico/qr.html`. El auditor sugiere `X-Robots-Tag: noindex` en `apps/sitios/publico_views.py::qr` (fuera de lo que T6 puede tocar). `web:qr` y su vista quedan sin uso hasta T6.
 - P-separacion-web-6 [observación] `/q/` muestra dos logos (el de la cabecera de `templates/base.html` y el de `qr.html`); T6 cambia el `alt` de la cabecera a `NOMBRE_EMPRESA`, pero el logo duplicado sigue (implementador T3).
 - P-separacion-web-7 [observación] Tras T6 (auditor-seguridad e implementador): tablas `web_*`, `auth_permission` y `django_content_type` de `web` y archivos `MEDIA_ROOT/servicios/*` y `MEDIA_ROOT/clientes/*` quedan huérfanos en bases existentes (inalcanzables; `remove_stale_contenttypes` los limpia); `docs/contrato-api.md` marca `schema/` y `docs/` solo con JWT, pero también aceptan sesión; `{% block tema %}` huérfano en `templates/panel/base.html` y en `sitios/publico/qr.html` (más su `noindex` duplicado); el logo de la cabecera enlaza a `/`, que redirige al login; `test_contrato_doc` no detecta cambios de método, rol o throttle.
+- P-separacion-web-8 [observación] Auditor T8/T12: `sitios/publico/qr.html` dice `noindex` y la cabecera `noindex, nofollow` (efecto correcto, texto distinto); la migración 0004 hace `DROP COLUMN descripcion` sin respaldo, irrelevante mientras no haya producción.
 - P-separacion-web-4 [observación] `docs/bitacora.md` mezcla finales CRLF y CR desde 8325925 y su línea `Plan activo:` apunta a `2026-10-17-separacion-web.md`, que no existe.
 
 ### Decisiones
