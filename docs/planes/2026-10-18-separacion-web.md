@@ -52,7 +52,7 @@
 | 1 | T1, T2 (integración) | config (ninguna) |
 | 2 | T3, T4, T5 (integración) | sitios; accounts, clientes, productos, visitas (ninguna) |
 | 3 | T6, T7 (integración) | web (se borra), panel, api, diseño (ninguna) |
-| 4 | T8, T9, T10, T11 (integración y cierre) | servicios (0004); herramientas; documentación |
+| 4 | T8, T9, T10, T12, T11 (integración y cierre) | servicios (0004); herramientas; documentación; sitios (ninguna) |
 
 ## Subtareas
 
@@ -287,13 +287,29 @@ Worktree: sí (`worktrees/separacion-web-T<n>`, base `plan/separacion-web`). Rut
   - `[grep-0]` `grep -n "Sitio público\|/empresa/\|/contacto/" docs/demo-cliente.md`
   - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 300 --subtarea T10`
 
+### T12 — Sitios: `X-Robots-Tag: noindex` en la página del QR
+
+- **Ola**: 4
+- **Depende de**: T7
+- **Agregada**: contrato modificado tras la ola 2 (P-separacion-web-5, auditor-seguridad): sin `apps.web` no hay `robots.txt` con `Disallow: /q/`.
+- **Puede tocar**: `apps/sitios/publico_views.py`, `apps/sitios/tests/test_publico.py`
+- **No puede tocar**: `docs/planes/`, `config/`, `apps/sitios/urls.py`, `apps/sitios/panel_urls.py`, `apps/sitios/api_urls.py`, `apps/sitios/publico_urls.py`, `apps/sitios/migrations/`, otras apps, `templates/`, `static/`
+- **Skill a leer antes**: `.claude/skills/convenciones-proyecto/SKILL.md`; `.agents/skills/django-conventions/SKILL.md` § Views/URLs
+- **Presupuesto**: 40 líneas agregadas
+- **Qué hacer**: la vista `qr` agrega a su respuesta la cabecera `X-Robots-Tag: noindex, nofollow`; la página sigue sin consultar la base ni mostrar el código.
+- **Criterios**:
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_publico.PaginaQRTests.test_q_lleva_cabecera_x_robots_tag_noindex --keepdb`
+  - `[grep-1]` `grep -n "X-Robots-Tag" apps/sitios/publico_views.py`
+  - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios --keepdb`
+  - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 40 --subtarea T12`
+
 ### T11 — Integración ola 4 y cierre (principal)
 
-- **Ola**: 4 (después de verificar T8, T9 y T10)
-- **Depende de**: T8, T9, T10
+- **Ola**: 4 (después de verificar T8, T9, T10 y T12)
+- **Depende de**: T8, T9, T10, T12
 - **Pasos**:
-  1. Revisar `cambios.sh` de T8, T9 y T10.
-  2. Desde la raíz: `worktree-integrar.sh separacion-web T8 plan/separacion-web apps/servicios`; `… T9 … herramientas demo.bat`; `… T10 … CLAUDE.md README.md .claude/agents .claude/skills/convenciones-proyecto docs/00-contenido-fuente.md docs/01-modelo-y-arquitectura.md docs/02-diseno.md docs/demo-cliente.md docs/despliegue.md`.
+  1. Revisar `cambios.sh` de T8, T9, T10 y T12.
+  2. Desde la raíz: `worktree-integrar.sh separacion-web T8 plan/separacion-web apps/servicios`; `… T9 … herramientas demo.bat`; `… T10 … CLAUDE.md README.md .claude/agents .claude/skills/convenciones-proyecto docs/00-contenido-fuente.md docs/01-modelo-y-arquitectura.md docs/02-diseno.md docs/demo-cliente.md docs/despliegue.md`; `… T12 … apps/sitios`.
   3. En la raíz, si `find apps/web -type f -not -name '*.pyc'` no devuelve nada, borrar los `__pycache__` residuales de `apps/web` (el `[no-existe]` del cierre lo exige).
   4. Al cierre, `docs/bitacora.md`: `00-contenido-fuente.md` y la parte web de `02-diseno.md` se movieron a `../macontrol-web`; aviso de `migrate web zero` antes de actualizar. Completar `### Cierra` con: P-sitio-publico-1, -2, -4, -5, -6, -7 (sigue como P-separacion-web-1), -8, -10, -11, -12, -14, -15; P-demo-cliente-8; P-robustez-panel-4, -5; P-pendientes-heredados-31.
   5. `verificador`, `verificador-b` y `auditor-seguridad` sobre `TODO`. El merge a `main` lo decide el usuario.
@@ -302,6 +318,7 @@ Worktree: sí (`worktrees/separacion-web-T<n>`, base `plan/separacion-web`). Rut
   - `[cmd]` `git log --oneline plan/separacion-web | grep -q "T8: integra separacion-web-T8"`
   - `[cmd]` `git log --oneline plan/separacion-web | grep -q "T9: integra separacion-web-T9"`
   - `[cmd]` `git log --oneline plan/separacion-web | grep -q "T10: integra separacion-web-T10"`
+  - `[cmd]` `git log --oneline plan/separacion-web | grep -q "T12: integra separacion-web-T12"`
 
 ## Criterios de cierre global
 
@@ -343,6 +360,7 @@ commit_base: b7dfb6a
 | T9 | pendiente |
 | T10 | pendiente |
 | T11 | pendiente |
+| T12 | pendiente |
 
 ### Corridas
 
