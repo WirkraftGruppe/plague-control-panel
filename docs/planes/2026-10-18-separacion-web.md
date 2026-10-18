@@ -356,11 +356,11 @@ commit_base: b7dfb6a
 | T5 | hecha |
 | T6 | hecha (FALLA formal por contrato modificado aceptado por el usuario el 2026-10-18) |
 | T7 | hecha (FALLA formal por contrato modificado aceptado por el usuario el 2026-10-18) |
-| T8 | en curso (criterios 8/8 PASA en el worktree, FALLA formal por contrato modificado; sin integrar) |
+| T8 | en curso (criterios 8/8 PASA en el worktree; integración rechazada: 9 errores en `sitios.tests.test_migraciones.QuitarPropuestaTests`, fuera de su Puede tocar; espera contrato modificado) |
 | T9 | pendiente (en espera: el usuario analiza borrar la demo) |
 | T10 | pendiente (en espera: depende de la decisión sobre la demo) |
 | T11 | pendiente |
-| T12 | en curso (criterios 4/4 PASA en el worktree, FALLA formal por contrato modificado; sin integrar) |
+| T12 | hecha (integrada en dab35e2; FALLA formal por contrato modificado aceptado por el usuario) |
 
 ### Corridas
 
@@ -387,6 +387,9 @@ commit_base: b7dfb6a
 | 2026-10-18 | T8, T12 (verificador) | dfeee8c / 1a76ebf | FALLA formal | 12/12 criterios PASA; FALLA solo por CONTRATO MODIFICADO (9d8aef7) |
 | 2026-10-18 | T8, T12 (verificador-b) | dfeee8c / 1a76ebf | FALLA formal | 12/12 criterios PASA; misma causa |
 | 2026-10-18 | T8, T12 (auditor-seguridad) | dfeee8c / 1a76ebf | sin bloqueantes | 2 observaciones (P-separacion-web-8) |
+| 2026-10-18 | T8, T12 | 74e3e73 | — | el usuario acepta el FALLA formal de T8 y T12 y elige la opción A para la demo (borrar solo el paquete portátil) |
+| 2026-10-18 | T8 (integración) | 74e3e73 | FALLA | `worktree-integrar.sh` exit 1 y merge deshecho: suite 655, 9 errores en `QuitarPropuestaTests` (`table servicios_tiposervicio has no column named descripcion`: el test vuelve `sitios` a 0006 sin volver `servicios` a 0003) |
+| 2026-10-18 | T12 (integración) | dab35e2 | — | `worktree-integrar.sh` exit 0, 654 tests OK |
 
 ## Pendientes que deja este plan
 
