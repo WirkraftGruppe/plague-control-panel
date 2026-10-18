@@ -5,7 +5,6 @@
     "fields": {
       "nombre": "Desinfección, sanitización y desodorización",
       "slug": "desinfeccion-sanitizacion-desodorizacion",
-      "descripcion": "Eliminación de olores, microorganismos, virus, hongos y bacterias que generan enfermedades en el ser humano y su ambiente.",
       "activo": true
     }
   },
@@ -15,7 +14,6 @@
     "fields": {
       "nombre": "Control de plagas urbanas",
       "slug": "control-plagas-urbanas",
-      "descripcion": "Excluir, ahuyentar y erradicar: insectos voladores y rastreros, artrópodos, mamíferos y aves.",
       "activo": true
     }
   },
@@ -25,7 +23,6 @@
     "fields": {
       "nombre": "Servicio MIPU (Manejo Integral de Plagas Urbanas)",
       "slug": "servicio-mipu",
-      "descripcion": "Programa de monitoreo, detección, exclusión y prevención de plagas.",
       "activo": true
     }
   },
@@ -35,7 +32,6 @@
     "fields": {
       "nombre": "Mosquitos vectores — erradicación y prevención",
       "slug": "mosquitos-vectores",
-      "descripcion": "Erradicación de mosquitos, huevos y larvas para prevenir picaduras y enfermedades como Dengue, Zika y Chikungunya.",
       "activo": true
     }
   },
@@ -45,7 +41,6 @@
     "fields": {
       "nombre": "Control de murciélagos",
       "slug": "control-murcielagos",
-      "descripcion": "Trabajo integral: exclusión del murciélago, limpieza de guano, reacondicionamiento de estructuras dañadas, revisión de espacios, sellamientos y desinfección de superficies afectadas.",
       "activo": true
     }
   },
@@ -55,7 +50,6 @@
     "fields": {
       "nombre": "Exclusión de palomas y otras aves",
       "slug": "exclusion-palomas-aves",
-      "descripcion": "Pinches plásticos o metálicos, redes, sistemas ecológicos de ahuyentamiento y exclusión por alergénico.",
       "activo": true
     }
   },
@@ -65,7 +59,6 @@
     "fields": {
       "nombre": "Limpieza y desinfección de tanques de agua y cisternas",
       "slug": "limpieza-tanques-cisternas",
-      "descripcion": "Eliminación de hongos, virus, bacterias, algas, insectos y suciedad.",
       "activo": true
     }
   },
@@ -75,7 +68,6 @@
     "fields": {
       "nombre": "Manejo integral de plagas en edificios / departamentos",
       "slug": "manejo-plagas-edificios",
-      "descripcion": "Control mensual sanitario específico para cada espacio (ventilaciones, pozos de ascensores, sótanos, salas recreativas, calefacciones, cuartos de máquinas, cocheras, pasillos).",
       "activo": true
     }
   },
@@ -85,7 +77,6 @@
     "fields": {
       "nombre": "Mantenimiento edilicio",
       "slug": "mantenimiento-edilicio",
-      "descripcion": "Recuperamos y mantenemos en condiciones espacios/sectores dañados o deteriorados por uso, paso del tiempo y plagas, otorgando valor agregado a clientes y sus inmuebles.",
       "activo": true
     }
   }
