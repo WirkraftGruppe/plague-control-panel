@@ -125,7 +125,6 @@ INSTALLED_APPS = [
     "apps.informes",
     "apps.panel",
     "apps.api",
-    "apps.web",
 ]
 
 MIDDLEWARE = [

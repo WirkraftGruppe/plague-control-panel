@@ -36,7 +36,6 @@ from apps.proyectos.models import Proyecto
 from apps.servicios.models import TipoServicio
 from apps.sitios import services as servicios_sitio
 from apps.sitios.models import Plano, Sitio
-from apps.web.models import PaginaServicio
 
 logger = logging.getLogger(__name__)
 
@@ -65,8 +64,8 @@ class Command(BaseCommand):
             with transaction.atomic():
                 administrador, empleado = self._usuarios()
                 borrados = limpiar_datos_demo()
-                if not PaginaServicio.objects.exists():
-                    call_command("loaddata", "contenido_inicial", verbosity=0)
+                if not TipoServicio.objects.exists():
+                    call_command("loaddata", "tipos_servicio", verbosity=0)
                 sitios = self._crear_sitios()
                 self._crear_historia(sitios, administrador, empleado)
         except Exception:

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 {% block tema %}claro{% endblock %}
-{% block title %}Panel · MAControl{% endblock %}
+{% block title %}Panel · Detach{% endblock %}
 {% block extra_head %}
   <meta name="htmx-config" content='{"includeIndicatorStyles":false}'>
   <link rel="stylesheet" href="{% static 'css/panel.css' %}">
@@ -11,7 +11,7 @@
 <div class="panel" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
   {% block barra_lateral %}
   <aside class="barra-lateral">
-    <a class="panel-logo" href="/panel/"><img src="{% static 'img/logo.png' %}" alt="MAControl"></a>
+    <a class="panel-logo" href="/panel/"><img src="{% static 'img/logo.png' %}" alt="{{ NOMBRE_EMPRESA }}"></a>
     <nav aria-label="Principal">
       {% url 'panel:inicio' as u %}{% if u %}<a href="{{ u }}">Tablero</a>{% endif %}
       {% url 'panel:mapa' as u %}{% if u %}<a href="{{ u }}">Mapa</a>{% endif %}

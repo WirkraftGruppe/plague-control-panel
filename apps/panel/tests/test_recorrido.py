@@ -31,7 +31,7 @@ def _jpeg():
 class RecorridoTests(TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.media = tempfile.mkdtemp(prefix="macontrol-recorrido-test-")
+        cls.media = tempfile.mkdtemp(prefix="detach-recorrido-test-")
         cls._ajuste = override_settings(MEDIA_ROOT=cls.media)
         cls._ajuste.enable()
         super().setUpClass()

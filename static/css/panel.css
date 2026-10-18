@@ -224,3 +224,11 @@
   .barra-lateral { flex: none; }
   .barra-lateral nav { flex-direction: row; flex-wrap: wrap; }
 }
+
+/* Páginas de error (404 y 500): autónomas, no heredan de base.html */
+.pagina-error { margin: 0; background: #f4f3ef; color: #15191c; font-family: system-ui, sans-serif; line-height: 1.5; }
+.pagina-error main { max-width: 480px; margin: 15vh auto 0; padding: 0 16px; text-align: center; }
+.pagina-error h1 { margin: 0 0 8px; font-size: 32px; }
+.pagina-error p { margin: 0 0 24px; color: #4f565c; }
+.pagina-error a { display: inline-block; padding: 10px 20px; background: #ffc600; color: #0f1417; font-weight: 600; text-decoration: none; border-radius: 4px; }
+.pagina-error a:hover { background: #e6b200; }
