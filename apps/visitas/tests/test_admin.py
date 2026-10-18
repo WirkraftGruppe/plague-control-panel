@@ -21,7 +21,7 @@ from apps.visitas.models import Foto, ProductoAplicado, Revision, Visita
 
 from .test_models import crear_revision, crear_visita
 
-MEDIA_TEMPORAL = tempfile.mkdtemp(prefix="macontrol-test-admin-")
+MEDIA_TEMPORAL = tempfile.mkdtemp(prefix="detach-test-admin-")
 
 
 def _imagen_real():
