@@ -1,5 +1,5 @@
 {% extends "panel/base.html" %}
-{% block title %}Desactivar punto · MAControl{% endblock %}
+{% block title %}Desactivar punto · Detach{% endblock %}
 {% block panel_contenido %}
 {% url 'panel:sitios:ficha' object.sitio_id as ficha_url %}
 {% include "panel/partials/confirmar.html" with titulo="Desactivar "|add:object.nombre mensaje="El punto deja de pedirse en las visitas; sus revisiones anteriores se conservan. Se puede reactivar desde su edición." accion_url=request.path cancelar_url=ficha_url enviar="Desactivar" %}
