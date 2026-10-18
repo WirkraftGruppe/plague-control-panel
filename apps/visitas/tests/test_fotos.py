@@ -14,7 +14,7 @@ from apps.visitas.models import Foto
 
 from .test_models import crear_revision, crear_visita
 
-MEDIA_TEMPORAL = tempfile.mkdtemp(prefix="macontrol-test-")
+MEDIA_TEMPORAL = tempfile.mkdtemp(prefix="detach-test-")
 
 
 def _bytes(imagen, formato, **opciones):

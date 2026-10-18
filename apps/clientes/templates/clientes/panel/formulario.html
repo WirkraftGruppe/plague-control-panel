@@ -1,5 +1,5 @@
 {% extends "panel/base.html" %}
-{% block title %}{% if object %}Editar cliente{% else %}Nuevo cliente{% endif %} · MAControl{% endblock %}
+{% block title %}{% if object %}Editar cliente{% else %}Nuevo cliente{% endif %} · Detach{% endblock %}
 {% block panel_contenido %}
   {% url 'panel:clientes:listado' as listado_url %}
   {% include "panel/partials/formulario.html" with titulo=object|yesno:"Editar cliente,Nuevo cliente" cancelar_url=listado_url %}

@@ -7,7 +7,7 @@ from apps.clientes.validators import validar_cuit
 
 
 class Cliente(models.Model):
-    """Empresa o persona a la que MAControl presta servicios."""
+    """Empresa o persona a la que la empresa presta servicios."""
 
     razon_social = models.CharField("razón social", max_length=200)
     cuit = models.CharField(
