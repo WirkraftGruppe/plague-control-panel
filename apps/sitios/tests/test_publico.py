@@ -29,6 +29,10 @@ class PaginaQRTests(TestCase):
         self.assertContains(respuesta, "css/panel.css")
         self.assertNotContains(respuesta, str(codigo))
 
+    def test_q_lleva_cabecera_x_robots_tag_noindex(self):
+        respuesta = self.client.get(f"/q/{uuid.uuid4()}/")
+        self.assertEqual(respuesta["X-Robots-Tag"], "noindex, nofollow")
+
 
 class ContenidoQRTests(SimpleTestCase):
     @override_settings(
