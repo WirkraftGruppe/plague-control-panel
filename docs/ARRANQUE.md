@@ -6,7 +6,7 @@
 
 ```powershell
 $src = "C:\Users\Emanuel\Desktop\WEB\TerritoryOS"
-$dst = "C:\Users\Emanuel\Desktop\WEB\MaControl"
+$dst = "C:\Users\Emanuel\Desktop\WEB\plague-control-panel"
 robocopy "$src\.claude\hooks" "$dst\.claude\hooks" verificar_plan.py test_verificar_plan.py test_contexto.py test_presupuesto.py congelado.sh presupuesto.sh cambios.sh
 robocopy "$src\.claude\hooks\fixtures" "$dst\.claude\hooks\fixtures" /E
 foreach ($s in "django-conventions","django-expert","django-patterns","django-rest-framework","django-security","django-fullstack-developer","jwt-security","api-design-principles","api-security-best-practices","postgresql-table-design","python-best-practices","python-performance-optimization","test-driven-development","systematic-debugging","frontend-design","web-design-guidelines") {
