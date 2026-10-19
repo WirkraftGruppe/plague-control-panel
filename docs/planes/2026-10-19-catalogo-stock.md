@@ -217,7 +217,7 @@ commit_base: f9a7b64
 | T4 | hecha |
 | T5 | hecha |
 | T6 | hecha |
-| T7 | pendiente |
+| T7 | hecha (verificación TODO 64/64 x2; merge a `main` pendiente de decisión del usuario) |
 
 ### Corridas
 
@@ -235,13 +235,38 @@ commit_base: f9a7b64
 | 2026-10-19 | T5 (integración) | b0d5a72 | — | `worktree-integrar.sh` T4 exit 0 (698 tests OK); criterio de T5 OK |
 | 2026-10-19 | T6 (verificador) | d41b6bf | PASA 7/7 | spot check del principal: diff de 3 archivos de docs, `unidades_permitidas` presente en el OpenAPI |
 | 2026-10-19 | T6 (verificador-b) | d41b6bf | PASA 7/7 | |
-| 2026-10-19 | T7 pasos 1-2 | (ver HEAD) | — | `worktree-integrar.sh` T6 exit 0 |
+| 2026-10-19 | T7 pasos 1-2 | 4935143 | — | `worktree-integrar.sh` T6 exit 0 |
+| 2026-10-19 | TODO (verificador) | dded671 | PASA 64/64 | suite 698 OK; 55 archivos del diff dentro de algún Puede tocar |
+| 2026-10-19 | TODO (verificador-b) | dded671 | PASA 64/64 | |
+| 2026-10-19 | TODO (auditor-seguridad) | dded671 | sin bloqueantes | 1 importante (P-catalogo-stock-1), 3 menores (P-catalogo-stock-2 a -4), 1 observación (P-catalogo-stock-5) |
 
 ## Pendientes que deja este plan
 
 ### Problemas
 
+- P-catalogo-stock-1 [importante] Una cantidad grande desborda `cantidad_base` `Decimal(14,4)` y da 500: p. ej. `"cantidad":"9999999.999","unidad":"gal"` en un producto con base `ml` (≈37.854.117.836 ml) pasa `full_clean` y falla en el INSERT (`DataError` en Postgres; en SQLite deja la ficha del producto en 500). Igual en la carga manual y en un ingreso "en envases" enorme (`apps/visitas/services.py:138`, `apps/productos/services.py:40`). Corrección propuesta: acotar `cantidad_base` tras convertir (`<= 9999999999.9999`) en `_errores_de_cantidad`, `registrar_ingreso` y `MovimientoForm.clean`, con test (auditor-seguridad, TODO).
+- P-catalogo-stock-2 [menor] `CampoJSON` (`apps/visitas/serializers.py:39`) parsea con `json.loads` sin `parse_float=Decimal`: una `cantidad` o `dosis` enviada como número JSON (`0.1`) llega como float y se rechaza con "no más de 3 decimales". Usar `parse_float=Decimal` o documentar en el contrato que van como string decimal (auditor-seguridad).
+- P-catalogo-stock-3 [menor] `unidad_base` (y `modo_unidad`) se pueden cambiar en el panel y el admin con movimientos ya registrados: el stock y los `cantidad_base` históricos se reinterpretan sin rastro (`apps/productos/panel_forms.py:19`). Deshabilitar esos campos cuando el producto tiene movimientos (auditor-seguridad).
+- P-catalogo-stock-4 [menor] `TipoServicio._slug_libre` (`apps/servicios/models.py:30-36`) hace `exists()` y después inserta: dos altas simultáneas con el mismo nombre dan `IntegrityError` y 500 a uno de los dos. Reintentar con `transaction.atomic()` ante `IntegrityError` (auditor-seguridad).
+- P-catalogo-stock-5 [observación] No hay tope de negocio para la cantidad consumida por ítem (dentro de (10,3)); decisión de producto (auditor-seguridad).
+- P-catalogo-stock-6 [importante] [expo] En `docs/api/openapi-v1.yaml`, `productos_aplicados` de `POST /revisiones/` sale como texto sin estructura (`CampoJSON`); la forma de cada ítem y los errores `productos_aplicados.<i>.<campo>` solo están en la `description` y en `docs/contrato-api.md`. Si la app se genera desde el contrato, hace falta `extend_schema` con el esquema del ítem (implementador T6; relacionado con P-contrato-app-9).
+- P-catalogo-stock-7 [menor] spectacular avisa que `UnidadEnum` y `UnidadBaseEnum` comparten opciones; se resuelve con `ENUM_NAME_OVERRIDES` en `config/settings` (implementador T6).
+- P-catalogo-stock-8 [menor] El menú lateral (`templates/panel/base.html:23`) sigue diciendo "Planillas" y la sección se titula "Servicios"; para el plan `diseno-panel` (implementador T2).
+- P-catalogo-stock-9 [observación] La ficha de producto muestra los últimos 50 movimientos sin paginar; el formulario manual ofrece todas las unidades y el servicio valida contra las del producto elegido; la `unidad_dosis` no se precarga por fila (implementadores T1 y T4).
+
 ### Decisiones
+
+- 2026-10-19 — `ProductoAplicado.unidad` pasa a ser la unidad de la cantidad y la de la dosis se renombra `unidad_dosis` (texto libre) — no se pierde el dato regulatorio de la dosis — decisión del usuario — reemplaza a: `unidad` de `docs/01-modelo-y-arquitectura.md` §3.8
+- 2026-10-19 — La carga manual de visitas del panel descuenta stock igual que la API (movimiento `consumo` en la misma transacción) — el stock no depende de por dónde entró la revisión — decisión del usuario — reemplaza a: (nada)
+- 2026-10-19 — Unidades fijas en `apps/productos/unidades.py` por magnitud (ml, l, gal US = 3,785411784 l; g, kg, lb = 0,45359237 kg; unidad), conversión `Decimal` a 4 decimales `ROUND_HALF_UP` — una sola fuente de conversión, sin `float` — decidida por Claude, revisable — reemplaza a: (nada)
+- 2026-10-19 — `MovimientoStock` vive en `productos`; la relación con el aplicado es `ProductoAplicado.movimiento` (`OneToOneField`, `PROTECT`, `related_name="producto_aplicado"`) — `productos` no depende de `visitas` — decidida por Claude, revisable — reemplaza a: (nada)
+- 2026-10-19 — El stock es la suma de movimientos, sin campo cacheado; envases = stock / `contenido_por_envase` a 2 decimales; el stock puede quedar negativo y el panel lo marca — decidida por Claude, revisable — reemplaza a: (nada)
+- 2026-10-19 — Los campos nuevos de `Producto` tienen valor por defecto en el modelo (`unidad`, 1, `unica`) — el código que crea productos fuera de `productos` sigue funcionando — decidida por Claude, revisable — reemplaza a: (nada)
+- 2026-10-19 — Los errores de producto de la API son anidados (`productos_aplicados.<i>.<campo>`) en lugar de "Producto n: …" — la app sabe qué ítem y qué campo falló — decidida por Claude, revisable — reemplaza a: (nada)
+- 2026-10-19 — El usuario de un consumo es quien registra la revisión (empleado en la API, administrador en la carga manual) — decidida por Claude, revisable — reemplaza a: (nada)
+- 2026-10-19 — El slug de `TipoServicio` se genera en `save()` si viene vacío (`slugify` y sufijo `-2`, `-3`…) y no se edita desde el panel; la baja es `activo` en la edición — decidida por Claude, revisable — reemplaza a: (nada)
+- 2026-10-19 — `Producto.presentacion` queda como texto descriptivo; el dato calculable es `contenido_por_envase` — decidida por Claude, revisable — reemplaza a: (nada)
+- 2026-10-19 — La migración `visitas/0010` junta en un archivo el `RenameField` y los `AddField`/`AlterField` que `makemigrations` generó en dos pasos — Django no detecta el renombre si el nombre viejo sigue en uso — decidida por Claude (implementador T4), revisable — reemplaza a: (nada)
 
 ### Cierra
 

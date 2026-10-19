@@ -1,19 +1,26 @@
 # Bitácora de MAControl
 
 ## Estado actual
-Plan activo: (ninguno)
+Plan activo: catalogo-stock
 
 Planes activos (los hooks derivan el plan de la rama; la línea `Plan activo:` de arriba es el respaldo para la raíz):
 
 | plan | rama | ola actual | pendiente inmediato | sesión |
 |---|---|---|---|---|
-| (ninguno) | main | — | cambios al panel antes del despliegue (otra sesión); después push a `origin` y proyecto en Railway con `NOMBRE_EMPRESA=Plague Control` | sesión 2026-10-19 |
+| catalogo-stock | plan/catalogo-stock | 3 (cerrada) | el usuario decide el merge a `main` y si P-catalogo-stock-1 se corrige antes; después push a `origin` y Railway | sesión 2026-10-19 (tarde) |
 
-Siguiente: 72 abiertos según `pendientes.py` tras el cierre de separacion-web (19 cerrados en su `### Cierra`). Regla de cuándo preguntar: CLAUDE.md § Reglas globales, regla 8.
+Siguiente: ver `pendientes.py` (catalogo-stock suma P-catalogo-stock-1 a -9 y cierra P-nombre-empresa-prod-3). Regla de cuándo preguntar: CLAUDE.md § Reglas globales, regla 8.
 
 Problemas abiertos: ver `py -3 .claude/hooks/pendientes.py` (cada plan los declara en `## Pendientes que deja este plan`; los anteriores están en `docs/planes/2026-10-03-pendientes-heredados.md`).
 
 ## Entradas (la más reciente arriba)
+
+### 2026-10-19 — Plan `catalogo-stock` ejecutado (T1 a T7), sin fusionar
+Hecho:
+- Tres olas integradas en `plan/catalogo-stock` (dded671): unidades por magnitud y conversión `Decimal`, `Producto` con unidad base, envase y modo, `MovimientoStock` con ficha e ingresos/ajustes en el panel (T1); alta y edición de servicios con slug único (T2); `ProductoAplicado` con cantidad y unidad, `unidad_dosis`, `cantidad_base` y consumo de stock en la API y en la carga manual, más demo con stock (T4); docs/01, contrato y OpenAPI (T6).
+- `juez-plan` rechazó la ronda 1 (7 bloqueantes) y aprobó la 2. Verificación `TODO`: `verificador` y `verificador-b` 64/64 PASA, contrato intacto, 698 tests OK; `auditor-seguridad` sin bloqueantes (P-catalogo-stock-1 importante: 500 por desborde de `cantidad_base`).
+- Incidentes sin daño: el principal hizo `cd` a un worktree para un spot check y dejó un `cat` esperando stdin; ambos corregidos en el acto con `git status`.
+Pendiente: decisión del usuario sobre el merge y sobre corregir P-catalogo-stock-1 antes; el despliegue sigue después.
 
 ### 2026-10-19 — Plan `nombre-empresa-prod` ejecutado y fusionado en `main`
 Hecho:
