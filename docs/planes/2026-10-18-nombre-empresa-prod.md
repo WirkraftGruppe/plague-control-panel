@@ -101,14 +101,14 @@
 <!-- Corte del congelado: desde este encabezado hacia abajo, el principal lo actualiza durante la
 ejecución. Lo de arriba no se toca sin un commit `docs(plan): nombre-empresa-prod — modificado: <motivo>`. -->
 
-commit_base: <hash del commit docs(plan): nombre-empresa-prod>
+commit_base: 2e92f78
 
 ### Estado de subtareas
 
 | Tarea | Estado |
 |---|---|
-| T1 | pendiente |
-| T2 | pendiente |
+| T1 | en curso |
+| T2 | en curso |
 | T3 | pendiente |
 
 ### Corridas
