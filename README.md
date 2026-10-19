@@ -13,7 +13,7 @@ PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.p
 PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py runserver
 ```
 
-Variables de entorno: plantilla en `.env.example`. En producción son obligatorias `SECRET_KEY`, `DJANGO_ENV`, `DATABASE_URL`, `ALLOWED_HOSTS` y `SITE_URL`; opcionales `NOMBRE_EMPRESA` y `CORREO_CONTACTO`. Despliegue: `docs/despliegue.md`.
+Variables de entorno: plantilla en `.env.example`. En producción son obligatorias `SECRET_KEY`, `DJANGO_ENV`, `DATABASE_URL`, `ALLOWED_HOSTS`, `SITE_URL` y `NOMBRE_EMPRESA`; opcional `CORREO_CONTACTO`. Despliegue: `docs/despliegue.md`.
 
 ## Tests y calidad
 
