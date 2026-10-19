@@ -18,8 +18,7 @@ TIPOS = {
     "servicio-mipu": "Servicio MIPU (Manejo Integral de Plagas Urbanas)",
 }
 
-# Razones sociales literales de "Quienes confían en nosotros"
-# (docs/00-contenido-fuente.md).
+# Razones sociales de clientes reales de la empresa, usadas como nombres de demo.
 CLIENTES = ("Nutrisur", "Villa del Sur", "Super Beef", "Howard Johnson")
 
 # Coordenadas reales de las localidades; los sitios se corren unos metros.

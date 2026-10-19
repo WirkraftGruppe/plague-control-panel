@@ -6,9 +6,8 @@ import time
 import urllib.error
 from unittest import mock
 
-from django.conf import settings
 from django.core.cache import cache
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from apps.accounts.models import User
@@ -76,7 +75,9 @@ class GeocodificacionTests(TestCase):
         )
         self.assertIn("format=jsonv2", solicitud.full_url)
         self.assertIn("limit=5", solicitud.full_url)
-        self.assertEqual(solicitud.get_header("User-agent"), geocodificacion.USER_AGENT)
+        self.assertEqual(
+            solicitud.get_header("User-agent"), geocodificacion.user_agent()
+        )
 
     def test_texto_vacio_o_largo_responde_400(self):
         self.client.force_login(self.admin)
@@ -125,10 +126,21 @@ class GeocodificacionTests(TestCase):
         self.assertEqual(r.status_code, 503)
         self.assertEqual(r.json()["error"], geocodificacion.MENSAJE_CARGA_MANUAL)
 
-    def test_user_agent_lleva_contacto(self):
-        self.assertIn(settings.SITE_URL, geocodificacion.USER_AGENT)
-        self.assertIn("administracion@macontrol.com.ar", geocodificacion.USER_AGENT)
-        self.assertTrue(geocodificacion.USER_AGENT.startswith("MAControl/1.0 (+"))
+    @override_settings(
+        SITE_URL="https://ejemplo.test", CORREO_CONTACTO="a@ejemplo.test"
+    )
+    def test_user_agent_usa_producto_y_correo_de_settings(self):
+        self.assertEqual(
+            geocodificacion.user_agent(),
+            "Detach/1.0 (+https://ejemplo.test; a@ejemplo.test)",
+        )
+        with mock.patch(ABRIR, return_value=_respuesta()) as abrir:
+            geocodificacion.buscar("Castelli")
+        cabeceras = dict(abrir.call_args.args[0].header_items())
+        self.assertEqual(
+            cabeceras["User-agent"],
+            "Detach/1.0 (+https://ejemplo.test; a@ejemplo.test)",
+        )
 
     def test_respuesta_lenta_corta_por_tiempo_total(self):
         class Lenta:

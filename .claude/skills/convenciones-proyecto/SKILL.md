@@ -1,17 +1,17 @@
 ---
 name: convenciones-proyecto
-description: Convenciones y referencia de MAControl (stack, estructura de apps, comandos canónicos, mapa de rutas, roles, variables de entorno, prohibiciones de código); leerla antes de codificar o de citar comandos/rutas del proyecto.
+description: Convenciones y referencia de Detach (stack, estructura de apps, comandos canónicos, mapa de rutas, roles, variables de entorno, prohibiciones de código); leerla antes de codificar o de citar comandos/rutas del proyecto.
 ---
 
-# Convenciones del proyecto — MAControl
+# Convenciones del proyecto — Detach
 
 ## Qué es
-Sistema de MAControl S.A. (control de plagas, Castelli y Chascomús, Buenos Aires) en un único proyecto Django:
-- **Sitio público** `/` — reemplaza a macontrol.com.ar. Contenido desde base de datos (`apps.web`).
+Detach: sistema de gestión para empresas de control de plagas, en un único proyecto Django. El nombre de la empresa sale de `NOMBRE_EMPRESA` (`config/settings/base.py`); el sitio público vive en otro repositorio.
+- **Raíz** `/` — redirige al login del panel; no hay sitio público en este proyecto.
 - **Panel de gestión** `/panel/` — administradores: clientes, sitios con QR, proyectos, visitas, mapa, productos, certificados.
 - **API** `/api/v1/` — para la app móvil de los empleados (Expo, etapa final) y para el mapa del panel.
 
-Fuente de verdad del dominio: `docs/01-modelo-y-arquitectura.md`. Del contenido público: `docs/00-contenido-fuente.md`. Del diseño: `docs/02-diseno.md`.
+Fuente de verdad del dominio: `docs/01-modelo-y-arquitectura.md`. Del diseño del panel: `docs/02-diseno.md`. De la API: `docs/contrato-api.md`.
 
 ## Stack
 - Python 3.13 · Django 5.x · Django REST Framework · `djangorestframework-simplejwt`
@@ -29,6 +29,7 @@ apps/
   accounts/        User (rol: administrador | empleado), login del panel, JWT de la API
   clientes/        Cliente
   sitios/          Sitio (lat/lng, sector), PuntoControl (qr_codigo UUID, x/y en el plano), Plano
+                   publico_views.py · publico_urls.py (página de aterrizaje `/q/<uuid>/`, con `X-Robots-Tag`)
                    estado.py (estado de un punto) · planos.py + rasterizar_pdf.py (JPG/PNG/PDF a PNG, PDF en subproceso) · qr.py (etiqueta QR del punto)
   servicios/       TipoServicio, CampoPlanilla (planilla dinámica por servicio)
   proyectos/       Proyecto (estado, frecuencia, próxima visita, encargados)
@@ -38,7 +39,6 @@ apps/
   informes/        Certificado, informes PDF, historial del empleado
   panel/           vistas del panel (Django + HTMX); estado.py (sondeo del estado de los puntos) y mapa.py (peor estado de los puntos de cada sitio)
   api/             DRF: serializers, viewsets, auth, `v1/`
-  web/             sitio público: páginas de servicio, configuración, clientes destacados
 templates/         solo base.html y panel/base.html (el resto vive en cada app)
 static/            css compilado, htmx, leaflet, logo
 media/             fotos, logos, QR (ignorado por git)
@@ -59,7 +59,7 @@ apps/<app>/
 - `api_urls.py` y `panel_urls.py` declaran `app_name = "<app>"`.
 - `apps/api/urls.py` y `apps/panel/urls.py` son routers de una línea por app: `path("sitios/", include("apps.sitios.api_urls"))`.
 - `apps/api` conserva solo lo transversal (JWT, permisos base, paginación, excepciones); `apps/panel`, el layout, el login, el tablero y el mapa agregado.
-- `apps/web` es el sitio público entero y se paraleliza por página (home, servicio, empresa), no por dominio. `apps/informes` es transversal pero expone sus propios `api_urls` y `panel_urls`.
+- `apps/informes` es transversal pero expone sus propios `api_urls` y `panel_urls`.
 
 ### Tabla de propiedad
 | Archivo o carpeta | Dueño | Cuándo se toca |
@@ -122,8 +122,8 @@ No se mantiene acá la lista de endpoints: la fuente de verdad es `config/urls.p
 
 | Prefijo | Qué es | Auth |
 |---|---|---|
-| `/` | Sitio público (`apps.web`) | pública |
-| `/q/<uuid>/` | Página de aterrizaje de un QR abierto en un navegador (solo dice "use la app") | pública, sin datos |
+| `/` | Redirige al login del panel | pública |
+| `/q/<uuid>/` | Página de aterrizaje de un QR abierto en un navegador (solo dice "use la app"); vive en `apps.sitios` (`publico_views.py`, `publico_urls.py`) y lleva `X-Robots-Tag` | pública, sin datos |
 | `/panel/` | Panel de gestión (`apps.panel`) | sesión Django + rol administrador |
 | `/admin/` | Admin técnico de Django | sesión + `is_superuser` |
 | `/api/v1/` | API (`apps.api`) | JWT; empleados y administradores |
@@ -144,7 +144,6 @@ Para ver las rutas de una app: `grep -n "path(" apps/<app>/api_urls.py apps/<app
 - Las imágenes de planos y las fotos se sirven por vistas con permiso, nunca por `MEDIA_URL`: un plano exige una visita abierta o pendiente del empleado en ese sitio (con sitio y cliente activos).
 - `ProductoAplicado.producto` siempre apunta al catálogo; la API no acepta nombres libres de producto.
 - Un `Certificado` emitido no se edita; una corrección emite uno nuevo con `reemplaza_a`.
-- El sitio público no tiene formularios que envíen correo ni "pedir presupuesto"; el contacto es el teléfono y WhatsApp.
 - El panel no edita `Visita.datos`. Si algún día lo hace, los datos pasan por `validar_datos` (`apps/visitas/planillas.py`) contra el esquema de la visita, igual que la carga desde la app.
 
 ## Panel
@@ -152,14 +151,16 @@ Para ver las rutas de una app: `grep -n "path(" apps/<app>/api_urls.py apps/<app
 
 ## Variables de entorno
 - Requeridas: `SECRET_KEY`, `DJANGO_ENV`, `DATABASE_URL`
-- Opcionales: `ALLOWED_HOSTS`, `MEDIA_ROOT`, `STORAGE_BACKEND` (`local` | `s3`), `AWS_*` cuando `s3`, `SITE_URL` (base para el contenido de los QR)
+- Obligatoria en producción: `SITE_URL` (base para el contenido de los QR; sin ella `prod.py` aborta el arranque)
+- Opcionales: `ALLOWED_HOSTS`, `MEDIA_ROOT`, `STORAGE_BACKEND` (`local` | `s3`), `AWS_*` cuando `s3`, `NOMBRE_EMPRESA` (nombre de la empresa), `CORREO_CONTACTO` (correo de contacto)
 - Plantilla: `.env.example` (versionado). `.env` no se versiona y no se lee.
 
 ## Prohibiciones de código
 - Todo serializer de escritura declara `fields` explícitos; `fields = "__all__"` y `exclude` son hallazgo (mass assignment).
 - Ningún queryset de la API devuelve visitas de otro empleado a un empleado: `get_queryset()` filtra por `request.user` salvo rol administrador. `if user.is_staff` nunca decide acceso a datos.
 - Ninguna regla de negocio en templates ni en `admin.py`; van en `services.py` de la app que corresponde.
-- Coordenadas y fotos son datos personales de los empleados (dónde estuvieron y cuándo): no se exponen en el sitio público ni en `/q/<uuid>/`, y no se registran en logs.
+- Ninguna plantilla ni código escribe el nombre de una empresa: sale de `NOMBRE_EMPRESA`.
+- Coordenadas y fotos son datos personales de los empleados (dónde estuvieron y cuándo): no se exponen en `/q/<uuid>/` ni en ninguna página pública, y no se registran en logs.
 - No se escriben migraciones a mano salvo `RunPython` justificado en su docstring.
 - Sin `print` en código de aplicación; logging con el logger del módulo.
 

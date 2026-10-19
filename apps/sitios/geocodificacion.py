@@ -21,7 +21,6 @@ from django.core.cache import cache
 logger = logging.getLogger(__name__)
 
 URL_NOMINATIM = "https://nominatim.openstreetmap.org/search"
-USER_AGENT = f"MAControl/1.0 (+{settings.SITE_URL}; administracion@macontrol.com.ar)"
 TIMEOUT_SEGUNDOS = 5
 LIMITE_TOTAL_SEGUNDOS = 5
 MAX_BYTES = 1_000_000
@@ -41,6 +40,11 @@ class GeocodificacionError(Exception):
 
 class TextoInvalido(ValueError):
     """El texto de búsqueda está vacío o es demasiado largo."""
+
+
+def user_agent():
+    """User-Agent que exige Nominatim, calculado con los settings vigentes."""
+    return f"Detach/1.0 (+{settings.SITE_URL}; {settings.CORREO_CONTACTO})"
 
 
 def _conexion(host, puerto):
@@ -166,7 +170,7 @@ def buscar(texto):
     )
     solicitud = urllib.request.Request(
         f"{URL_NOMINATIM}?{parametros}",
-        headers={"User-Agent": USER_AGENT, "Accept-Language": "es"},
+        headers={"User-Agent": user_agent(), "Accept-Language": "es"},
     )
     try:
         candidatos = _candidatos(json.loads(_abrir(solicitud)))

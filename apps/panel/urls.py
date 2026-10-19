@@ -22,6 +22,5 @@ urlpatterns = [
     path("productos/", include("apps.productos.panel_urls")),
     path("visitas/", include("apps.visitas.panel_urls")),
     path("informes/", include("apps.informes.panel_urls")),
-    path("web/", include("apps.web.panel_urls")),
     path("usuarios/", include("apps.accounts.panel_urls")),
 ]

@@ -1,25 +1,36 @@
 # Bitácora de MAControl
 
 ## Estado actual
-Plan activo: docs/planes/2026-10-17-separacion-web.md
+Plan activo: docs/planes/2026-10-18-separacion-web.md
 
 Planes activos (los hooks derivan el plan de la rama; la línea `Plan activo:` de arriba es el respaldo para la raíz):
 
 | plan | rama | ola actual | pendiente inmediato | sesión |
 |---|---|---|---|---|
-| separacion-web | plan/separacion-web | plan en redacción (sin commitear) | `juez-plan` y aprobación del usuario antes de `docs(plan)` | sesión 2026-10-18 abierta |
+| separacion-web | plan/separacion-web | 4 integrada (T1–T12); T11 en cierre | verificación `TODO` (verificador, verificador-b, auditor-seguridad) y decisión del usuario sobre el FALLA formal y el merge a `main` | sesión 2026-10-18 |
 
-Siguiente: 82 abiertos según `pendientes.py` tras fusionar robustez-panel (incluye P-robustez-panel-1 a -6 y -9 a -14 y los de `demo-cliente`; las etiquetas se revisan en el próximo triage). Regla de cuándo preguntar: CLAUDE.md § Reglas globales, regla 8.
+Siguiente: 72 abiertos según `pendientes.py` tras el cierre de separacion-web (19 cerrados en su `### Cierra`). Regla de cuándo preguntar: CLAUDE.md § Reglas globales, regla 8.
 
 Problemas abiertos: ver `py -3 .claude/hooks/pendientes.py` (cada plan los declara en `## Pendientes que deja este plan`; los anteriores están en `docs/planes/2026-10-03-pendientes-heredados.md`).
 
 ## Entradas (la más reciente arriba)
 
+### 2026-10-18 — Plan `separacion-web` ejecutado (T1 a T12)
+Hecho:
+- Las cuatro olas integradas en `plan/separacion-web` (e8894ba): el producto se llama Detach y el nombre de la empresa sale de `NOMBRE_EMPRESA`; `apps/web` borrada; `/` redirige al login del panel; `/q/<uuid>/` vive en `apps.sitios` con `X-Robots-Tag: noindex, nofollow`; `TipoServicio.descripcion` fuera (migración `servicios` 0004); `SITE_URL` obligatoria en producción; `docs/contrato-api.md` y `README.md` nuevos.
+- `docs/00-contenido-fuente.md` y la parte web de `docs/02-diseno.md` se movieron al repositorio del sitio público (`../macontrol-web`).
+- Aviso para bases anteriores: las tablas `web_*` quedan huérfanas; quien quiera limpiarlas corre `manage.py migrate web zero` con el código anterior, antes de actualizar.
+- Demo portátil borrada por decisión del usuario (`herramientas/`, `demo.bat`, `docs/demo-cliente.md`); `cargar_demo` queda como datos de desarrollo. `dist/` y `demo.sqlite3` siguen en el disco local.
+- Contrato modificado dos veces con aprobación del usuario (9d8aef7: T12; a60430e: demo y corrección de T8); `congelado.sh` da FALLA formal, aceptado por el usuario en cada ola.
+- La integración de T8 falló una vez (test de migraciones de sitios) y `worktree-integrar.sh` la deshizo; se corrigió con contrato ampliado.
+Pendiente: verificación `TODO` y decisión del usuario sobre el merge a `main`.
+
 ### 2026-10-18 — Fusión de `demo-portatil` en `main`
 Hecho:
 - `plan/demo-portatil` fusionada en `main` (4c2bcda) por pedido del usuario; sus decisiones copiadas a `docs/decisiones.md`.
 - `../macontrol-web` existe (clone de este repositorio) y lo trabaja otra sesión en `plan/web-independiente`; contiene `docs/00-contenido-fuente.md` y `docs/02-diseno.md`.
-Pendiente: plan `separacion-web` (Detach) en redacción.
+- Plan Completo `separacion-web` (Detach: quitar `apps/web`, marca por `NOMBRE_EMPRESA`, `/` → login, `/q/` a `apps/sitios`, `docs/contrato-api.md`), commit_base b7dfb6a. Aprobado por el usuario; juez-plan: dos rondas RECHAZADO, bloqueantes corregidos (el último, el criterio de T2, sin rejuzgar).
+Pendiente: arrancar T1 en una sesión nueva sobre la rama `plan/separacion-web` (en la raíz: T1 la hace el principal, sin worktree).
 
 ### 2026-10-13 — Plan `demo-portatil`: demo autocontenida con Python embebido
 Hecho:

@@ -1,4 +1,4 @@
-"""Settings de producción: SECRET_KEY y DATABASE_URL son obligatorias, sin defaults."""
+"""Settings de producción: SECRET_KEY, DATABASE_URL y SITE_URL son obligatorias."""
 
 from django.core.exceptions import ImproperlyConfigured
 
@@ -16,6 +16,14 @@ if not ALLOWED_HOSTS:
     raise ImproperlyConfigured(
         "ALLOWED_HOSTS está vacío con DJANGO_ENV=production: definí al menos un "
         "host (separados por comas) o toda petición daría 400."
+    )
+
+# Sin SITE_URL, base.py cae a http://localhost:8000 y los QR impresos en producción
+# apuntarían a una dirección local que ningún teléfono abre.
+if not env("SITE_URL", default="").strip():
+    raise ImproperlyConfigured(
+        "SITE_URL está vacía con DJANGO_ENV=production: definí el origen público "
+        "(por ejemplo https://dominio.com.ar), que arma el contenido de los QR."
     )
 
 # Orígenes https que Django acepta en los POST (el dominio público del hosting).

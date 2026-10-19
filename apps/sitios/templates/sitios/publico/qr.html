@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% load static %}
+{% block tema %}claro{% endblock %}
+{% block title %}Punto de control · {{ NOMBRE_EMPRESA }}{% endblock %}
+{% block extra_head %}
+  <meta name="robots" content="noindex">
+  <link rel="stylesheet" href="{% static 'css/panel.css' %}">
+{% endblock %}
+{% block contenido %}
+  <img src="{% static 'img/logo.png' %}" width="96" height="96" alt="{{ NOMBRE_EMPRESA }}">
+  <p>Punto de control de {{ NOMBRE_EMPRESA }} — use la app</p>
+{% endblock %}

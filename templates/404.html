@@ -1,0 +1,17 @@
+{% load static %}<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Página no encontrada · Detach</title>
+  <link rel="stylesheet" href="{% static 'css/panel.css' %}">
+</head>
+<body class="pagina-error">
+  <main>
+    <h1>Página no encontrada</h1>
+    <p>La dirección que buscaba no existe o ya no está disponible.</p>
+    {% if request_path|slice:':7' == '/admin/' %}<a href="/admin/">Volver al admin</a>{% else %}<a href="/panel/">Volver al panel</a>{% endif %}
+  </main>
+</body>
+</html>

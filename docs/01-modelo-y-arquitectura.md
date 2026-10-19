@@ -1,14 +1,13 @@
-# MAControl S.A. — Modelo de datos y arquitectura
+# Detach — Modelo de datos y arquitectura
 
 Versión 0.3 · 06/10/2026 · puntos de control y visitas como jornada (`docs/planes/2026-10-05-puntos-control.md`) · Base para `CLAUDE.md` y las migraciones iniciales.
 
 ## 1. Alcance
 
-Un solo proyecto Django con tres superficies sobre una misma base de datos:
+Un solo proyecto Django con dos superficies sobre una misma base de datos. El sitio público de cada empresa vive en otro repositorio y no forma parte de este proyecto; `/` solo redirige al login del panel.
 
 | Superficie | Quién la usa | Tecnología |
 |---|---|---|
-| Web pública (`macontrol.com.ar`) | Visitantes | Django templates + Tailwind |
 | Panel de gestión (`/panel/`) | Administradores | Django templates + HTMX + Leaflet |
 | API (`/api/v1/`) | App móvil Expo (última etapa) | Django REST Framework + JWT |
 
@@ -61,7 +60,7 @@ Regla: el QR identifica un punto, no un proyecto. Al escanearlo, la app recibe e
 `sitio` (FK), `nombre`, `imagen`, `ancho_px`, `alto_px` (calculados), `orden`, `activo`. Se sube JPG, PNG o PDF (máx. 20 MB y 40 millones de píxeles) y se guarda siempre como PNG, sin metadatos, con el lado mayor de 4000 px como máximo y un nombre aleatorio. Del PDF se usa la primera página; se rasteriza en un subproceso (`rasterizar_pdf.py`) con tiempo máximo de 15 s (`TIEMPO_MAXIMO_PDF`): si se pasa, se rechaza pidiendo exportarlo como PNG o JPG. Un PDF cifrado, corrupto o sin páginas también se rechaza. Al borrar el plano se borra el archivo y sus puntos quedan sin ubicar (`plano = null`).
 
 ### 3.3 `servicios.TipoServicio` — catálogo
-`nombre`, `slug`, `descripcion`, `activo`. Sirve tanto al panel (planillas) como a la web pública (páginas de servicio). Carga inicial: los 12 servicios de la Carta de Servicios más mantenimiento edilicio.
+`nombre`, `slug`, `activo`. Sirve al panel (planillas) y a la API. Carga inicial: los 12 servicios de la Carta de Servicios más mantenimiento edilicio.
 
 ### 3.4 `servicios.CampoPlanilla` — la planilla de cada revisión y de la visita
 Cada tipo de servicio define sus campos; la app los renderiza dinámicamente y el panel los muestra en el historial. La planilla de `punto` se completa tras escanear cada QR; la de `visita`, al cerrar. `TipoServicio.esquema_planilla(ambito)` devuelve los campos activos de un ámbito, y `Revision` y `Visita` guardan una copia del esquema usado (`esquema_planilla`).
@@ -123,15 +122,12 @@ Reglas: la visita debe estar abierta y ser del empleado; el QR debe ser de un pu
 Reemplaza el certificado que hoy se hace a mano. Se crea desde la ficha del proyecto o del cliente eligiendo un rango de fechas; toma:
 - del cliente: `razon_social`, `cuit`, domicilio del sitio
 - de las visitas del rango: fechas, tipo de servicio, productos aplicados con registro ANMAT/SENASA, lote y dosis, empleado que aplicó
-- de la empresa: datos legales, habilitaciones, director técnico (desde `web.Configuracion`)
+- de la empresa: el nombre sale de `NOMBRE_EMPRESA`; los datos legales, las habilitaciones y el director técnico no tienen modelo todavía y se definen cuando la empresa entregue su certificado actual
 
 Campos: `proyecto` (FK) o `cliente` (FK), `desde`, `hasta`, `numero` (correlativo anual, ej. `2026-0041`), `generado_por`, `generado_el`, `pdf` (archivo), `visitas` (M2M con las incluidas). Una vez emitido no se edita; si hay que corregir, se emite uno nuevo que referencia al anterior. El diseño del PDF se ajusta cuando la empresa envíe un ejemplo del certificado actual; la estructura de datos no cambia.
 
 ### 3.11 `accounts.User`
 Extiende `AbstractUser`: `rol` (administrador/empleado), `telefono`, `activo`. Los empleados no tienen `is_staff`.
-
-### 3.12 `web` — contenido de la web pública
-`web.PaginaServicio` (1:1 con `TipoServicio`, `related_name="pagina"`): `titulo_seo`, `resumen`, `problema`, `metodos` (JSON: título + descripción), `adicional`, `faq` (JSON: pregunta + respuesta, puede estar vacía), `sectores` (JSON de valores de web.Sector, validada), `imagen_portada`, `publicado`. `web.ClienteDestacado`: `nombre`, `logo`, `orden`, `activo`. `web.Configuracion` (singleton, pk=1): `razon_social`, `eslogan`, `presentacion`, `telefono`, `whatsapp`, `correo`, `horario`, `direcciones` (JSON: localidad + dirección), `redes` (JSON: nombre + url). Los datos legales, las habilitaciones y el director técnico que pide el certificado (§3.10) se agregan a `Configuracion` en el plan de informes. Toda la web pública lee de aquí; nada queda escrito en plantillas.
 
 ## 4. Flujos
 
@@ -160,14 +156,13 @@ Extiende `AbstractUser`: `rol` (administrador/empleado), `telefono`, `activo`. L
 ## 5. Estructura del repositorio
 
 ```
-macontrol/
+detach/
 ├── CLAUDE.md
 ├── .claude/                 # skills y comandos de Claude Code (etapa siguiente)
 ├── docs/
 │   ├── bitacora.md · decisiones.md · plantilla-plan.md · planes/
-│   ├── 00-contenido-fuente.md        # transcripción de la Carta de Servicios
 │   ├── 01-modelo-y-arquitectura.md   # este documento
-│   └── 02-diseno.md                  # tokens del sistema visual (dirección A)
+│   └── 02-diseno.md                  # tokens del sistema visual del panel
 ├── config/                  # settings (base/dev/prod), urls, asgi/wsgi
 ├── apps/
 │   │                        # cada app de dominio es dueña de lo suyo:
@@ -177,15 +172,14 @@ macontrol/
 │   │                        #   templates/<app>/{panel,pdf}/… · tests/
 │   ├── accounts/            # User, roles, permisos
 │   ├── clientes/
-│   ├── sitios/              # Sitio, PuntoControl, Plano, estado de puntos, QR, geocodificación
+│   ├── sitios/              # Sitio, PuntoControl, Plano, estado de puntos, QR, geocodificación, página pública /q/<uuid>/
 │   ├── servicios/           # TipoServicio, CampoPlanilla
 │   ├── proyectos/
 │   ├── visitas/             # Visita, Revision, Foto, ProductoAplicado, reglas de actualización
 │   ├── productos/
 │   ├── informes/            # generación de PDF (informes, certificados, historial, QR)
 │   ├── panel/               # layout, login, tablero, mapa, estado en vivo; urls.py = router de una línea por app
-│   ├── api/                 # transversal: JWT, permisos base, paginación; urls.py = router por app
-│   └── web/                 # sitio público: páginas, contenido, SEO
+│   └── api/                 # transversal: JWT, permisos base, paginación; urls.py = router por app
 ├── templates/               # solo base.html y panel/base.html
 ├── static/                  # tailwind, htmx, leaflet, logo
 ├── media/                   # fotos de visitas, logos, QR generados (fuera de git)
@@ -197,13 +191,13 @@ macontrol/
 ## 6. Decisiones técnicas
 
 - **Python 3.13, Django 5.x, PostgreSQL (SQLite por defecto en desarrollo si no hay `DATABASE_URL`).** Sin PostGIS en etapa 1: lat/lng como `DecimalField`; el mapa es Leaflet con OpenStreetMap (sin costo ni clave de API). Si más adelante hacen falta consultas espaciales, migrar a PostGIS es directo.
-- **Panel con templates + HTMX**, no un frontend separado: menos superficie de mantenimiento y coherente con el sitio público.
+- **Panel con templates + HTMX**, no un frontend separado: menos superficie de mantenimiento y sin un frontend aparte que mantener.
 - **API versionada** (`/api/v1/`) desde el primer día aunque la app llegue al final: el panel también puede consumirla para el mapa.
 - **JWT** (`djangorestframework-simplejwt`) con refresh largo para el empleado.
 - **Contrato de la app**: `docs/api/openapi-v1.yaml` es el contrato de `/api/v1/` que consume la app. Todo cambio de respuesta, de parámetro o de versión de drf-spectacular exige regenerarlo en el mismo commit con `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py spectacular --validate --file docs/api/openapi-v1.yaml`; un criterio de cierre lo compara con el generado.
 - **Fotos**: redimensionadas al subir (máx. 1600 px) con `Pillow`; almacenamiento local en etapa 1, backend intercambiable (`django-storages`) para S3/R2.
-- **PDF**: WeasyPrint desde templates HTML (`templates/pdf/`), mismo sistema visual que la web.
-- **QR**: `segno`, uno por punto de control, contenido `https://macontrol.com.ar/q/{uuid}` (el UUID es el `qr_codigo` del punto). Abierto en un navegador común muestra solo "Sitio de MAControl S.A. — use la app"; la app intercepta la URL.
+- **PDF**: WeasyPrint desde templates HTML (`templates/pdf/`), mismo sistema visual que el panel.
+- **QR**: `segno`, uno por punto de control, contenido `{SITE_URL}/q/{uuid}` (`SITE_URL` es obligatoria en producción; el UUID es el `qr_codigo` del punto). Abierto en un navegador común muestra solo "use la app" (`apps.sitios`, con `X-Robots-Tag`); la app intercepta la URL.
 - **Auditoría**: `django-simple-history` en Proyecto, Sitio, PuntoControl, Plano, Visita, Revision y ProductoAplicado para saber quién cambió qué.
 - **Tests**: runner de Django (`manage.py test --keepdb`), un `tests/` por app; los flujos 4.1 y 4.2 tienen tests de integración desde el inicio.
 - **Calidad**: `ruff` para lint y formato.
@@ -213,5 +207,3 @@ macontrol/
 1. Un ejemplo del certificado que entregan hoy, para respetar su diseño y texto legal (una foto o PDF alcanza).
 2. Si lote y dosis son obligatorios siempre o pueden quedar vacíos en algún servicio (por defecto: obligatorios).
 3. Campos concretos de la planilla para cada uno de los 12 servicios (propongo un borrador y la empresa corrige).
-4. Si el número 02241 49 6047 atiende WhatsApp.
-5. Horario de atención para la web.

@@ -75,6 +75,7 @@ class SettingsTests(SimpleTestCase):
             SECRET_KEY="x" * 60,
             DATABASE_URL="sqlite:///prod-test.sqlite3",
             ALLOWED_HOSTS="macontrol.com.ar",
+            SITE_URL="https://ejemplo.test",
         )
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertEqual(r.stdout.strip().splitlines()[-1], "3600 False False")
@@ -98,6 +99,7 @@ class SettingsTests(SimpleTestCase):
             SECRET_KEY="x" * 60,
             DATABASE_URL="sqlite:///prod-test.sqlite3",
             ALLOWED_HOSTS=" macontrol.com.ar , ,www.macontrol.com.ar",
+            SITE_URL="https://ejemplo.test",
         )
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertEqual(
@@ -119,6 +121,7 @@ class CheckDeployTests(SimpleTestCase):
             SECRET_KEY="clave-Larga_de-PRUEBA-0123456789-abcdefghijklmnopqrstuvwxyz-!@#$%^&*",
             DATABASE_URL="sqlite:///prod-test.sqlite3",
             ALLOWED_HOSTS="macontrol.com.ar",
+            SITE_URL="https://ejemplo.test",
         )
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         ids = set(re.findall(r"security\.W\d+", r.stdout + r.stderr))
@@ -133,6 +136,7 @@ class DespliegueTests(SimpleTestCase):
         "SECRET_KEY": "x" * 60,
         "DATABASE_URL": "sqlite:///prod-test.sqlite3",
         "ALLOWED_HOSTS": "demo.up.railway.app",
+        "SITE_URL": "https://ejemplo.test",
     }
 
     def _leer_prod(self, expresion, **extra):

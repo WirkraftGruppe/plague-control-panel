@@ -8,7 +8,6 @@ class TipoServicio(models.Model):
 
     nombre = models.CharField("nombre", max_length=150)
     slug = models.SlugField("slug", max_length=150, unique=True)
-    descripcion = models.TextField("descripción", blank=True)
     activo = models.BooleanField("activo", default=True)
 
     class Meta:

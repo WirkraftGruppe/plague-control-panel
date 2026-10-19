@@ -1,10 +1,10 @@
 {% extends "panel/base.html" %}
 {% load static %}
-{% block title %}Ingresar · MAControl{% endblock %}
+{% block title %}Ingresar · Detach{% endblock %}
 {% block contenido %}
 <div class="ingreso">
-  <img class="ingreso-logo" src="{% static 'img/logo.png' %}" alt="MAControl">
-  <h1>Ingresar al panel</h1>
+  <img class="ingreso-logo" src="{% static 'img/logo.png' %}" alt="{{ NOMBRE_EMPRESA }}">
+  <h1>Ingresar a Detach</h1>
   {% include "panel/partials/mensajes.html" %}
   <form class="formulario" method="post">
     {% csrf_token %}

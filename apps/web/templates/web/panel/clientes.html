@@ -1,8 +1,0 @@
-{% extends "panel/base.html" %}
-{% block title %}Clientes destacados · MAControl{% endblock %}
-{% block panel_contenido %}
-  <h1>Clientes destacados</h1>
-  <p><a class="boton boton-primario" href="{% url 'panel:web:cliente_alta' %}">Nuevo cliente</a></p>
-  {% include "panel/partials/buscador.html" with placeholder="Buscar cliente…" %}
-  {% include "web/panel/_clientes.html" %}
-{% endblock %}

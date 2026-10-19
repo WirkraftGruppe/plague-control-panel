@@ -28,7 +28,7 @@ from apps.visitas.services import registrar_visita_manual
 
 from .test_models import crear_revision, crear_visita, punto_de
 
-MEDIA_TEMPORAL = tempfile.mkdtemp(prefix="macontrol-panel-test-")
+MEDIA_TEMPORAL = tempfile.mkdtemp(prefix="detach-panel-test-")
 
 
 def _jpeg():
@@ -403,7 +403,7 @@ class AsignarTests(BaseTests):
         self.assertEqual(respuesta.status_code, 302)
 
 
-MEDIA_MANUAL = tempfile.mkdtemp(prefix="macontrol-manual-test-")
+MEDIA_MANUAL = tempfile.mkdtemp(prefix="detach-manual-test-")
 
 
 @override_settings(MEDIA_ROOT=MEDIA_MANUAL)

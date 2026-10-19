@@ -71,6 +71,7 @@ class MigracionPuntosTests(TransactionTestCase):
 class QuitarPropuestaTests(TransactionTestCase):
     ANTES = [
         ("sitios", "0006_puntocontrol_foto"),
+        ("servicios", "0003_campoplanilla_ambito"),
         ("visitas", "0008_ubicacion_y_administrador"),
     ]
     DESPUES = [("sitios", "0007_quitar_ubicacion_propuesta")]

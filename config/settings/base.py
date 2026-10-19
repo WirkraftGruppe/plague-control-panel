@@ -82,6 +82,16 @@ def leer_distancia_maxima_m():
     return valor
 
 
+# Nombre de la empresa en el admin, la API y la página del QR; provisoria hasta
+# multiempresa. Un valor vacío cae al valor por defecto.
+NOMBRE_EMPRESA = env("NOMBRE_EMPRESA", default="").strip() or "MAControl S.A."
+
+# Correo de contacto del User-Agent de las consultas a Nominatim, que lo exige;
+# provisorio hasta multiempresa, como NOMBRE_EMPRESA.
+CORREO_CONTACTO = (
+    env("CORREO_CONTACTO", default="").strip() or "administracion@macontrol.com.ar"
+)
+
 # Una revisión o una apertura a más metros del punto (o del sitio, si el punto no
 # tiene coordenadas) marca `incidencia_ubicacion`; nunca se rechaza
 # (plan cierre-puntos).
@@ -93,7 +103,7 @@ PRECISION_MAXIMA_M = 50
 
 
 INSTALLED_APPS = [
-    "config.apps.AdminMAControlConfig",
+    "config.apps.AdminDetachConfig",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
@@ -115,7 +125,6 @@ INSTALLED_APPS = [
     "apps.informes",
     "apps.panel",
     "apps.api",
-    "apps.web",
 ]
 
 MIDDLEWARE = [
@@ -142,6 +151,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "config.contexto.empresa",
             ],
         },
     },
@@ -182,10 +192,10 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_URL = "/panel/ingresar/"
 LOGIN_REDIRECT_URL = "/panel/"
 
-# Origen público del sitio; arma el contenido de los QR (`SITE_URL` + `/q/<uuid>/`).
-# Un `SITE_URL=` vacío (como en `.env.example`) también cae al valor por defecto: un QR
-# con ruta relativa no lo abre ningún teléfono.
-SITE_URL = env("SITE_URL", default="") or "https://macontrol.com.ar"
+# Origen público del proyecto; arma el contenido de los QR (`SITE_URL` + `/q/<uuid>/`).
+# Un `SITE_URL=` vacío (como en `.env.example`) cae al origen local de desarrollo;
+# producción la exige (prod.py): un QR con un dominio ajeno o local no lo abre nadie.
+SITE_URL = env("SITE_URL", default="").strip() or "http://localhost:8000"
 SITE_URL = SITE_URL.rstrip("/")
 LOGOUT_REDIRECT_URL = "/panel/ingresar/"
 
@@ -223,8 +233,10 @@ REST_FRAMEWORK = {
 # `SpectacularSwaggerSplitView` con `?script` incrusta el token CSRF en JS; no es
 # explotable mientras `SESSION_COOKIE_SAMESITE` siga en "Lax" (ver arriba).
 SPECTACULAR_SETTINGS = {
-    "TITLE": "API de MAControl",
-    "DESCRIPTION": "API de la app móvil de los empleados de MAControl S.A.",
+    "TITLE": "API de Detach",
+    # Sin doble punto cuando el nombre termina en "S.A." o similar.
+    "DESCRIPTION": "API de la app móvil de los empleados de "
+    f"{NOMBRE_EMPRESA.rstrip('.')}.",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "SERVE_PERMISSIONS": ["rest_framework.permissions.IsAuthenticated"],

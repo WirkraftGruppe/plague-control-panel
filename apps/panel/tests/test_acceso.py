@@ -19,7 +19,6 @@ from apps.proyectos.models import Proyecto
 from apps.servicios.models import CampoPlanilla, TipoServicio
 from apps.sitios.models import Plano, PuntoControl, Sitio
 from apps.visitas.models import Foto, Revision, Visita
-from apps.web.models import ClienteDestacado, PaginaServicio
 
 CLAVE = "clave-segura-123"
 SENTINELA = "@PK@"
@@ -42,8 +41,6 @@ MODELO_POR_RUTA = (
     (r"^/panel/productos/@PK@/", "producto"),
     (r"^/panel/visitas/proyectos/@PK@/", "proyecto"),
     (r"^/panel/visitas/@PK@/", "visita"),
-    (r"^/panel/web/paginas/@PK@/", "pagina"),
-    (r"^/panel/web/clientes/@PK@/", "cliente_web"),
     (r"^/panel/usuarios/@PK@/", "usuario"),
 )
 
@@ -196,11 +193,6 @@ class AccesoTests(TestCase):
                 tipo=CampoPlanilla.Tipo.TEXTO,
             ).pk,
             "producto": Producto.objects.create(nombre_comercial="Producto").pk,
-            "pagina": PaginaServicio.objects.get_or_create(
-                tipo=cls.servicio,
-                defaults={"titulo_seo": "t", "resumen": "r", "problema": "p"},
-            )[0].pk,
-            "cliente_web": ClienteDestacado.objects.create(nombre="Cliente web").pk,
         }
         cls.codigos = {"foto": str(foto.codigo)}
 
