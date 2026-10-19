@@ -313,7 +313,9 @@ paths:
     post:
       operationId: revisiones_create
       description: Multipart. `qr_codigo` es el del punto escaneado. `datos` y `productos_aplicados`
-        son texto JSON; `fotos` se repite de 1 a 10 veces (hasta 8 MB cada una). Un
+        son texto JSON, una lista donde cada ítem lleva `producto`, `lote`, `dosis`,
+        `unidad_dosis`, `cantidad` y `unidad` (la unidad de la cantidad, válida para
+        el producto); `fotos` se repite de 1 a 10 veces (hasta 8 MB cada una). Un
         `cliente_uuid` ya registrado responde 409; `revision` y `visita` solo vienen
         si son del mismo empleado. Un administrador que escanea un punto sin coordenadas,
         con precisión de a lo sumo 50 m, las fija.
@@ -740,6 +742,14 @@ components:
       - sitio
       - x
       - y
+    ModoUnidadEnum:
+      enum:
+      - unica
+      - equivalentes
+      type: string
+      description: |-
+        * `unica` - Solo la unidad base
+        * `equivalentes` - Unidades equivalentes
     PaginatedVisitaActivaList:
       type: object
       required:
@@ -838,13 +848,41 @@ components:
           readOnly: true
           title: Unidad de dosis por defecto
           description: 'Por ejemplo: ml/l.'
+        unidad_base:
+          allOf:
+          - $ref: '#/components/schemas/UnidadBaseEnum'
+          readOnly: true
+          description: |-
+            Unidad en que se lleva el stock.
+
+            * `ml` - ml
+            * `l` - l
+            * `gal` - gal
+            * `g` - g
+            * `kg` - kg
+            * `lb` - lb
+            * `unidad` - unidad
+        modo_unidad:
+          allOf:
+          - $ref: '#/components/schemas/ModoUnidadEnum'
+          readOnly: true
+          title: Modo de unidad
+        unidades_permitidas:
+          type: array
+          items:
+            type: string
+          description: Unidades en que se puede cargar la cantidad aplicada.
+          readOnly: true
       required:
       - id
+      - modo_unidad
       - nombre_comercial
       - presentacion
       - principio_activo
       - registro
+      - unidad_base
       - unidad_dosis_por_defecto
+      - unidades_permitidas
     ProductoAplicado:
       type: object
       properties:
@@ -859,21 +897,35 @@ components:
           format: decimal
           pattern: ^-?\d{0,7}(?:\.\d{0,3})?$
           readOnly: true
-        unidad:
+        unidad_dosis:
           type: string
           readOnly: true
+          title: Unidad de la dosis
         cantidad:
           type: string
           format: decimal
           pattern: ^-?\d{0,7}(?:\.\d{0,3})?$
           readOnly: true
-          nullable: true
+        unidad:
+          allOf:
+          - $ref: '#/components/schemas/UnidadEnum'
+          readOnly: true
+          title: Unidad de la cantidad
+        cantidad_base:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,4})?$
+          readOnly: true
+          title: Cantidad en unidad base
+          description: Calculada por el servidor a partir de la cantidad y su unidad.
       required:
       - cantidad
+      - cantidad_base
       - dosis
       - lote
       - producto
       - unidad
+      - unidad_dosis
     ProyectoQR:
       type: object
       description: Proyecto activo del sitio con las planillas que debe completar
@@ -1213,6 +1265,42 @@ components:
       - latitud
       - longitud
       - precision_m
+    UnidadBaseEnum:
+      enum:
+      - ml
+      - l
+      - gal
+      - g
+      - kg
+      - lb
+      - unidad
+      type: string
+      description: |-
+        * `ml` - ml
+        * `l` - l
+        * `gal` - gal
+        * `g` - g
+        * `kg` - kg
+        * `lb` - lb
+        * `unidad` - unidad
+    UnidadEnum:
+      enum:
+      - ml
+      - l
+      - gal
+      - g
+      - kg
+      - lb
+      - unidad
+      type: string
+      description: |-
+        * `ml` - ml
+        * `l` - l
+        * `gal` - gal
+        * `g` - g
+        * `kg` - kg
+        * `lb` - lb
+        * `unidad` - unidad
     VisitaActiva:
       type: object
       description: 'Visita pendiente o abierta, sin coordenadas: lista propia y apertura.'

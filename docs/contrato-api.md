@@ -1,6 +1,6 @@
 # Contrato de la API v1
 
-Actualizado: 2026-10-18
+Actualizado: 2026-10-19
 
 Resumen legible para la app móvil de Detach. La fuente completa (cuerpos, campos,
 códigos de error) es `docs/api/openapi-v1.yaml`; este archivo agrega, por ruta, el
@@ -10,6 +10,15 @@ límite de pedidos (throttle) y el rol que la puede usar. Todas las rutas cuelga
 - **Auth**: `JWT` es un token de acceso en `Authorization: Bearer <token>` de cualquier
   usuario autenticado; `Empleado o administrador`, `Administrador` y `Empleado` piden
   además ese rol; `Pública` no pide token.
+- **Catálogo de productos** (`GET /api/v1/productos/`): cada producto trae `unidad_base`
+  (unidad en que se lleva el stock), `modo_unidad` (`unica` o `equivalentes`) y
+  `unidades_permitidas` (las unidades en que se puede declarar una cantidad: solo la base
+  en `unica`; todas las de su magnitud en `equivalentes`).
+- **Revisiones** (`POST /api/v1/revisiones/`, multipart): `productos_aplicados` es texto
+  JSON con una lista; cada ítem lleva `producto`, `lote`, `dosis`, `unidad_dosis`,
+  `cantidad` y `unidad` (una de las `unidades_permitidas`). El servidor convierte a la
+  unidad base y descuenta el stock en la misma transacción. Los errores de validación
+  van anidados por ítem: `productos_aplicados.<i>.<campo>`.
 - **Throttle**: `-` es sin límite propio. Los cupos salen de `DEFAULT_THROTTLE_RATES`
   (`token` 10/min, `qr` 30/min, `crear_visita` 120/hora, `alta_campo` 300/hora) y de
   la renovación de tokens (30/min). Al excederlos la API responde 429.
