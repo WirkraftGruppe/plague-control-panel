@@ -106,8 +106,9 @@ class FlujoEmpleadoTests(TestCase):
                 "producto": producto["id"],
                 "lote": "L1",
                 "dosis": "2",
-                "unidad": "g",
+                "unidad_dosis": "g",
                 "cantidad": "5",
+                "unidad": "unidad",
             }
         ]
         abierta = api.post(

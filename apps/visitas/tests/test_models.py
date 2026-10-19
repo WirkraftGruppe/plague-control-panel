@@ -224,7 +224,10 @@ class ProductoAplicadoTests(TestCase):
             producto=producto,
             lote="L-1",
             dosis=Decimal("1.500"),
+            unidad_dosis="g",
             unidad="g",
+            cantidad=Decimal("1"),
+            cantidad_base=Decimal("1"),
         )
         aplicado.lote = "L-2"
         aplicado.save()

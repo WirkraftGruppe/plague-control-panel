@@ -333,8 +333,9 @@ class CrearRevisionTests(ApiVisitasBase):
                 "producto": self.producto.id,
                 "lote": "L1",
                 "dosis": "2.5",
-                "unidad": "ml/l",
+                "unidad_dosis": "ml/l",
                 "cantidad": "10",
+                "unidad": "unidad",
             }
         ]
         r = self._enviar(
@@ -416,10 +417,19 @@ class CrearRevisionTests(ApiVisitasBase):
         self.assertEqual(Revision.objects.count(), 1)
 
     def test_producto_fuera_del_catalogo_da_400(self):
-        productos = [{"producto": 99999, "lote": "L", "dosis": "1", "unidad": "ml"}]
+        productos = [
+            {
+                "producto": 99999,
+                "lote": "L",
+                "dosis": "1",
+                "unidad_dosis": "ml",
+                "cantidad": "1",
+                "unidad": "unidad",
+            }
+        ]
         r = self._enviar(productos_aplicados=json.dumps(productos))
         self.assertEqual(r.status_code, 400)
-        self.assertIn("productos_aplicados", r.data["campos"])
+        self.assertIn("productos_aplicados.0.producto", r.data["campos"])
         self.assertFalse(Revision.objects.exists())
 
     def test_cliente_uuid_es_obligatorio(self):

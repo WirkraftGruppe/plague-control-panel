@@ -14,7 +14,7 @@ from apps.panel.demo_datos import (
     SLUG_TIPO_VIEJO,
     SUFIJO_PRODUCTO,
 )
-from apps.productos.models import Producto
+from apps.productos.models import MovimientoStock, Producto
 from apps.proyectos.models import Proyecto
 from apps.servicios.models import TipoServicio
 from apps.sitios.models import Sitio
@@ -90,7 +90,14 @@ def limpiar_datos_demo():
                 "pk", flat=True
             )
         )
+        ids_movimientos = list(
+            ProductoAplicado.objects.filter(
+                revision__in=ids_revisiones, movimiento__isnull=False
+            ).values_list("movimiento_id", flat=True)
+        )
         visitas.delete()
+        # Los consumos van después de sus aplicados: el movimiento es PROTECT.
+        MovimientoStock.objects.filter(pk__in=ids_movimientos).delete()
         _borrar_historial(Visita, ids_visitas)
         _borrar_historial(Revision, ids_revisiones)
         _borrar_historial(ProductoAplicado, ids_aplicados)
@@ -99,9 +106,11 @@ def limpiar_datos_demo():
             # Borra también el historial de sitio, proyectos, puntos y planos.
             suprimir_sitio(sitio)
         _clientes_demo().filter(sitios__isnull=True).delete()
-        Producto.objects.filter(
+        productos = Producto.objects.filter(
             nombre_comercial__endswith=SUFIJO_PRODUCTO, productoaplicado__isnull=True
-        ).delete()
+        )
+        MovimientoStock.objects.filter(producto__in=productos).delete()
+        productos.delete()
         TipoServicio.objects.filter(
             slug=SLUG_TIPO_VIEJO, proyectos__isnull=True
         ).delete()

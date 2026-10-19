@@ -183,7 +183,14 @@ class ProyectoPanelTests(TestCase):
         Foto.objects.create(revision=revision, imagen="visitas/fotos/x.jpg")
         Foto.objects.create(revision=revision, imagen="visitas/fotos/y.jpg")
         ProductoAplicado.objects.create(
-            revision=revision, producto=producto, lote="L1", dosis=1, unidad="ml/l"
+            revision=revision,
+            producto=producto,
+            lote="L1",
+            dosis=1,
+            unidad_dosis="ml/l",
+            cantidad=2,
+            unidad="unidad",
+            cantidad_base=2,
         )
         return visita
 
@@ -239,7 +246,14 @@ class ProyectoPanelTests(TestCase):
                 )
                 Foto.objects.create(revision=revision, imagen="visitas/fotos/w.jpg")
                 ProductoAplicado.objects.create(
-                    revision=revision, producto=producto, lote="L", dosis=1, unidad="u"
+                    revision=revision,
+                    producto=producto,
+                    lote="L",
+                    dosis=1,
+                    unidad_dosis="u",
+                    cantidad=1,
+                    unidad="unidad",
+                    cantidad_base=1,
                 )
 
         visita_con_revisiones(2)

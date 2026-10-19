@@ -10,7 +10,9 @@ from django.db.models import Exists, F, OuterRef
 from django.utils import timezone
 from simple_history.utils import update_change_reason
 
+from apps.productos import unidades
 from apps.productos.models import Producto
+from apps.productos.services import registrar_consumo
 from apps.proyectos.models import Proyecto
 from apps.sitios.models import PuntoControl
 from apps.visitas.models import Foto, ProductoAplicado, Revision, Visita
@@ -110,33 +112,72 @@ def _id_producto(item):
         return None
 
 
+def _error_de_unidad(producto, unidad):
+    """Mensaje si `unidad` no se admite para el producto (None si es válida)."""
+    if unidad in unidades.unidades_permitidas(producto):
+        return None
+    if producto.modo_unidad == "unica" and unidad in unidades.UNIDADES:
+        if unidades.magnitud_de(unidad) == unidades.magnitud_de(producto.unidad_base):
+            return f"Este producto solo admite la unidad {producto.unidad_base}."
+    permitidas = ", ".join(unidades.unidades_permitidas(producto))
+    return f"La unidad no corresponde al producto: use {permitidas}."
+
+
+def _errores_de_cantidad(aplicado, producto):
+    """Valida unidad y cantidad del aplicado y fija `cantidad_base`.
+
+    Devuelve los errores por campo (vacío si todo está bien).
+    """
+    errores = {}
+    mensaje = _error_de_unidad(producto, aplicado.unidad)
+    if mensaje:
+        errores["unidad"] = [mensaje]
+    if aplicado.cantidad is not None and aplicado.cantidad <= 0:
+        errores["cantidad"] = ["La cantidad debe ser mayor que cero."]
+    if not errores:
+        aplicado.cantidad_base = unidades.convertir(
+            aplicado.cantidad, aplicado.unidad, producto.unidad_base
+        )
+        if aplicado.cantidad_base <= 0:
+            errores["cantidad"] = ["La cantidad es demasiado chica para el producto."]
+    return errores
+
+
 def _armar_productos(productos_aplicados):
     """Valida cada producto aplicado; devuelve (instancias sin guardar, errores).
 
-    Busca todos los productos del pedido en una sola consulta.
+    Los errores van anidados, `{posición: {campo: [mensajes]}}`, con
+    posición desde cero. Busca todos los productos del pedido en una sola consulta
+    y calcula `cantidad_base` en la unidad base del producto.
     """
     ids = {_id_producto(item) for item in productos_aplicados} - {None}
     catalogo = Producto.objects.filter(pk__in=ids, activo=True).in_bulk()
-    errores, instancias = [], []
-    for posicion, item in enumerate(productos_aplicados, start=1):
+    errores, instancias = {}, []
+    for posicion, item in enumerate(productos_aplicados):
+        producto = catalogo.get(_id_producto(item))
+        if producto is None:
+            errores[posicion] = {"producto": ["No existe o está inactivo."]}
+            continue
+        aplicado = ProductoAplicado(
+            producto=producto,
+            lote=item.get("lote") or "",
+            dosis=item.get("dosis"),
+            unidad_dosis=item.get("unidad_dosis") or "",
+            unidad=item.get("unidad") or "",
+            cantidad=item.get("cantidad"),
+        )
         try:
-            producto = catalogo[_id_producto(item)]
-            aplicado = ProductoAplicado(
-                producto=producto,
-                lote=item.get("lote") or "",
-                dosis=item.get("dosis"),
-                unidad=item.get("unidad") or "",
-                cantidad=item.get("cantidad"),
-            )
             # El producto ya se leyó del catálogo: no se vuelve a consultar.
-            aplicado.full_clean(exclude=["revision", "producto"])
-        except (KeyError, TypeError, ValueError, AttributeError):
-            errores.append(f"Producto {posicion}: no existe o está inactivo.")
-        except ValidationError as error:
-            detalle = "; ".join(
-                m for lista in error.message_dict.values() for m in lista
+            aplicado.full_clean(
+                exclude=["revision", "producto", "cantidad_base", "movimiento"]
             )
-            errores.append(f"Producto {posicion}: {detalle}")
+            campos = {}
+        except ValidationError as error:
+            campos = dict(error.message_dict)
+        if "unidad" not in campos and "cantidad" not in campos:
+            campos.update(_errores_de_cantidad(aplicado, producto))
+        if campos:
+            errores[posicion] = campos
         else:
             instancias.append(aplicado)
     return instancias, errores
@@ -183,8 +224,9 @@ def _validar_evidencia(esquema, datos, productos_aplicados):
         ]
         return errores, []
     aplicados, errores_productos = _armar_productos(productos_aplicados)
-    if errores_productos:
-        errores["productos_aplicados"] = errores_productos
+    for posicion, campos in errores_productos.items():
+        for campo, mensajes in campos.items():
+            errores[f"productos_aplicados.{posicion}.{campo}"] = mensajes
     return errores, aplicados
 
 
@@ -326,7 +368,8 @@ def _fijar_ubicacion_por_escaneo(punto, revision, usuario):
     )
 
 
-def _guardar_fotos_y_productos(revision, fotos, aplicados, guardadas):
+def _guardar_fotos_y_productos(revision, fotos, aplicados, guardadas, usuario):
+    """Guarda fotos y productos aplicados y descuenta el stock de cada uno."""
     for orden, archivo in enumerate(fotos):
         foto = Foto(revision=revision, imagen=archivo, orden=orden)
         try:
@@ -337,6 +380,10 @@ def _guardar_fotos_y_productos(revision, fotos, aplicados, guardadas):
     for aplicado in aplicados:
         aplicado.revision = revision
         aplicado.save()
+        aplicado.movimiento = registrar_consumo(
+            aplicado.producto, aplicado.cantidad_base, usuario
+        )
+        aplicado.save(update_fields=["movimiento"])
 
 
 def _guardar_revision(
@@ -400,7 +447,7 @@ def _guardar_revision(
         incidencia=incidencia,
         incidencia_detalle=incidencia_detalle,
     )
-    _guardar_fotos_y_productos(revision, fotos, aplicados, guardadas)
+    _guardar_fotos_y_productos(revision, fotos, aplicados, guardadas, empleado)
     _fijar_ubicacion_por_escaneo(punto, revision, empleado)
     return revision
 
@@ -745,7 +792,9 @@ def registrar_visita_manual(
                 esquema_planilla=esquema_punto,
             )
             if orden == 1:
-                _guardar_fotos_y_productos(revision, fotos, aplicados, guardadas)
+                _guardar_fotos_y_productos(
+                    revision, fotos, aplicados, guardadas, administrador
+                )
         resultado = cerrar_visita(
             visita,
             quien=administrador,

@@ -6,6 +6,7 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.productos.models import Producto
+from apps.productos.unidades import CHOICES as UNIDADES
 from apps.sitios.models import PuntoControl
 
 from .models import Revision, Visita
@@ -58,17 +59,33 @@ class VariosArchivosField(forms.FileField):
         ]
 
 
-class FormularioProductoManual(forms.Form):
-    """Un producto aplicado: siempre del catálogo y activo."""
+class ProductoConUnidadField(forms.ModelChoiceField):
+    """Muestra la unidad base del producto para elegir la unidad de la cantidad."""
 
-    producto = forms.ModelChoiceField(
+    def label_from_instance(self, producto):
+        return f"{producto} ({producto.unidad_base})"
+
+
+class FormularioProductoManual(forms.Form):
+    """Un producto aplicado: siempre del catálogo y activo.
+
+    La unidad de la cantidad debe ser una de las del producto (lo valida el servicio);
+    la de la dosis es texto libre, por ejemplo la `unidad_dosis_por_defecto`.
+    """
+
+    producto = ProductoConUnidadField(
         label="Producto", queryset=Producto.objects.filter(activo=True)
     )
     lote = forms.CharField(label="Lote", max_length=60)
     dosis = forms.DecimalField(label="Dosis", max_digits=10, decimal_places=3)
-    unidad = forms.CharField(label="Unidad", max_length=20)
-    cantidad = forms.DecimalField(
-        label="Cantidad", max_digits=10, decimal_places=3, required=False
+    unidad_dosis = forms.CharField(
+        label="Unidad de la dosis", max_length=20, help_text="Por ejemplo: ml/l."
+    )
+    cantidad = forms.DecimalField(label="Cantidad", max_digits=10, decimal_places=3)
+    unidad = forms.ChoiceField(
+        label="Unidad de la cantidad",
+        choices=[("", "---------"), *UNIDADES],
+        help_text="Una de las unidades del producto.",
     )
 
 

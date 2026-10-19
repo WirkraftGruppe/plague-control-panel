@@ -162,7 +162,15 @@ class VisitaActivaSerializer(serializers.ModelSerializer):
 class ProductoAplicadoSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductoAplicado
-        fields = ["producto", "lote", "dosis", "unidad", "cantidad"]
+        fields = [
+            "producto",
+            "lote",
+            "dosis",
+            "unidad_dosis",
+            "cantidad",
+            "unidad",
+            "cantidad_base",
+        ]
         read_only_fields = fields
 
 
