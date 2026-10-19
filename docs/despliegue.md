@@ -24,16 +24,16 @@ Guía para alojar una instancia de Detach. Nada de esto se ejecuta solo: lo hace
 | `ALLOWED_HOSTS` | el dominio público, p. ej. `demo.up.railway.app` (si queda vacío, el arranque aborta) |
 | `CSRF_TRUSTED_ORIGINS` | el mismo dominio con esquema, p. ej. `https://demo.up.railway.app` (varios, separados por comas) |
 | `SITE_URL` | `https://demo.up.railway.app` (base del contenido de los QR). **Obligatoria**: sin ella el arranque aborta |
-| `NOMBRE_EMPRESA` | nombre de la empresa que aparece en el panel, los PDF y la página `/q/<uuid>/` (opcional; vacía usa el valor por defecto de `base.py`) |
+| `NOMBRE_EMPRESA` | nombre de la empresa que aparece en el panel y en la página `/q/<uuid>/`. **Obligatoria**: sin ella el arranque aborta |
 | `CORREO_CONTACTO` | correo de contacto de la empresa (opcional; vacío usa el valor por defecto de `base.py`) |
 | `MEDIA_ROOT` | `/data/media` (ruta del volumen, punto 4) |
 
-`SITE_URL` también debe estar definida **antes del build**: `prod.py` aborta con `ImproperlyConfigured` al importar los settings con `DJANGO_ENV=production`, y el build de Railway corre `collectstatic` (y el despliegue, `migrate`) con esas variables; sin `SITE_URL` fallan el build y el despliegue, no solo el arranque.
+`SITE_URL` y `NOMBRE_EMPRESA` también deben estar definidas **antes del build**: `prod.py` aborta con `ImproperlyConfigured` al importar los settings con `DJANGO_ENV=production`, y el build de Railway corre `collectstatic` (y el despliegue, `migrate`) con esas variables; sin ellas fallan el build y el despliegue, no solo el arranque.
 
 El dominio público se genera en `Settings` -> `Networking` -> `Generate Domain`. Las variables no se versionan: `.env.example` solo lista los nombres.
 
 ## 4. Volumen para `media/`
-Fotos, planos y logos se guardan en disco (`MEDIA_ROOT`). El disco del contenedor se pierde en cada despliegue, así que hace falta un volumen:
+Fotos y planos se guardan en disco (`MEDIA_ROOT`). El disco del contenedor se pierde en cada despliegue, así que hace falta un volumen:
 1. En el servicio web: `Settings` -> `Volumes` -> `Add Volume`, punto de montaje `/data`.
 2. `MEDIA_ROOT=/data/media`.
 

@@ -13,6 +13,7 @@ _PROD = {
     "SECRET_KEY": "x" * 60,
     "DATABASE_URL": "sqlite:///prod-test.sqlite3",
     "ALLOWED_HOSTS": "demo.up.railway.app",
+    "NOMBRE_EMPRESA": "Ejemplo S.R.L.",
 }
 
 
@@ -80,6 +81,19 @@ class EmpresaTests(SimpleTestCase):
         r = _leer("s.SITE_URL", **_PROD, SITE_URL="https://ejemplo.test/")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertEqual(r.stdout.strip().splitlines()[-1], "https://ejemplo.test")
+
+    def test_prod_sin_nombre_empresa_no_arranca(self):
+        """Producción sin NOMBRE_EMPRESA (o vacía) no arranca; con ella, sí."""
+        prod = {**_PROD, "SITE_URL": "https://ejemplo.test"}
+        for vacio in ("", "   "):
+            with self.subTest(vacio=vacio):
+                r = _leer("s.NOMBRE_EMPRESA", **{**prod, "NOMBRE_EMPRESA": vacio})
+                self.assertNotEqual(r.returncode, 0)
+                self.assertIn("NOMBRE_EMPRESA", r.stdout + r.stderr)
+                self.assertIn("ImproperlyConfigured", r.stdout + r.stderr)
+        r = _leer("s.NOMBRE_EMPRESA", **prod)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(r.stdout.strip().splitlines()[-1], "Ejemplo S.R.L.")
 
     def test_admin_y_api_se_llaman_detach(self):
         """El admin usa AdminDetachConfig y la API se titula Detach con la empresa."""
