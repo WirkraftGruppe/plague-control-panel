@@ -214,8 +214,8 @@ commit_base: f9a7b64
 | T1 | hecha |
 | T2 | hecha |
 | T3 | hecha |
-| T4 | pendiente |
-| T5 | pendiente |
+| T4 | hecha |
+| T5 | hecha |
 | T6 | pendiente |
 | T7 | pendiente |
 
@@ -230,6 +230,9 @@ commit_base: f9a7b64
 | 2026-10-19 | T1 (verificador) | 9ecd341 | PASA 17/17 | spot check del principal: `test_dos_litros_son_0_5283_galones` OK; presupuesto 674/700 |
 | 2026-10-19 | T1 (verificador-b) | 9ecd341 | PASA 17/17 | |
 | 2026-10-19 | T3 (integración) | ff9987d | — | diff de T1 y T2 dentro de Puede tocar; `worktree-integrar.sh` T1 exit 0 (677 tests OK) y T2 exit 0 (684 tests OK); criterios de T3 OK |
+| 2026-10-19 | T4 (verificador) | 56f0fd9 | PASA 18/18 | spot check del principal: `test_foto_invalida_no_deja_movimiento` OK; diff dentro de Puede tocar (25 archivos); suite 698 OK; presupuesto 662/900 |
+| 2026-10-19 | T4 (verificador-b) | 56f0fd9 | PASA 18/18 | |
+| 2026-10-19 | T5 (integración) | b0d5a72 | — | `worktree-integrar.sh` T4 exit 0 (698 tests OK); criterio de T5 OK |
 
 ## Pendientes que deja este plan
 
