@@ -1,4 +1,4 @@
-"""Settings de producción: SECRET_KEY, DATABASE_URL y SITE_URL son obligatorias."""
+"""Settings de producción: piden SECRET_KEY, DATABASE_URL, SITE_URL y NOMBRE_EMPRESA."""
 
 from django.core.exceptions import ImproperlyConfigured
 
@@ -24,6 +24,14 @@ if not env("SITE_URL", default="").strip():
     raise ImproperlyConfigured(
         "SITE_URL está vacía con DJANGO_ENV=production: definí el origen público "
         "(por ejemplo https://dominio.com.ar), que arma el contenido de los QR."
+    )
+
+# Sin NOMBRE_EMPRESA, base.py cae a un nombre por defecto y el panel, la API y la
+# página del QR mostrarían el nombre de otra empresa.
+if not env("NOMBRE_EMPRESA", default="").strip():
+    raise ImproperlyConfigured(
+        "NOMBRE_EMPRESA está vacía con DJANGO_ENV=production: definí el nombre de "
+        "la empresa, que aparece en el panel, la API y la página del QR."
     )
 
 # Orígenes https que Django acepta en los POST (el dominio público del hosting).
