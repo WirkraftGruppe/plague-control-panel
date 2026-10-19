@@ -109,7 +109,7 @@ commit_base: 2e92f78
 |---|---|
 | T1 | hecha (c9ec157; verificador y verificador-b 6/6 PASA) |
 | T2 | hecha (14b45c5, integrada en 120757e; verificador y verificador-b 8/8 PASA) |
-| T3 | en curso (integración hecha; falta la verificación TODO) |
+| T3 | hecha (verificación TODO 22/22 PASA x2; auditoría sin bloqueantes) |
 
 ### Corridas
 
@@ -121,6 +121,9 @@ commit_base: 2e92f78
 | 2026-10-19 | T1, T2 (verificador) | c9ec157 / 14b45c5 | PASA 14/14 | contrato intacto |
 | 2026-10-19 | T1, T2 (verificador-b) | c9ec157 / 14b45c5 | PASA 14/14 | observación: los criterios de T2 no cubren el párrafo previo al build ni la sección del volumen (revisados a mano en el diff) |
 | 2026-10-19 | T3 pasos 1-2 | 120757e | — | `cambios.sh` de T2 solo en sus dos archivos; spot check `grep "Ninguna ruta pública"` OK; `worktree-integrar.sh` T2 exit 0, 657 tests OK |
+| 2026-10-19 | TODO (verificador) | 912b623 | PASA 22/22 | contrato intacto; suite 657 OK |
+| 2026-10-19 | TODO (verificador-b) | 912b623 | PASA 22/22 | |
+| 2026-10-19 | TODO (auditor-seguridad) | 912b623 | sin bloqueantes | 1 importante y 1 menor (P-nombre-empresa-prod-3), 3 observaciones (P-nombre-empresa-prod-4) |
 
 ## Pendientes que deja este plan
 
@@ -128,6 +131,8 @@ commit_base: 2e92f78
 
 - P-nombre-empresa-prod-1 [observación] Resto de P-separacion-web-11: `.claude/agents/auditor-seguridad.md:20,84` todavía nombra el sitio público; `.gitignore:33` nombra el empaquetador borrado; `dist/` local guarda el paquete viejo.
 - P-nombre-empresa-prod-2 [observación] `pendientes.py` avisa formas inválidas: `2026-10-12-demo-portatil.md:157-163` declara P-demo-portatil-1 a 5 y una decisión fuera de una subsección (nunca contaron como abiertos), y `2026-10-18-separacion-web.md:449` junta cinco ids en una sola línea `cierra:`. Hoy no cambia el conteo; se corrige al tocar esos planes o con una regla del hook.
+- P-nombre-empresa-prod-3 [importante] `README.md:16` todavía lista `NOMBRE_EMPRESA` como opcional en producción, y `.env.example:19-22` [menor] la deja bajo "# Opcionales"; los dos quedaron fuera de Puede tocar (auditor-seguridad TODO).
+- P-nombre-empresa-prod-4 [observación] Auditor TODO: cargar `NOMBRE_EMPRESA` en Railway antes de desplegar `main` (sin ella el build se frena sin exponer nada); `_HEREDADAS` de `config/tests/test_settings.py:12` no incluye `SITE_URL`, así que un `SITE_URL` del entorno del desarrollador taparía el test de producción sin `SITE_URL`; `DESCRIPTION` de la API (`base.py:238`) pone el nombre sin escapar en markdown (lo fija el operador y la doc exige autenticación).
 
 ### Decisiones
 
