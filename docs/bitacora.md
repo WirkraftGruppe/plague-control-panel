@@ -7,7 +7,7 @@ Planes activos (los hooks derivan el plan de la rama; la línea `Plan activo:` d
 
 | plan | rama | ola actual | pendiente inmediato | sesión |
 |---|---|---|---|---|
-| (ninguno) | main | — | cargar `NOMBRE_EMPRESA` en Railway antes del próximo despliegue (P-nombre-empresa-prod-4) | sesión 2026-10-19 |
+| (ninguno) | main | — | cambios al panel antes del despliegue (otra sesión); después push a `origin` y proyecto en Railway con `NOMBRE_EMPRESA=Plague Control` | sesión 2026-10-19 |
 
 Siguiente: 72 abiertos según `pendientes.py` tras el cierre de separacion-web (19 cerrados en su `### Cierra`). Regla de cuándo preguntar: CLAUDE.md § Reglas globales, regla 8.
 
@@ -20,7 +20,9 @@ Hecho:
 - `prod.py` aborta sin `NOMBRE_EMPRESA` (T1); la skill la marca obligatoria en producción y vuelve a prohibir formularios públicos, y `docs/despliegue.md` la marca **Obligatoria** (T2). `CORREO_CONTACTO` sigue opcional por decisión del usuario.
 - Verificación `TODO` en 912b623: `verificador` y `verificador-b` 22/22 PASA, contrato intacto, 657 tests OK; `auditor-seguridad` sin bloqueantes.
 - Fusionado en `main` por pedido del usuario; sus 2 decisiones copiadas a `docs/decisiones.md`. `README.md` y `.env.example` corregidos después del merge como cambio pasivo (P-nombre-empresa-prod-3).
-Pendiente: cargar `NOMBRE_EMPRESA` en Railway antes de desplegar `main`.
+- `origin` pasa a `https://github.com/WirkraftGruppe/plague-control-panel.git` (vacío, sin push todavía); el remoto anterior queda como `macontrol-viejo` (el repositorio ya no es accesible desde esta cuenta).
+- Prueba manual local con `DATABASE_URL=sqlite:///prueba-manual.sqlite3`, `NOMBRE_EMPRESA="Plague Control"` y `cargar_demo` (demo-admin / demo-empleado, clave demo1234); servidor detenido.
+Pendiente: el usuario sigue en otra sesión con cambios al panel antes del despliegue. Después: `git push origin main` (65+ commits) y crear el proyecto en Railway (Postgres, volumen `/data`, variables de `docs/despliegue.md`, `NOMBRE_EMPRESA=Plague Control`). P-nombre-empresa-prod-3 ya está corregido en dd97c78; falta su `cierra:` en el próximo plan.
 
 ### 2026-10-18 — Fusión de `separacion-web` en `main`
 Hecho:
