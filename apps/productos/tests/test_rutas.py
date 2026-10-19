@@ -15,5 +15,6 @@ class RutasProductosTests(SimpleTestCase):
 
         self.assertEqual(panel_urls.app_name, "productos")
         self.assertEqual(
-            [p.name for p in panel_urls.urlpatterns], ["listado", "alta", "editar"]
+            [p.name for p in panel_urls.urlpatterns],
+            ["listado", "alta", "ficha", "movimiento_alta", "editar"],
         )
