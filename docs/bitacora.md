@@ -1,19 +1,25 @@
 # Bitácora de MAControl
 
 ## Estado actual
-Plan activo: docs/planes/2026-10-18-separacion-web.md
+Plan activo: (ninguno)
 
 Planes activos (los hooks derivan el plan de la rama; la línea `Plan activo:` de arriba es el respaldo para la raíz):
 
 | plan | rama | ola actual | pendiente inmediato | sesión |
 |---|---|---|---|---|
-| separacion-web | plan/separacion-web | 4 integrada (T1–T12); T11 en cierre | verificación `TODO` (verificador, verificador-b, auditor-seguridad) y decisión del usuario sobre el FALLA formal y el merge a `main` | sesión 2026-10-18 |
+| (ninguno) | main | — | plan chico: `NOMBRE_EMPRESA` obligatoria en producción + P-separacion-web-10 | sesión 2026-10-18 |
 
 Siguiente: 72 abiertos según `pendientes.py` tras el cierre de separacion-web (19 cerrados en su `### Cierra`). Regla de cuándo preguntar: CLAUDE.md § Reglas globales, regla 8.
 
 Problemas abiertos: ver `py -3 .claude/hooks/pendientes.py` (cada plan los declara en `## Pendientes que deja este plan`; los anteriores están en `docs/planes/2026-10-03-pendientes-heredados.md`).
 
 ## Entradas (la más reciente arriba)
+
+### 2026-10-18 — Fusión de `separacion-web` en `main`
+Hecho:
+- Verificación `TODO` en 1c81459: `verificador` y `verificador-b` 117/118 PASA; único FALLA `congelado.sh` (contrato modificado 9d8aef7, a60430e). `auditor-seguridad` sin bloqueantes (P-separacion-web-10 y -11).
+- El usuario aceptó el FALLA formal y aprobó el merge: `plan/separacion-web` fusionada en `main`; sus 28 decisiones copiadas a `docs/decisiones.md`.
+Pendiente: plan chico para exigir `NOMBRE_EMPRESA` en producción (como `SITE_URL`) y sumar a la skill la regla de no tener formularios públicos (P-separacion-web-10); lo aprobó el usuario.
 
 ### 2026-10-18 — Plan `separacion-web` ejecutado (T1 a T12)
 Hecho:
@@ -23,7 +29,7 @@ Hecho:
 - Demo portátil borrada por decisión del usuario (`herramientas/`, `demo.bat`, `docs/demo-cliente.md`); `cargar_demo` queda como datos de desarrollo. `dist/` y `demo.sqlite3` siguen en el disco local.
 - Contrato modificado dos veces con aprobación del usuario (9d8aef7: T12; a60430e: demo y corrección de T8); `congelado.sh` da FALLA formal, aceptado por el usuario en cada ola.
 - La integración de T8 falló una vez (test de migraciones de sitios) y `worktree-integrar.sh` la deshizo; se corrigió con contrato ampliado.
-Pendiente: verificación `TODO` y decisión del usuario sobre el merge a `main`.
+Pendiente: (ver la entrada de fusión, arriba).
 
 ### 2026-10-18 — Fusión de `demo-portatil` en `main`
 Hecho:
