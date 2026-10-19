@@ -12,7 +12,10 @@
         <tr>
           <td>{{ tipo.nombre }}</td>
           <td>{% if tipo.activo %}{% include "panel/partials/etiqueta_estado.html" with tono="ok" texto="Activo" %}{% else %}{% include "panel/partials/etiqueta_estado.html" with tono="neutral" texto="Inactivo" %}{% endif %}</td>
-          <td><a href="{% url 'panel:servicios:campos' tipo.pk %}">Planilla</a></td>
+          <td>
+            <a href="{% url 'panel:servicios:servicio_editar' tipo.pk %}">Editar</a>
+            <a href="{% url 'panel:servicios:campos' tipo.pk %}">Planilla</a>
+          </td>
         </tr>
       {% empty %}
         <tr><td colspan="3">No hay servicios para mostrar.</td></tr>
