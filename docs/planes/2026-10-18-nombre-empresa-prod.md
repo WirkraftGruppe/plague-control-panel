@@ -137,3 +137,8 @@ commit_base: 2e92f78
 
 - cierra: P-separacion-web-10 — la prohibición de formularios públicos vuelve a las Prohibiciones de la skill (T2)
 - cierra: P-separacion-web-11 — parcial: `NOMBRE_EMPRESA` obligatoria en producción (T1) y `docs/despliegue.md` sin PDF ni logos (T2); lo que queda (`auditor-seguridad.md:20,84`, `.gitignore:33`, `dist/`) pasa a P-nombre-empresa-prod-1
+- cierra: P-demo-portatil-1 — la demo portátil se borró en separacion-web T9; su línea `cierra:` con cinco ids no la reconoce `pendientes.py`
+- cierra: P-demo-portatil-2 — la demo portátil se borró en separacion-web T9; su línea `cierra:` con cinco ids no la reconoce `pendientes.py`
+- cierra: P-demo-portatil-3 — la demo portátil se borró en separacion-web T9; su línea `cierra:` con cinco ids no la reconoce `pendientes.py`
+- cierra: P-demo-portatil-4 — la demo portátil se borró en separacion-web T9; su línea `cierra:` con cinco ids no la reconoce `pendientes.py`
+- cierra: P-demo-portatil-5 — la demo portátil se borró en separacion-web T9; su línea `cierra:` con cinco ids no la reconoce `pendientes.py`
