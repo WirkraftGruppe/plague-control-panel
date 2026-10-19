@@ -127,6 +127,7 @@ commit_base: 2e92f78
 ### Problemas
 
 - P-nombre-empresa-prod-1 [observación] Resto de P-separacion-web-11: `.claude/agents/auditor-seguridad.md:20,84` todavía nombra el sitio público; `.gitignore:33` nombra el empaquetador borrado; `dist/` local guarda el paquete viejo.
+- P-nombre-empresa-prod-2 [observación] `pendientes.py` avisa formas inválidas: `2026-10-12-demo-portatil.md:157-163` declara P-demo-portatil-1 a 5 y una decisión fuera de una subsección (nunca contaron como abiertos), y `2026-10-18-separacion-web.md:449` junta cinco ids en una sola línea `cierra:`. Hoy no cambia el conteo; se corrige al tocar esos planes o con una regla del hook.
 
 ### Decisiones
 
