@@ -7,13 +7,20 @@ Planes activos (los hooks derivan el plan de la rama; la línea `Plan activo:` d
 
 | plan | rama | ola actual | pendiente inmediato | sesión |
 |---|---|---|---|---|
-| (ninguno) | main | — | plan chico: `NOMBRE_EMPRESA` obligatoria en producción + P-separacion-web-10 | sesión 2026-10-18 |
+| (ninguno) | main | — | cargar `NOMBRE_EMPRESA` en Railway antes del próximo despliegue (P-nombre-empresa-prod-4) | sesión 2026-10-19 |
 
 Siguiente: 72 abiertos según `pendientes.py` tras el cierre de separacion-web (19 cerrados en su `### Cierra`). Regla de cuándo preguntar: CLAUDE.md § Reglas globales, regla 8.
 
 Problemas abiertos: ver `py -3 .claude/hooks/pendientes.py` (cada plan los declara en `## Pendientes que deja este plan`; los anteriores están en `docs/planes/2026-10-03-pendientes-heredados.md`).
 
 ## Entradas (la más reciente arriba)
+
+### 2026-10-19 — Plan `nombre-empresa-prod` ejecutado y fusionado en `main`
+Hecho:
+- `prod.py` aborta sin `NOMBRE_EMPRESA` (T1); la skill la marca obligatoria en producción y vuelve a prohibir formularios públicos, y `docs/despliegue.md` la marca **Obligatoria** (T2). `CORREO_CONTACTO` sigue opcional por decisión del usuario.
+- Verificación `TODO` en 912b623: `verificador` y `verificador-b` 22/22 PASA, contrato intacto, 657 tests OK; `auditor-seguridad` sin bloqueantes.
+- Fusionado en `main` por pedido del usuario; sus 2 decisiones copiadas a `docs/decisiones.md`. `README.md` y `.env.example` corregidos después del merge como cambio pasivo (P-nombre-empresa-prod-3).
+Pendiente: cargar `NOMBRE_EMPRESA` en Railway antes de desplegar `main`.
 
 ### 2026-10-18 — Fusión de `separacion-web` en `main`
 Hecho:
