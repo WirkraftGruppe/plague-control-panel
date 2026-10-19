@@ -211,9 +211,9 @@ commit_base: f9a7b64
 
 | Tarea | Estado |
 |---|---|
-| T1 | pendiente |
-| T2 | pendiente |
-| T3 | pendiente |
+| T1 | hecha |
+| T2 | hecha |
+| T3 | hecha |
 | T4 | pendiente |
 | T5 | pendiente |
 | T6 | pendiente |
@@ -225,6 +225,11 @@ commit_base: f9a7b64
 |---|---|---|---|---|
 | 2026-10-19 | juez-plan ronda 1 | (sin commit) | RECHAZADO | 7 bloqueantes (campos obligatorios de Producto, FK productos→visitas, tests y templates fuera de Puede tocar, dos transversales, grep que ya pasaba), corregidos |
 | 2026-10-19 | juez-plan ronda 2 | (sin commit) | APROBADO | sin hallazgos |
+| 2026-10-19 | T2 (verificador) | e83371f | PASA 10/10 | spot check del principal: `test_dos_servicios_con_el_mismo_nombre_tienen_slugs_distintos` OK. Incidente: el principal hizo `cd` al worktree de T2 para el spot check; corregido en el acto con `git status` en raíz y worktrees, sin daño |
+| 2026-10-19 | T2 (verificador-b) | e83371f | PASA 10/10 | |
+| 2026-10-19 | T1 (verificador) | 9ecd341 | PASA 17/17 | spot check del principal: `test_dos_litros_son_0_5283_galones` OK; presupuesto 674/700 |
+| 2026-10-19 | T1 (verificador-b) | 9ecd341 | PASA 17/17 | |
+| 2026-10-19 | T3 (integración) | ff9987d | — | diff de T1 y T2 dentro de Puede tocar; `worktree-integrar.sh` T1 exit 0 (677 tests OK) y T2 exit 0 (684 tests OK); criterios de T3 OK |
 
 ## Pendientes que deja este plan
 
