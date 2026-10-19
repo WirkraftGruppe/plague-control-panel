@@ -365,7 +365,7 @@ commit_base: b7dfb6a
 | T8 | hecha (integrada en 5ddf3cd tras la corrección e90cdc7; FALLA formal por contrato modificado aceptado por el usuario) |
 | T9 | hecha (integrada en 04d1cd9; criterios PASA; FALLA formal por el contrato modificado a60430e que aprobó el usuario) |
 | T10 | hecha (integrada en e8894ba; criterios PASA; FALLA formal por el contrato modificado a60430e que aprobó el usuario) |
-| T11 | en curso (integración hecha; falta la verificación TODO y la decisión de merge del usuario) |
+| T11 | hecha (verificación TODO 117/118 x2; FALLA formal por contrato modificado aceptado por el usuario el 2026-10-18; merge a `main` aprobado) |
 | T12 | hecha (integrada en dab35e2; FALLA formal por contrato modificado aceptado por el usuario) |
 
 ### Corridas
@@ -404,6 +404,7 @@ commit_base: b7dfb6a
 | 2026-10-18 | TODO (verificador) | 6a9ea05 | FALLA formal | 117/118 PASA; único FALLA `congelado.sh` (CONTRATO MODIFICADO 9d8aef7, a60430e); suite 656 OK |
 | 2026-10-18 | TODO (verificador-b) | 6a9ea05 | FALLA formal | 117/118 PASA; misma causa |
 | 2026-10-18 | TODO (auditor-seguridad) | 6a9ea05 | sin bloqueantes | superficie pública probada con DEBUG=False; 1 menor (P-separacion-web-10), 4 observaciones (P-separacion-web-11) |
+| 2026-10-18 | TODO | 1c81459 | — | el usuario acepta el FALLA formal del cierre (contrato modificado), aprueba el merge a `main` y pide un plan chico para exigir `NOMBRE_EMPRESA` en producción junto con P-separacion-web-10 |
 
 ## Pendientes que deja este plan
 
@@ -423,6 +424,8 @@ commit_base: b7dfb6a
 
 ### Decisiones
 
+- 2026-10-18 — Se acepta la FALLA formal de `congelado.sh` en la verificación TODO de separacion-web (117/118 PASA en los dos verificadores) y se fusiona en `main` — es solo por las dos modificaciones aprobadas (9d8aef7, a60430e) — decisión del usuario — reemplaza a: (nada)
+- 2026-10-18 — `NOMBRE_EMPRESA` pasa a ser obligatoria en producción, como `SITE_URL`, en un plan chico aparte que suma P-separacion-web-10 — un despliegue sin ella mostraría el nombre de otra empresa — decisión del usuario — reemplaza a: (nada)
 - 2026-10-18 — Se borra la demo portátil (`herramientas/`, `demo.bat`, `docs/demo-cliente.md`); `cargar_demo` y sus módulos quedan como datos de desarrollo; `dist/` y `demo.sqlite3` locales no se borran (son del usuario) y `dist/` sigue en `.gitignore` — la demo ya se usó — decisión del usuario (opción A) — reemplaza a: 2026-10-18 (la demo es solo del panel; una carpeta `dist/prueba-separacion-<id>` por criterio de humo)
 - 2026-10-18 — `NOMBRE_EMPRESA`, `CORREO_CONTACTO` y `SITE_URL` se recortan (`.strip()`) y con solo espacios caen al valor por defecto; `DESCRIPTION` de la API quita el punto final del nombre para no dejar `S.A..` — decidida por Claude, revisable — reemplaza a: (nada)
 - 2026-10-18 — El User-Agent de Nominatim es la función `geocodificacion.user_agent()` (se evalúa en cada consulta) en lugar de la constante `USER_AGENT` — así toma `SITE_URL` y `CORREO_CONTACTO` vigentes y se prueba con `override_settings` — decidida por Claude (implementador T3), revisable — reemplaza a: (nada)
