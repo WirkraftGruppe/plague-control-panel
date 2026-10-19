@@ -107,9 +107,9 @@ commit_base: 2e92f78
 
 | Tarea | Estado |
 |---|---|
-| T1 | en curso |
-| T2 | en curso |
-| T3 | pendiente |
+| T1 | hecha (c9ec157; verificador y verificador-b 6/6 PASA) |
+| T2 | hecha (14b45c5, integrada en 120757e; verificador y verificador-b 8/8 PASA) |
+| T3 | en curso (integración hecha; falta la verificación TODO) |
 
 ### Corridas
 
@@ -118,10 +118,15 @@ commit_base: 2e92f78
 | 2026-10-18 | juez-plan ronda 1 | (sin commit) | RECHAZADO | 3 bloqueantes (backticks en dos grep de T2; el criterio de T3 pasaba por commits ` T1: ` anteriores) y 1 observación (los grep de prod.py se cumplían con el docstring), corregidos |
 | 2026-10-18 | juez-plan ronda 2 | (sin commit) | APROBADO | sin hallazgos |
 | 2026-10-19 | usuario | (sin commit) | — | aprueba el plan y deja `CORREO_CONTACTO` opcional: se quita del alcance antes del commit `docs(plan)` |
+| 2026-10-19 | T1, T2 (verificador) | c9ec157 / 14b45c5 | PASA 14/14 | contrato intacto |
+| 2026-10-19 | T1, T2 (verificador-b) | c9ec157 / 14b45c5 | PASA 14/14 | observación: los criterios de T2 no cubren el párrafo previo al build ni la sección del volumen (revisados a mano en el diff) |
+| 2026-10-19 | T3 pasos 1-2 | 120757e | — | `cambios.sh` de T2 solo en sus dos archivos; spot check `grep "Ninguna ruta pública"` OK; `worktree-integrar.sh` T2 exit 0, 657 tests OK |
 
 ## Pendientes que deja este plan
 
 ### Problemas
+
+- P-nombre-empresa-prod-1 [observación] Resto de P-separacion-web-11: `.claude/agents/auditor-seguridad.md:20,84` todavía nombra el sitio público; `.gitignore:33` nombra el empaquetador borrado; `dist/` local guarda el paquete viejo.
 
 ### Decisiones
 
@@ -129,3 +134,6 @@ commit_base: 2e92f78
 - 2026-10-19 — `CORREO_CONTACTO` sigue opcional en producción, con su valor por defecto — decisión del usuario — reemplaza a: (nada)
 
 ### Cierra
+
+- cierra: P-separacion-web-10 — la prohibición de formularios públicos vuelve a las Prohibiciones de la skill (T2)
+- cierra: P-separacion-web-11 — parcial: `NOMBRE_EMPRESA` obligatoria en producción (T1) y `docs/despliegue.md` sin PDF ni logos (T2); lo que queda (`auditor-seguridad.md:20,84`, `.gitignore:33`, `dist/`) pasa a P-nombre-empresa-prod-1
