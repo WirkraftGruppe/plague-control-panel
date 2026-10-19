@@ -205,7 +205,7 @@ Worktree: sí (`worktrees/catalogo-stock-T<n>`, base `plan/catalogo-stock`). Rut
 <!-- Corte del congelado: desde este encabezado hacia abajo, el principal lo actualiza durante la
 ejecución. Lo de arriba no se toca sin un commit `docs(plan): catalogo-stock — modificado: <motivo>`. -->
 
-commit_base: (pendiente)
+commit_base: f9a7b64
 
 ### Estado de subtareas
 
@@ -223,6 +223,8 @@ commit_base: (pendiente)
 
 | Fecha/hora | Alcance | HEAD verificado | Veredicto | Notas |
 |---|---|---|---|---|
+| 2026-10-19 | juez-plan ronda 1 | (sin commit) | RECHAZADO | 7 bloqueantes (campos obligatorios de Producto, FK productos→visitas, tests y templates fuera de Puede tocar, dos transversales, grep que ya pasaba), corregidos |
+| 2026-10-19 | juez-plan ronda 2 | (sin commit) | APROBADO | sin hallazgos |
 
 ## Pendientes que deja este plan
 
