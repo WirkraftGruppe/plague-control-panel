@@ -216,7 +216,7 @@ commit_base: f9a7b64
 | T3 | hecha |
 | T4 | hecha |
 | T5 | hecha |
-| T6 | pendiente |
+| T6 | hecha |
 | T7 | pendiente |
 
 ### Corridas
@@ -233,6 +233,9 @@ commit_base: f9a7b64
 | 2026-10-19 | T4 (verificador) | 56f0fd9 | PASA 18/18 | spot check del principal: `test_foto_invalida_no_deja_movimiento` OK; diff dentro de Puede tocar (25 archivos); suite 698 OK; presupuesto 662/900 |
 | 2026-10-19 | T4 (verificador-b) | 56f0fd9 | PASA 18/18 | |
 | 2026-10-19 | T5 (integración) | b0d5a72 | — | `worktree-integrar.sh` T4 exit 0 (698 tests OK); criterio de T5 OK |
+| 2026-10-19 | T6 (verificador) | d41b6bf | PASA 7/7 | spot check del principal: diff de 3 archivos de docs, `unidades_permitidas` presente en el OpenAPI |
+| 2026-10-19 | T6 (verificador-b) | d41b6bf | PASA 7/7 | |
+| 2026-10-19 | T7 pasos 1-2 | (ver HEAD) | — | `worktree-integrar.sh` T6 exit 0 |
 
 ## Pendientes que deja este plan
 
