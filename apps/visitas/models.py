@@ -11,6 +11,7 @@ from django.dispatch import receiver
 from simple_history.models import HistoricalRecords
 
 from apps.accounts.models import User
+from apps.productos import unidades
 
 from . import imagenes
 
@@ -269,9 +270,24 @@ class ProductoAplicado(models.Model):
     )
     lote = models.CharField("lote", max_length=60)
     dosis = models.DecimalField("dosis", max_digits=10, decimal_places=3)
-    unidad = models.CharField("unidad", max_length=20)
-    cantidad = models.DecimalField(
-        "cantidad", max_digits=10, decimal_places=3, null=True, blank=True
+    unidad_dosis = models.CharField("unidad de la dosis", max_length=20)
+    unidad = models.CharField(
+        "unidad de la cantidad", max_length=10, choices=unidades.CHOICES
+    )
+    cantidad = models.DecimalField("cantidad", max_digits=10, decimal_places=3)
+    cantidad_base = models.DecimalField(
+        "cantidad en unidad base",
+        max_digits=14,
+        decimal_places=4,
+        help_text="Calculada por el servidor a partir de la cantidad y su unidad.",
+    )
+    movimiento = models.OneToOneField(
+        "productos.MovimientoStock",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="producto_aplicado",
+        verbose_name="movimiento de stock",
     )
 
     history = HistoricalRecords()

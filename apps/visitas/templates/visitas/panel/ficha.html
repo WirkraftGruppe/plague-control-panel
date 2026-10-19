@@ -54,7 +54,7 @@
       {% endif %}
       {% if revision.productos.all %}
         <h4>Productos aplicados</h4>
-        <ul>{% for aplicado in revision.productos.all %}<li>{{ aplicado.producto }} · lote {{ aplicado.lote }} · {{ aplicado.dosis }} {{ aplicado.unidad }}{% if aplicado.cantidad %} · cantidad {{ aplicado.cantidad }}{% endif %}</li>{% endfor %}</ul>
+        <ul>{% for aplicado in revision.productos.all %}<li>{{ aplicado.producto }} · lote {{ aplicado.lote }} · dosis {{ aplicado.dosis }} {{ aplicado.unidad_dosis }} · cantidad {{ aplicado.cantidad|floatformat:"-3" }} {{ aplicado.unidad }}</li>{% endfor %}</ul>
       {% endif %}
       {% if revision.fotos.all %}
         <div class="fotos">

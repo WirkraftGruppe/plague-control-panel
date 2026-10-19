@@ -126,7 +126,9 @@ class RecorridoTests(TestCase):
                 "productos-0-producto": self.producto.pk,
                 "productos-0-lote": "L7",
                 "productos-0-dosis": "1.5",
-                "productos-0-unidad": "g",
+                "productos-0-unidad_dosis": "g",
+                "productos-0-cantidad": "2",
+                "productos-0-unidad": "unidad",
                 "fotos": [
                     SimpleUploadedFile("f.jpg", _jpeg(), content_type="image/jpeg")
                 ],

@@ -156,8 +156,9 @@ class CicloVisitaTests(SinArchivosMixin, TestCase):
             "producto": self.producto.pk,
             "lote": "L1",
             "dosis": "2.5",
-            "unidad": "ml/l",
-            "cantidad": None,
+            "unidad_dosis": "ml/l",
+            "cantidad": "1",
+            "unidad": "unidad",
         }
         revision = self.revisar(visita, productos_aplicados=[item])
         self.assertEqual(revision.orden, 1)
@@ -731,8 +732,9 @@ class ManualPorPuntosTests(SinArchivosMixin, TestCase):
             "producto": self.producto.pk,
             "lote": "L1",
             "dosis": "2.5",
-            "unidad": "ml/l",
-            "cantidad": None,
+            "unidad_dosis": "ml/l",
+            "cantidad": "1",
+            "unidad": "unidad",
         }
         CampoPlanilla.objects.create(
             tipo_servicio=self.proyecto.tipo_servicio,
@@ -849,8 +851,9 @@ class RegistrarRevisionTests(SinArchivosMixin, TestCase):
             "producto": (producto or self.producto).pk,
             "lote": "L1",
             "dosis": "2.5",
-            "unidad": "ml/l",
-            "cantidad": None,
+            "unidad_dosis": "ml/l",
+            "cantidad": "1",
+            "unidad": "unidad",
         }
 
     def test_abrir_limpia_motivo_manual_de_la_pendiente(self):
@@ -920,7 +923,7 @@ class RegistrarRevisionTests(SinArchivosMixin, TestCase):
         self.producto.save()
         with self.assertRaises(ValidationError) as contexto:
             self.registrar(productos_aplicados=[self.item_valido()])
-        self.assertIn("productos_aplicados", contexto.exception.message_dict)
+        self.assertIn("productos_aplicados.0.producto", contexto.exception.message_dict)
         self.assertNadaCreado()
 
     def test_mas_productos_que_el_tope_se_rechaza(self):

@@ -86,7 +86,7 @@ class FotoInline(SoloLectura, admin.TabularInline):
 class ProductoAplicadoInline(SoloLectura, admin.TabularInline):
     model = ProductoAplicado
     extra = 0
-    fields = ("producto", "lote", "dosis", "unidad", "cantidad")
+    fields = ("producto", "lote", "dosis", "unidad_dosis", "cantidad", "unidad")
 
 
 class RevisionInline(SoloLectura, admin.TabularInline):
@@ -194,4 +194,13 @@ class FotoAdmin(SoloLectura, admin.ModelAdmin):
 
 @admin.register(ProductoAplicado)
 class ProductoAplicadoAdmin(SoloLectura, admin.ModelAdmin):
-    list_display = ("id", "revision", "producto", "lote", "dosis", "unidad")
+    list_display = (
+        "id",
+        "revision",
+        "producto",
+        "lote",
+        "dosis",
+        "unidad_dosis",
+        "cantidad",
+        "unidad",
+    )

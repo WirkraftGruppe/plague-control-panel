@@ -19,7 +19,7 @@ from django.utils import timezone
 from PIL import Image
 
 from apps.accounts.models import User
-from apps.productos.models import Producto
+from apps.productos.models import MovimientoStock, Producto
 from apps.proyectos.models import Proyecto
 from apps.servicios.models import CampoPlanilla
 from apps.sitios.models import PuntoControl
@@ -270,7 +270,14 @@ class FichaVisitaTests(BaseTests):
         )
         foto = Foto.objects.create(revision=segunda, imagen="visitas/fotos/z.jpg")
         ProductoAplicado.objects.create(
-            revision=segunda, producto=producto, lote="L9", dosis=1, unidad="ml/l"
+            revision=segunda,
+            producto=producto,
+            lote="L9",
+            dosis=1,
+            unidad_dosis="ml/l",
+            cantidad=2,
+            unidad="unidad",
+            cantidad_base=2,
         )
         self.visita.esquema_planilla = [
             {"clave": "firma", "etiqueta": "Firmó el cliente", "tipo": "texto"}
@@ -439,7 +446,9 @@ class ManualTests(BaseTests):
             "productos-0-producto": self.producto.pk,
             "productos-0-lote": "L1",
             "productos-0-dosis": "2.5",
-            "productos-0-unidad": "ml/l",
+            "productos-0-unidad_dosis": "ml/l",
+            "productos-0-cantidad": "3",
+            "productos-0-unidad": "unidad",
         }
         datos.update(extra)
         return datos
@@ -544,6 +553,14 @@ class ManualTests(BaseTests):
         self.client.post(self.url, self._datos(puntos=[self.punto.pk, sala.pk]))
         visita = Visita.objects.exclude(pk=self.visita.pk).get()
         self.assertEqual([r.punto for r in visita.revisiones.all()], [self.punto, sala])
+
+    def test_manual_unidad_ajena_al_producto_marca_el_error_en_su_fila(self):
+        respuesta = self.client.post(
+            self.url, self._datos(**{"productos-0-unidad": "kg"})
+        )
+        fila = respuesta.context["productos"].forms[0]
+        self.assertIn("unidad", fila.errors)
+        self.assertFalse(MovimientoStock.objects.exists())
 
     def test_manual_elige_puntos_revisados(self):
         sala = PuntoControl.objects.create(

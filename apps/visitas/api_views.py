@@ -138,8 +138,11 @@ class CrearRevisionView(APIView):
         summary="Registrar una revisión",
         description=(
             "Multipart. `qr_codigo` es el del punto escaneado. `datos` y "
-            "`productos_aplicados` son texto JSON; `fotos` se repite de 1 a 10 veces "
-            "(hasta 8 MB cada una). Un `cliente_uuid` ya registrado responde 409; "
+            "`productos_aplicados` son texto JSON, una lista donde cada ítem lleva "
+            "`producto`, `lote`, `dosis`, `unidad_dosis`, `cantidad` y `unidad` (la "
+            "unidad de la cantidad, válida para el producto); `fotos` se repite de 1 "
+            "a 10 veces (hasta 8 MB cada una). Un `cliente_uuid` ya registrado "
+            "responde 409; "
             "`revision` y `visita` solo vienen si son del mismo empleado. Un "
             "administrador que escanea un punto sin coordenadas, con precisión de a lo "
             "sumo 50 m, las fija."

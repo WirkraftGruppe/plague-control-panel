@@ -18,7 +18,9 @@ from apps.accounts.models import User
 from apps.clientes.models import Cliente
 from apps.panel.demo import _es_sqlite
 from apps.panel.demo_datos import CLIENTES, MARCA_DEMO
-from apps.productos.models import Producto
+from apps.productos.models import MovimientoStock, Producto
+from apps.productos.services import stock
+from apps.productos.unidades import magnitud_de, unidades_permitidas
 from apps.proyectos.models import Proyecto
 from apps.servicios.models import TipoServicio
 from apps.sitios.models import Plano, PuntoControl, Sitio
@@ -269,3 +271,57 @@ class CargarDemoClienteTests(TestCase):
         self.assertFalse(Sitio.history.filter(nombre="Planta Demo Norte").exists())
         self.assertFalse(Proyecto.history.filter(titulo="Control mensual").exists())
         self.assertEqual(Cliente.objects.count(), 4)
+
+
+@override_settings(MEDIA_ROOT=MEDIA_DEMO, DEBUG=True)
+class CargarDemoStockTests(TestCase):
+    """Productos con unidades, ingreso inicial y consumo de cada aplicado."""
+
+    @classmethod
+    def setUpTestData(cls):
+        call_command("cargar_demo", stdout=StringIO())
+
+    def test_productos_en_las_tres_magnitudes_y_ambos_modos(self):
+        productos = Producto.objects.all()
+        magnitudes = {magnitud_de(p.unidad_base) for p in productos}
+        self.assertEqual(magnitudes, {"volumen", "masa", "conteo"})
+        self.assertEqual(
+            set(productos.values_list("modo_unidad", flat=True)),
+            {"unica", "equivalentes"},
+        )
+
+    def test_cada_producto_tiene_ingreso_inicial(self):
+        for producto in Producto.objects.all():
+            ingresos = producto.movimientos.filter(tipo=MovimientoStock.Tipo.INGRESO)
+            self.assertEqual(ingresos.count(), 1, producto)
+            self.assertEqual(
+                ingresos.get().cantidad_base % producto.contenido_por_envase, 0
+            )
+            self.assertGreater(stock(producto), 0, producto)
+
+    def test_cada_aplicado_tiene_su_consumo(self):
+        aplicados = ProductoAplicado.objects.select_related("movimiento")
+        self.assertTrue(aplicados.exists())
+        for aplicado in aplicados:
+            movimiento = aplicado.movimiento
+            self.assertEqual(movimiento.tipo, MovimientoStock.Tipo.CONSUMO)
+            self.assertEqual(movimiento.producto, aplicado.producto)
+            self.assertEqual(movimiento.cantidad_base, -aplicado.cantidad_base)
+            self.assertIn(aplicado.unidad, unidades_permitidas(aplicado.producto))
+        usadas = set(aplicados.values_list("unidad", flat=True))
+        self.assertGreater(len(usadas), 1)
+        self.assertEqual(
+            MovimientoStock.objects.filter(tipo="consumo").count(), aplicados.count()
+        )
+
+    def test_segunda_corrida_limpia_movimientos_sin_error(self):
+        antes = set(MovimientoStock.objects.values_list("pk", flat=True))
+        with (
+            tempfile.TemporaryDirectory() as media,
+            override_settings(MEDIA_ROOT=media),
+        ):
+            call_command("cargar_demo", stdout=StringIO())
+        despues = set(MovimientoStock.objects.values_list("pk", flat=True))
+        self.assertEqual(len(despues), len(antes))
+        self.assertFalse(antes & despues)
+        self.assertEqual(Producto.objects.count(), 3)

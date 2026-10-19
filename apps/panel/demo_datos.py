@@ -85,11 +85,43 @@ SITIOS = (
     ),
 )
 
-# (nombre comercial sin sufijo, principio activo, presentación, unidad, registro)
+# (nombre comercial sin sufijo, principio activo, presentación, unidad de dosis,
+# registro, unidad base, contenido por envase, modo de unidad, envases del ingreso
+# inicial): masa, conteo y volumen, con unidades equivalentes o solo la base.
 PRODUCTOS = (
-    ("Gel cucarachicida", "Fipronil", "Jeringa 30 g", "g", "DEMO-001"),
-    ("Cebo rodenticida en bloque", "Brodifacoum", "Bloque 20 g", "g", "DEMO-002"),
-    ("Insecticida residual", "Cipermetrina", "Concentrado 1 l", "ml/l", "DEMO-003"),
+    (
+        "Gel cucarachicida",
+        "Fipronil",
+        "Jeringa 30 g",
+        "g",
+        "DEMO-001",
+        "g",
+        Decimal("30"),
+        "equivalentes",
+        Decimal("400"),
+    ),
+    (
+        "Cebo rodenticida en bloque",
+        "Brodifacoum",
+        "Caja de 50 bloques",
+        "g",
+        "DEMO-002",
+        "unidad",
+        Decimal("50"),
+        "unica",
+        Decimal("100"),
+    ),
+    (
+        "Insecticida residual",
+        "Cipermetrina",
+        "Concentrado 1 l",
+        "ml/l",
+        "DEMO-003",
+        "l",
+        Decimal("1"),
+        "equivalentes",
+        Decimal("200"),
+    ),
 )
 
 # Planilla de punto que se usa si el tipo de servicio no declara campos.
