@@ -151,8 +151,8 @@ Para ver las rutas de una app: `grep -n "path(" apps/<app>/api_urls.py apps/<app
 
 ## Variables de entorno
 - Requeridas: `SECRET_KEY`, `DJANGO_ENV`, `DATABASE_URL`
-- Obligatoria en producción: `SITE_URL` (base para el contenido de los QR; sin ella `prod.py` aborta el arranque)
-- Opcionales: `ALLOWED_HOSTS`, `MEDIA_ROOT`, `STORAGE_BACKEND` (`local` | `s3`), `AWS_*` cuando `s3`, `NOMBRE_EMPRESA` (nombre de la empresa), `CORREO_CONTACTO` (correo de contacto)
+- Obligatorias en producción: `SITE_URL` (base para el contenido de los QR) y `NOMBRE_EMPRESA` (nombre de la empresa); sin ellas `prod.py` aborta el arranque
+- Opcionales: `ALLOWED_HOSTS`, `MEDIA_ROOT`, `STORAGE_BACKEND` (`local` | `s3`), `AWS_*` cuando `s3`, `CORREO_CONTACTO` (correo de contacto)
 - Plantilla: `.env.example` (versionado). `.env` no se versiona y no se lee.
 
 ## Prohibiciones de código
@@ -160,6 +160,7 @@ Para ver las rutas de una app: `grep -n "path(" apps/<app>/api_urls.py apps/<app
 - Ningún queryset de la API devuelve visitas de otro empleado a un empleado: `get_queryset()` filtra por `request.user` salvo rol administrador. `if user.is_staff` nunca decide acceso a datos.
 - Ninguna regla de negocio en templates ni en `admin.py`; van en `services.py` de la app que corresponde.
 - Ninguna plantilla ni código escribe el nombre de una empresa: sale de `NOMBRE_EMPRESA`.
+- Ninguna ruta pública (`/`, `/q/<uuid>/`) tiene formularios que escriban en la base ni envíen correo.
 - Coordenadas y fotos son datos personales de los empleados (dónde estuvieron y cuándo): no se exponen en `/q/<uuid>/` ni en ninguna página pública, y no se registran en logs.
 - No se escriben migraciones a mano salvo `RunPython` justificado en su docstring.
 - Sin `print` en código de aplicación; logging con el logger del módulo.
