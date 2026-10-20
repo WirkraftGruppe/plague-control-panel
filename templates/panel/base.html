@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static %}
+{% load static visitas_ui %}
 {% block tema %}claro{% endblock %}
 {% block title %}Panel · Detach{% endblock %}
 {% block extra_head %}
@@ -13,14 +13,13 @@
   <aside class="barra-lateral">
     <a class="panel-logo" href="/panel/"><img src="{% static 'img/logo.png' %}" alt="{{ NOMBRE_EMPRESA }}"></a>
     <nav aria-label="Principal">
-      {% url 'panel:inicio' as u %}{% if u %}<a href="{{ u }}">Tablero</a>{% endif %}
-      {% url 'panel:mapa' as u %}{% if u %}<a href="{{ u }}">Mapa</a>{% endif %}
-      {% url 'panel:clientes:listado' as u %}{% if u %}<a href="{{ u }}">Clientes</a>{% endif %}
       {% url 'panel:sitios:listado' as u %}{% if u %}<a href="{{ u }}">Sitios</a>{% endif %}
-      {% url 'panel:proyectos:listado' as u %}{% if u %}<a href="{{ u }}">Proyectos</a>{% endif %}
-      {% url 'panel:visitas:listado' as u %}{% if u %}<a href="{{ u }}">Visitas</a>{% endif %}
-      {% url 'panel:productos:listado' as u %}{% if u %}<a href="{{ u }}">Productos</a>{% endif %}
-      {% url 'panel:servicios:listado' as u %}{% if u %}<a href="{{ u }}">Planillas</a>{% endif %}
+      {% url 'panel:mapa' as u %}{% if u %}<a href="{{ u }}">Mapa</a>{% endif %}
+      {% url 'panel:visitas:listado' as u %}{% if u %}<a href="{{ u }}">Turnos{% incidencias_sin_revisar as pendientes %}{% if pendientes %} <span class="contador-menu">{{ pendientes }}</span>{% endif %}</a>{% endif %}
+      {% url 'panel:clientes:listado' as u %}{% if u %}<a href="{{ u }}">Clientes</a>{% endif %}
+      <span class="menu-grupo">Catálogo</span>
+      {% url 'panel:servicios:listado' as u %}{% if u %}<a class="menu-subitem" href="{{ u }}">Servicios</a>{% endif %}
+      {% url 'panel:productos:listado' as u %}{% if u %}<a class="menu-subitem" href="{{ u }}">Productos</a>{% endif %}
       {% url 'panel:usuarios:listado' as u %}{% if u %}<a href="{{ u }}">Usuarios</a>{% endif %}
     </nav>
   </aside>

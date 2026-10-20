@@ -1,0 +1,18 @@
+{# Lista de turnos de un sitio; `fecha_pendiente` muestra la fecha programada en vez de la realizada. #}
+{% if turnos %}
+<table class="tabla">
+  <thead><tr><th scope="col">Turno</th><th scope="col">Operario</th><th scope="col">{% if fecha_pendiente %}Programado{% else %}Realizado{% endif %}</th><th scope="col">Puntos</th></tr></thead>
+  <tbody>
+    {% for turno in turnos %}
+    <tr>
+      <td><a href="{% url 'panel:visitas:ficha' turno.pk %}">Turno {{ turno.pk }}</a></td>
+      <td>{{ turno.empleado.get_full_name|default:turno.empleado.username }}</td>
+      <td>{% if fecha_pendiente %}{{ turno.programada_para|date:"d/m/Y"|default:"—" }}{% else %}{{ turno.cerrada_en|date:"d/m/Y H:i"|default:"—" }}{% endif %}</td>
+      <td>{{ turno.items.all|length }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p>{{ vacio }}</p>
+{% endif %}
