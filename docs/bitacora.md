@@ -1,19 +1,27 @@
 # Bitácora de MAControl
 
 ## Estado actual
-Plan activo: (ninguno)
+Plan activo: flujo-sitio
 
 Planes activos (los hooks derivan el plan de la rama; la línea `Plan activo:` de arriba es el respaldo para la raíz):
 
 | plan | rama | ola actual | pendiente inmediato | sesión |
 |---|---|---|---|---|
-| (ninguno) | main | — | planificar `flujo-sitio` (cierra P-catalogo-stock-1) | sesión 2026-10-20 |
+| flujo-sitio | plan/flujo-sitio | 4 (cierre) | decisión del usuario sobre el merge; plan aparte para renombrar la skill `convenciones-proyecto` (P-flujo-sitio-10) | sesión 2026-10-20 |
 
 Siguiente (orden decidido el 2026-10-19): `flujo-sitio` → `diseno-panel` → `multiempresa` → despliegue. El despliegue en Railway espera a que los tres planes estén en `main`, para no tener que migrar datos reales. Problemas abiertos: ver `pendientes.py`. Regla de cuándo preguntar: CLAUDE.md § Reglas globales, regla 8.
 
 Problemas abiertos: ver `py -3 .claude/hooks/pendientes.py` (cada plan los declara en `## Pendientes que deja este plan`; los anteriores están en `docs/planes/2026-10-03-pendientes-heredados.md`).
 
 ## Entradas (la más reciente arriba)
+
+### 2026-10-20 — Plan `flujo-sitio` ejecutado (T1 a T11), sin fusionar
+Hecho:
+- `juez-plan` rechazó la ronda 1 (5 bloqueantes) y aprobó la 2. Cuatro olas integradas en `plan/flujo-sitio` (8d84bb2): tope de `cantidad_base` y `unidad_base` fija (T1); timeout propio de la suite y criterios repetidos una vez en el hook de cierre (T2); servicio, frecuencia y vencimiento por punto y responsable del sitio (T3); `apps/proyectos` borrada, visita por sitio, `ItemTurno`, servicio y `fuera_de_turno` por revisión, fotos 0 a 2 y migraciones rehechas en todas las apps (T5); API y contrato (T7); panel con menú nuevo, Nuevo turno y Cargar visita (T8); documentación (T10).
+- Verificación `TODO` en 8d84bb2: `verificador` y `verificador-b` 121/122, 717 tests OK; único FALLA P-flujo-sitio-10 (el `grep-0` de T10 encuentra `name: convenciones-proyecto`; el usuario decidió renombrar la skill en un plan aparte). `auditor-seguridad` sin bloqueantes (P-flujo-sitio-11 importante).
+- Base local: `db.sqlite3` recreada con `migrate` + `cargar_demo`; la anterior quedó en `../db.sqlite3.antes-flujo-sitio` (fuera del repositorio).
+- Errores del principal sin daño: propuso T12 sin citar la decisión 2026-10-04 (se deshizo el commit de contrato modificado y fue a P-flujo-sitio-1, plan aparte); dos criterios del plan eran contradictorios (P-flujo-sitio-3 y -10); entró con `cd` a worktrees; informó un exit 0 de un `echo` en una integración rechazada.
+Pendiente: decisión del usuario sobre el merge en `main` y sobre las decisiones revisables; plan aparte para P-flujo-sitio-10 y P-flujo-sitio-1; después `diseno-panel`.
 
 ### 2026-10-20 — `catalogo-stock` fusionado en `main`
 Hecho:

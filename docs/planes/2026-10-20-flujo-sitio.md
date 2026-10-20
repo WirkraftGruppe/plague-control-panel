@@ -359,6 +359,10 @@ commit_base: fefbf2d
 | 2026-10-20 | T8 (verificador) | 8241879 | PASA 17/17 | suite 709 tests en 391 s; sin `apps/panel/`, sin `<script>` ni `style=` en línea; contraprueba: 9 tests OK |
 | 2026-10-20 | T9 (principal) | d7d9e5b | PASA 2/2 | T7 y T8 integrados; el primer intento de T7 lo rechazó un archivo sin seguimiento en la raíz (respaldo de la base, movido fuera del repo) |
 | 2026-10-20 | T10 (verificador) | aa363f4 | FALLA 1/6 | único FALLA: el `grep-0` encuentra `.claude/skills/convenciones-proyecto/SKILL.md:2:name: convenciones-proyecto` (P-flujo-sitio-10); muestreo de docs/01 contra el código coincide; integrado igual en `plan/flujo-sitio`, T10 queda `en curso` |
+| 2026-10-20 | TODO (verificador) | 2993dda | FALLA 3/122 | P-flujo-sitio-10 y dos `[grep-0]` de referencias a proyecto (T5 y cierre) por tests de T7 y T8 que nombraban lo quitado; corregidos en 0c6b32a (T7:) y 8d84bb2 (T8:) |
+| 2026-10-20 | TODO (auditor-seguridad) | 2993dda | sin bloqueantes | 1 importante (P-flujo-sitio-11), 1 menor (P-flujo-sitio-12), 3 observaciones (P-flujo-sitio-13 a -15); migraciones sin restricciones perdidas |
+| 2026-10-20 | TODO (verificador-b) | 8d84bb2 | FALLA 1/122 | único FALLA: P-flujo-sitio-10; suite 717 tests en 391 s; contrato intacto (una corrida previa la detuvo el usuario) |
+| 2026-10-20 | TODO (verificador) | 8d84bb2 | FALLA 1/122 | coincide con verificador-b; los dos tests corregidos siguen probando lo mismo (el del menú delega la ausencia de la sección quitada al `[grep-0]` de T8) |
 
 ## Pendientes que deja este plan
 
@@ -374,6 +378,11 @@ commit_base: fefbf2d
 - P-flujo-sitio-8 [observación] El plano coloreado por estado de la ficha del sitio está en la pestaña "Planos"; la pestaña por defecto muestra la tabla de puntos con su etiqueta de estado (implementador T8).
 - P-flujo-sitio-9 [observación] Los marcadores del plano en "Nuevo turno" responden solo a clic (`keyboard: false`); la vía accesible es la lista con casillas (implementador T8).
 - P-flujo-sitio-10 [importante] Defecto del contrato: el primer `[grep-0]` de T10 incluye `.claude/skills/convenciones-proyecto/SKILL.md`, cuyo frontmatter es `name: convenciones-proyecto`; no puede pasar sin renombrar la skill. El usuario decidió renombrarla en un plan aparte (cambia `.claude/skills/`, CLAUDE.md, agentes y planes); hasta entonces T10 no se marca `hecha` y el plan no llega a TODO PASA (verificador T10).
+- P-flujo-sitio-11 [importante] El resolver de QR (`apps/sitios/api_views.py:77-101`, `_servicio_del_punto`) busca el ítem en cualquier turno propio abierto o pendiente, pero la revisión va a la visita que devuelve `abrir_visita` (la abierta): con una abierta sin ítems y una pendiente con ítem en el punto, el teléfono muestra `en_turno=true` y el esquema del ítem y el servidor registra con el servicio del punto (o 400 sin servicio). Corrección: buscar el ítem solo en la visita destino (abierta propia del sitio, o la pendiente que tomaría `abrir_visita`), con un test que falle antes (auditor-seguridad, TODO).
+- P-flujo-sitio-12 [menor] `/admin/` permite cambiar el `sitio` de un turno pendiente con ítems (`apps/visitas/admin.py:36-56,153-164`) y crear pendientes sin ítems; `Visita.clean` no lo valida. Corrección: `sitio` de solo lectura si hay ítems (o validar en `clean` que los ítems sean del sitio) y considerar `has_add_permission = False` (auditor-seguridad, TODO).
+- P-flujo-sitio-13 [observación] La definición de `auditor-seguridad` (`.claude/agents/auditor-seguridad.md`) todavía trata "visita `origen=app` sin foto" como hallazgo; contradice la decisión de fotos 0 a 2 (auditor-seguridad, TODO).
+- P-flujo-sitio-14 [menor] `_servicio_de_la_revision` y el resolver no miran `TipoServicio.activo`: una revisión se registra con un servicio dado de baja; `PuntoProgramacion` acepta POST sobre un punto inactivo (`apps/sitios/panel_views.py:343-374`). Decisión de producto; relacionado con P-flujo-sitio-2 (auditor-seguridad, TODO).
+- P-flujo-sitio-15 [observación] [despliegue] Las migraciones rehechas exigen que producción no tenga el esquema viejo: antes de desplegar, `manage.py showmigrations sitios visitas` contra la base de producción no debe mostrar `0008_ubicacion_fijada_y_precision`; quitar `proyecto` de `POST /visitas/abrir/` solo vale si no hay binarios de la app publicados (auditor-seguridad, TODO).
 
 ### Decisiones
 
