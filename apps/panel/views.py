@@ -1,35 +1,28 @@
-"""Vistas transversales del panel: tablero, mapa, ingreso y salida."""
+"""Vistas transversales del panel: inicio, mapa, ingreso y salida."""
 
 from csp.decorators import csp_update
 from django.contrib.auth.views import LoginView, LogoutView
 from django.http import JsonResponse
 from django.utils.decorators import method_decorator
 from django.views import View
-from django.views.generic import TemplateView
+from django.views.generic import RedirectView, TemplateView
 
 from apps.accounts.limites import LimiteIngresoMixin
 from apps.accounts.mixins import AdministradorRequeridoMixin
 from apps.servicios.models import TipoServicio
-from apps.sitios.estado import EstadoPunto
+from apps.sitios.estado import EstadoVencimiento
 
 from .forms import FormularioIngreso
 from .mapa import ORIGEN_TESELAS, sitios_para_mapa
-from .tablero import contadores, proyectos_urgentes
 
 ID_MAXIMO = 2**63 - 1  # máximo de BigAutoField
 LARGO_MAXIMO = len(str(ID_MAXIMO))
 
 
-class InicioView(AdministradorRequeridoMixin, TemplateView):
-    """Tablero: contadores y los proyectos activos más urgentes."""
+class InicioView(AdministradorRequeridoMixin, RedirectView):
+    """El inicio del panel es el listado de sitios."""
 
-    template_name = "panel/tablero.html"
-
-    def get_context_data(self, **kwargs):
-        contexto = super().get_context_data(**kwargs)
-        contexto["contadores"] = contadores()
-        contexto["urgentes"] = proyectos_urgentes()
-        return contexto
+    pattern_name = "panel:sitios:listado"
 
 
 @method_decorator(csp_update({"img-src": ORIGEN_TESELAS}), name="dispatch")
@@ -41,7 +34,7 @@ class MapaView(AdministradorRequeridoMixin, TemplateView):
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
         contexto["servicios"] = TipoServicio.objects.order_by("nombre")
-        contexto["estados"] = EstadoPunto.choices
+        contexto["estados"] = EstadoVencimiento.choices
         return contexto
 
 
@@ -50,7 +43,7 @@ class MapaDatosView(AdministradorRequeridoMixin, View):
 
     def get(self, request):
         estado = request.GET.get("estado")
-        if estado not in EstadoPunto.values:
+        if estado not in EstadoVencimiento.values:
             estado = None
         sitios = sitios_para_mapa(
             cliente=_entero(request.GET.get("cliente")),

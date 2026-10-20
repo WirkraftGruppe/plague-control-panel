@@ -1,5 +1,0 @@
-{% extends "panel/base.html" %}
-{% block panel_contenido %}
-  {% url 'panel:proyectos:listado' as listado %}
-  {% include "panel/partials/formulario.html" with form=form titulo=titulo cancelar_url=listado %}
-{% endblock %}

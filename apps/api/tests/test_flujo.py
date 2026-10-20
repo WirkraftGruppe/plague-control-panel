@@ -16,7 +16,6 @@ from rest_framework.test import APIClient
 from apps.accounts.models import User
 from apps.clientes.models import Cliente
 from apps.productos.models import Producto
-from apps.proyectos.models import Proyecto
 from apps.servicios.models import CampoPlanilla, TipoServicio
 from apps.sitios.models import PuntoControl, Sitio
 from apps.visitas.models import ProductoAplicado, Visita
@@ -66,15 +65,10 @@ class FlujoEmpleadoTests(TestCase):
         self.otro = User.objects.create_user(
             "otro", password=CLAVE, rol=User.Rol.EMPLEADO
         )
-        Proyecto.objects.create(
-            sitio=self.sitio,
-            tipo_servicio=tipo,
-            titulo="Control",
-            encargado_inicial=self.empleado,
-            encargado_actual=self.empleado,
-        )
         Producto.objects.create(nombre_comercial="Cebo X")
         self.punto = self.sitio.puntos.get(orden=0)
+        self.punto.servicio = tipo
+        self.punto.save()
 
     def _cliente_con_token(self, usuario):
         """Cliente que se autentica solo con el JWT obtenido del endpoint real."""
@@ -94,8 +88,7 @@ class FlujoEmpleadoTests(TestCase):
 
         qr = api.post(f"/api/v1/qr/{self.punto.qr_codigo}/resolver/")
         self.assertEqual(qr.status_code, 200, qr.content)
-        proyecto = qr.data["proyectos"][0]
-        self.assertEqual(proyecto["esquema_punto"][0]["clave"], "cebos")
+        self.assertEqual(qr.data["punto"]["id"], self.punto.id)
 
         catalogo = api.get("/api/v1/productos/")
         self.assertEqual(catalogo.status_code, 200, catalogo.content)
@@ -113,7 +106,7 @@ class FlujoEmpleadoTests(TestCase):
         ]
         abierta = api.post(
             "/api/v1/visitas/abrir/",
-            {"proyecto": proyecto["id"], "qr_codigo": str(self.punto.qr_codigo)},
+            {"qr_codigo": str(self.punto.qr_codigo)},
             format="json",
         )
         self.assertEqual(abierta.status_code, 201, abierta.content)
@@ -168,9 +161,7 @@ class ModoCampoFlujoTests(TestCase):
         """Con coordenadas fijas desde el campo, el escaneo no propone otras."""
         cliente = Cliente.objects.create(razon_social="ACME")
         User.objects.create_user("adm", password=CLAVE, rol=User.Rol.ADMINISTRADOR)
-        empleado = User.objects.create_user(
-            "emp", password=CLAVE, rol=User.Rol.EMPLEADO
-        )
+        User.objects.create_user("emp", password=CLAVE, rol=User.Rol.EMPLEADO)
         tipo = TipoServicio.objects.create(nombre="Desratización", slug="desrat")
 
         def con_token(usuario):
@@ -208,13 +199,8 @@ class ModoCampoFlujoTests(TestCase):
             format="json",
         )
         self.assertEqual(punto.status_code, 201, punto.content)
-        proyecto = Proyecto.objects.create(
-            sitio_id=sitio.data["id"],
-            tipo_servicio=tipo,
-            titulo="Control",
-            encargado_inicial=empleado,
-            encargado_actual=empleado,
-        )
+        # El servicio de un punto dado de alta en campo lo asigna el administrador.
+        PuntoControl.objects.filter(pk=punto.data["id"]).update(servicio=tipo)
 
         api = con_token("emp")
         qr = PuntoControl.objects.get(pk=punto.data["id"]).qr_codigo
@@ -222,7 +208,7 @@ class ModoCampoFlujoTests(TestCase):
         self.assertEqual(resuelto.status_code, 200, resuelto.content)
         abierta = api.post(
             "/api/v1/visitas/abrir/",
-            {"proyecto": proyecto.id, "qr_codigo": str(qr)},
+            {"qr_codigo": str(qr)},
             format="json",
         )
         self.assertEqual(abierta.status_code, 201, abierta.content)

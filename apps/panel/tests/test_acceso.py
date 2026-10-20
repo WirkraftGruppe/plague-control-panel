@@ -15,7 +15,6 @@ from apps.accounts.models import User
 from apps.clientes.models import Cliente
 from apps.panel import urls
 from apps.productos.models import Producto
-from apps.proyectos.models import Proyecto
 from apps.servicios.models import CampoPlanilla, TipoServicio
 from apps.sitios.models import Plano, PuntoControl, Sitio
 from apps.visitas.models import Foto, Revision, Visita
@@ -37,9 +36,8 @@ MODELO_POR_RUTA = (
     (r"^/panel/clientes/@PK@/", "cliente"),
     (r"^/panel/servicios/campos/@PK@/", "campo"),
     (r"^/panel/servicios/@PK@/", "servicio"),
-    (r"^/panel/proyectos/@PK@/", "proyecto"),
     (r"^/panel/productos/@PK@/", "producto"),
-    (r"^/panel/visitas/proyectos/@PK@/", "proyecto"),
+    (r"^/panel/visitas/sitios/@PK@/", "sitio"),
     (r"^/panel/visitas/@PK@/", "visita"),
     (r"^/panel/usuarios/@PK@/", "usuario"),
 )
@@ -64,9 +62,12 @@ class AccesoPanelTests(TestCase):
         self.client.force_login(self.empleado)
         self.assertEqual(self.client.get("/panel/").status_code, 403)
 
-    def test_administrador_recibe_200(self):
+    def test_administrador_va_al_listado_de_sitios(self):
         self.client.force_login(self.admin)
-        self.assertEqual(self.client.get("/panel/").status_code, 200)
+        self.assertRedirects(
+            self.client.get("/panel/"), "/panel/sitios/", fetch_redirect_response=False
+        )
+        self.assertEqual(self.client.get("/panel/sitios/").status_code, 200)
 
     def test_administrador_inicia_sesion_y_entra(self):
         respuesta = self.client.post(
@@ -155,20 +156,14 @@ class AccesoTests(TestCase):
         cls.sitio = Sitio.objects.create(cliente=cls.cliente, nombre="Planta")
         cls.servicio = TipoServicio.objects.create(nombre="Desinsectación", slug="d")
         cls.empleado = User.objects.create_user("emp", password=CLAVE)
-        cls.proyecto = Proyecto.objects.create(
-            sitio=cls.sitio,
-            tipo_servicio=cls.servicio,
-            titulo="Proyecto",
-            encargado_inicial=cls.empleado,
-            encargado_actual=cls.empleado,
-        )
         visita = Visita.objects.create(
-            proyecto=cls.proyecto, empleado=cls.empleado, origen=Visita.Origen.APP
+            sitio=cls.sitio, empleado=cls.empleado, origen=Visita.Origen.APP
         )
         punto = PuntoControl.objects.get(sitio=cls.sitio, orden=0)
         revision = Revision.objects.create(
             visita=visita,
             punto=punto,
+            servicio=cls.servicio,
             orden=1,
             realizada_en=visita.creado,
             recibida_en=visita.creado,
@@ -178,7 +173,6 @@ class AccesoTests(TestCase):
             "cliente": cls.cliente.pk,
             "sitio": cls.sitio.pk,
             "servicio": cls.servicio.pk,
-            "proyecto": cls.proyecto.pk,
             "usuario": cls.empleado.pk,
             "visita": visita.pk,
             "punto": punto.pk,
@@ -203,7 +197,7 @@ class AccesoTests(TestCase):
         self.assertIn("/panel/", rutas)
         self.assertIn("/panel/mapa/", rutas)
         self.assertIn("/panel/mapa/datos/", rutas)
-        for app in ("sitios", "clientes", "servicios", "proyectos", "productos"):
+        for app in ("sitios", "clientes", "servicios", "productos"):
             self.assertIn(f"/panel/{app}/", rutas)
         self.assertIn("/panel/usuarios/", rutas)
         # GET y POST, con un pk existente y con uno inexistente: el rol se comprueba

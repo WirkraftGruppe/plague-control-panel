@@ -1,0 +1,23 @@
+{% extends "panel/base.html" %}
+{% block panel_contenido %}
+  <h1>Nuevo turno</h1>
+  <p>Sitio: {{ sitio.nombre }} ({{ sitio.cliente.razon_social }})</p>
+  <form class="formulario" method="post">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="errores">{{ form.non_field_errors }}</div>{% endif %}
+    {% for campo in form.visible_fields %}
+      {% if not campo.field.agrupado %}
+      <div class="campo{% if campo.errors %} campo-error{% endif %}">
+        {{ campo.label_tag }}
+        {{ campo }}
+        {% for error in campo.errors %}<small class="error">{{ error }}</small>{% endfor %}
+      </div>
+      {% endif %}
+    {% endfor %}
+    {% include "visitas/panel/_puntos_servicio.html" %}
+    <div class="acciones">
+      <button class="boton boton-primario" type="submit">Crear turno</button>
+      <a class="boton boton-secundario" href="{% url 'panel:sitios:ficha' sitio.pk %}">Cancelar</a>
+    </div>
+  </form>
+{% endblock %}

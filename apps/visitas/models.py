@@ -34,11 +34,11 @@ class Visita(models.Model):
         REALIZADA = "realizada", "Realizada"
         CANCELADA = "cancelada", "Cancelada"
 
-    proyecto = models.ForeignKey(
-        "proyectos.Proyecto",
+    sitio = models.ForeignKey(
+        "sitios.Sitio",
         on_delete=models.PROTECT,
         related_name="visitas",
-        verbose_name="proyecto",
+        verbose_name="sitio",
     )
     empleado = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -66,9 +66,11 @@ class Visita(models.Model):
     estado = models.CharField(
         "estado", max_length=10, choices=Estado.choices, default=Estado.PENDIENTE
     )
+    # Planilla de ámbito visita por servicio: `{slug_servicio: {clave: valor}}`.
     datos = models.JSONField("datos de la planilla", default=dict, blank=True)
+    # Esquema copiado al cerrar: `{slug_servicio: [campos]}`.
     esquema_planilla = models.JSONField(
-        "esquema de la planilla", default=list, blank=True
+        "esquema de la planilla", default=dict, blank=True
     )
     observaciones = models.TextField("observaciones", blank=True)
     incidencia = models.BooleanField("incidencia", default=False)
@@ -107,7 +109,7 @@ class Visita(models.Model):
         ordering = ["-creado"]
 
     def __str__(self):
-        return f"Visita {self.pk} - {self.proyecto_id}"
+        return f"Visita {self.pk} - {self.sitio_id}"
 
     @property
     def realizada_en(self):
@@ -140,6 +142,42 @@ class Visita(models.Model):
             )
 
 
+class ItemTurno(models.Model):
+    """Punto de control de un turno con el servicio que se hará en él."""
+
+    visita = models.ForeignKey(
+        Visita,
+        on_delete=models.CASCADE,
+        related_name="items",
+        verbose_name="visita",
+    )
+    punto = models.ForeignKey(
+        "sitios.PuntoControl",
+        on_delete=models.PROTECT,
+        related_name="items_turno",
+        verbose_name="punto de control",
+    )
+    servicio = models.ForeignKey(
+        "servicios.TipoServicio",
+        on_delete=models.PROTECT,
+        related_name="items_turno",
+        verbose_name="servicio",
+    )
+
+    class Meta:
+        verbose_name = "ítem del turno"
+        verbose_name_plural = "ítems del turno"
+        ordering = ["visita_id", "punto__orden", "punto_id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["visita", "punto"], name="item_turno_punto_unico_por_visita"
+            )
+        ]
+
+    def __str__(self):
+        return f"Ítem {self.pk} de visita {self.visita_id}"
+
+
 class Revision(models.Model):
     """Un escaneo de un punto de control dentro de una visita."""
 
@@ -155,6 +193,13 @@ class Revision(models.Model):
         related_name="revisiones",
         verbose_name="punto de control",
     )
+    servicio = models.ForeignKey(
+        "servicios.TipoServicio",
+        on_delete=models.PROTECT,
+        related_name="revisiones",
+        verbose_name="servicio",
+    )
+    fuera_de_turno = models.BooleanField("fuera de turno", default=False)
     orden = models.PositiveSmallIntegerField("orden", default=0)
     realizada_en = models.DateTimeField("realizada en")
     recibida_en = models.DateTimeField("recibida en")

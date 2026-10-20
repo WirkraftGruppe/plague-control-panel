@@ -3,7 +3,6 @@
 import os
 import shutil
 import tempfile
-from datetime import timedelta
 from io import StringIO
 from unittest import mock
 
@@ -21,10 +20,16 @@ from apps.panel.demo_datos import CLIENTES, MARCA_DEMO
 from apps.productos.models import MovimientoStock, Producto
 from apps.productos.services import stock
 from apps.productos.unidades import magnitud_de, unidades_permitidas
-from apps.proyectos.models import Proyecto
 from apps.servicios.models import TipoServicio
+from apps.sitios.estado import EstadoVencimiento, estados_por_vencimiento
 from apps.sitios.models import Plano, PuntoControl, Sitio
-from apps.visitas.models import Foto, ProductoAplicado, Revision, Visita
+from apps.visitas.models import (
+    Foto,
+    ItemTurno,
+    ProductoAplicado,
+    Revision,
+    Visita,
+)
 from apps.visitas.planillas import validar_datos
 
 MEDIA_DEMO = tempfile.mkdtemp(prefix="detach-demo-test-")
@@ -144,7 +149,7 @@ class CargarDemoClienteTests(TestCase):
 
     def _conteos(self):
         modelos = (
-            *(User, Cliente, Sitio, PuntoControl, Plano, Proyecto, Visita),
+            *(User, Cliente, Sitio, PuntoControl, Plano, Visita, ItemTurno),
             *(Revision, Foto, ProductoAplicado, Producto, TipoServicio),
         )
         return {modelo.__name__: modelo.objects.count() for modelo in modelos}
@@ -181,16 +186,13 @@ class CargarDemoClienteTests(TestCase):
             errores = validar_datos(revision.esquema_planilla, revision.datos)
             self.assertEqual(errores, {})
 
-    def test_visita_pendiente_coherente_con_el_proyecto(self):
-        pendiente = Visita.objects.get(estado=Visita.Estado.PENDIENTE)
-        self.assertEqual(pendiente.programada_para, pendiente.proyecto.proxima_visita)
-        self.assertGreater(pendiente.programada_para, timezone.localdate())
-        for proyecto in Proyecto.objects.all():
-            ultima = proyecto.visitas.filter(estado=Visita.Estado.REALIZADA).first()
-            esperada = timezone.localdate(ultima.cerrada_en) + timedelta(days=14)
-            self.assertEqual(proyecto.proxima_visita, esperada)
+    def test_cada_sitio_tiene_su_historia_de_turnos_realizados(self):
+        for sitio in Sitio.objects.all():
+            ultima = sitio.visitas.filter(estado=Visita.Estado.REALIZADA).first()
             self.assertEqual(ultima.cierre, Visita.Cierre.EMPLEADO)
             self.assertEqual(ultima.origen, Visita.Origen.APP)
+            activos = sitio.puntos.filter(activo=True).count()
+            self.assertEqual(ultima.items.count(), activos)
 
     def test_clientes_salen_de_la_carta(self):
         razones = set(Cliente.objects.values_list("razon_social", flat=True))
@@ -230,19 +232,15 @@ class CargarDemoClienteTests(TestCase):
         producto = Producto.objects.create(nombre_comercial="Producto propio")
         tipo = TipoServicio.objects.create(nombre="Propio", slug="servicio-propio")
         empleado = User.objects.create_user("propio", password="x", rol="empleado")
-        proyecto = Proyecto.objects.create(
-            sitio=sitio,
-            tipo_servicio=tipo,
-            titulo="Propio",
-            encargado_inicial=empleado,
-            encargado_actual=empleado,
+        visita = Visita.objects.create(
+            sitio=sitio, empleado=empleado, origen=Visita.Origen.APP
         )
         # Un sitio sin marca colgado de un cliente demo tampoco se toca.
         demo = Cliente.objects.get(razon_social="Nutrisur")
         cuelga = Sitio.objects.create(cliente=demo, nombre="Sitio mío")
         self._cargar()
         self._cargar()
-        for objeto in (cliente, sitio, ajeno, producto, tipo, empleado, proyecto):
+        for objeto in (cliente, sitio, ajeno, producto, tipo, empleado, visita):
             self.assertTrue(type(objeto).objects.filter(pk=objeto.pk).exists())
         self.assertTrue(Sitio.objects.filter(pk=cuelga.pk).exists())
         self.assertTrue(Cliente.objects.filter(pk=cuelga.cliente_id).exists())
@@ -255,13 +253,7 @@ class CargarDemoClienteTests(TestCase):
             nombre="Control de plagas (demo)", slug="demo-control-de-plagas"
         )
         empleado = User.objects.get(username="demo-empleado")
-        Proyecto.objects.create(
-            sitio=sitio,
-            tipo_servicio=tipo,
-            titulo="Control mensual",
-            encargado_inicial=empleado,
-            encargado_actual=empleado,
-        )
+        Visita.objects.create(sitio=sitio, empleado=empleado, origen=Visita.Origen.APP)
         self._cargar()
         self.assertFalse(
             Cliente.objects.filter(razon_social__startswith="Cliente Demo")
@@ -269,7 +261,6 @@ class CargarDemoClienteTests(TestCase):
         self.assertFalse(Sitio.objects.filter(nombre="Planta Demo Norte").exists())
         self.assertFalse(TipoServicio.objects.filter(slug=tipo.slug).exists())
         self.assertFalse(Sitio.history.filter(nombre="Planta Demo Norte").exists())
-        self.assertFalse(Proyecto.history.filter(titulo="Control mensual").exists())
         self.assertEqual(Cliente.objects.count(), 4)
 
 
@@ -325,3 +316,34 @@ class CargarDemoStockTests(TestCase):
         self.assertEqual(len(despues), len(antes))
         self.assertFalse(antes & despues)
         self.assertEqual(Producto.objects.count(), 3)
+
+
+@override_settings(MEDIA_ROOT=MEDIA_DEMO, DEBUG=True)
+class CargarDemoTurnosTests(TestCase):
+    """Turnos de la demo y servicios, frecuencias y vencimientos por punto."""
+
+    @classmethod
+    def setUpTestData(cls):
+        call_command("cargar_demo", stdout=StringIO())
+
+    def test_turnos_en_los_tres_estados(self):
+        estados = set(Visita.objects.values_list("estado", flat=True))
+        self.assertTrue(
+            {"pendiente", "abierta", "realizada"} <= estados, f"Hay {estados}"
+        )
+        for visita in Visita.objects.all():
+            self.assertTrue(visita.items.exists(), visita)
+        pendiente = Visita.objects.get(estado=Visita.Estado.PENDIENTE)
+        self.assertGreater(pendiente.programada_para, timezone.localdate())
+        self.assertEqual(pendiente.asignada_por.username, "demo-admin")
+        self.assertEqual(pendiente.items.count(), pendiente.sitio.puntos.count())
+
+    def test_puntos_con_servicios_y_vencimientos_distintos(self):
+        puntos = list(PuntoControl.objects.filter(activo=True))
+        self.assertGreaterEqual(len({p.servicio_id for p in puntos}), 2)
+        self.assertTrue(all(p.servicio_id for p in puntos))
+        estados = estados_por_vencimiento(puntos, timezone.localdate()).values()
+        self.assertEqual(set(estados), set(EstadoVencimiento.values))
+        self.assertGreaterEqual(len({p.frecuencia_dias for p in puntos}), 3)
+        for item in ItemTurno.objects.select_related("punto"):
+            self.assertEqual(item.servicio_id, item.punto.servicio_id)

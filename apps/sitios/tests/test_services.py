@@ -8,10 +8,9 @@ from django.test import TestCase
 
 from apps.accounts.models import User
 from apps.clientes.models import Cliente
-from apps.proyectos.models import Proyecto
-from apps.servicios.models import TipoServicio
 from apps.sitios import services
 from apps.sitios.models import Plano, PuntoControl, Sitio
+from apps.visitas.models import Visita
 
 
 class _BaseSitio(TestCase):
@@ -30,63 +29,31 @@ class SuprimirSitioTests(_BaseSitio):
         self.assertFalse(Sitio.objects.filter(pk=pk).exists())
         self.assertEqual(Sitio.history.filter(id=pk).count(), 0)
 
-    def test_borra_historial_de_proyectos(self):
-        tipo = TipoServicio.objects.create(nombre="Desratización", slug="desratizacion")
-        encargado = User.objects.create_user(
-            username="emp", password="x", rol=User.Rol.EMPLEADO, is_active=True
+    def _visita(self, sitio):
+        empleado = User.objects.create_user(
+            username=f"emp-{sitio.pk}", password="x", rol=User.Rol.EMPLEADO
         )
-        proyecto = Proyecto.objects.create(
-            sitio=self.sitio,
-            tipo_servicio=tipo,
-            titulo="Control",
-            encargado_inicial=encargado,
-            encargado_actual=encargado,
+        return Visita.objects.create(
+            sitio=sitio, empleado=empleado, origen=Visita.Origen.APP
         )
-        proyecto.titulo = "Control mensual"
-        proyecto.save()
-        pk = self.sitio.pk
-        self.assertEqual(Proyecto.history.filter(sitio_id=pk).count(), 2)
-        proyecto.delete()
-        services.suprimir_sitio(self.sitio)
-        self.assertEqual(Proyecto.history.filter(sitio_id=pk).count(), 0)
 
-    def test_suprimir_con_proyectos_no_borra_nada(self):
-        tipo = TipoServicio.objects.create(nombre="Desratización", slug="desratizacion")
-        encargado = User.objects.create_user(
-            username="emp", password="x", rol=User.Rol.EMPLEADO, is_active=True
-        )
-        Proyecto.objects.create(
-            sitio=self.sitio,
-            tipo_servicio=tipo,
-            titulo="Control",
-            encargado_inicial=encargado,
-            encargado_actual=encargado,
-        )
+    def test_suprimir_con_visitas_no_borra_nada(self):
+        self._visita(self.sitio)
         pk = self.sitio.pk
         with self.assertRaises(ProtectedError):
             services.suprimir_sitio(self.sitio)
         self.assertTrue(Sitio.objects.filter(pk=pk).exists())
         self.assertEqual(Sitio.history.filter(id=pk).count(), 1)
 
-    def test_suprimir_sitios_informa_los_que_tienen_proyectos(self):
-        tipo = TipoServicio.objects.create(nombre="Desratización", slug="desratizacion")
-        encargado = User.objects.create_user(
-            username="emp", password="x", rol=User.Rol.EMPLEADO, is_active=True
-        )
-        con_proyecto = Sitio.objects.create(cliente=self.cliente, nombre="Planta 2")
-        Proyecto.objects.create(
-            sitio=con_proyecto,
-            tipo_servicio=tipo,
-            titulo="Control",
-            encargado_inicial=encargado,
-            encargado_actual=encargado,
-        )
+    def test_suprimir_sitios_informa_los_que_tienen_visitas(self):
+        con_visita = Sitio.objects.create(cliente=self.cliente, nombre="Planta 2")
+        self._visita(con_visita)
         pk_libre = self.sitio.pk
-        resultado = services.suprimir_sitios([self.sitio, con_proyecto])
-        self.assertEqual(resultado, (1, [con_proyecto]))
+        resultado = services.suprimir_sitios([self.sitio, con_visita])
+        self.assertEqual(resultado, (1, [con_visita]))
         self.assertFalse(Sitio.objects.filter(pk=pk_libre).exists())
         self.assertEqual(Sitio.history.filter(id=pk_libre).count(), 0)
-        self.assertTrue(Sitio.objects.filter(pk=con_proyecto.pk).exists())
+        self.assertTrue(Sitio.objects.filter(pk=con_visita.pk).exists())
 
     def test_suprimir_borra_puntos_y_su_historial(self):
         pk = self.sitio.pk

@@ -17,11 +17,9 @@ class TipoServicioForm(forms.ModelForm):
 
 def clave_en_uso(tipo_servicio, clave) -> bool:
     """Indica si alguna visita o revisión del servicio guardó datos con esa clave."""
-    visita = {"proyecto__tipo_servicio": tipo_servicio, "datos__has_key": clave}
-    revision = {
-        "visita__proyecto__tipo_servicio": tipo_servicio,
-        "datos__has_key": clave,
-    }
+    # Los datos de la visita van por servicio: `{slug: {clave: valor}}`.
+    visita = {f"datos__{tipo_servicio.slug}__has_key": clave}
+    revision = {"servicio": tipo_servicio, "datos__has_key": clave}
     return (
         Visita.objects.filter(**visita).exists()
         or Revision.objects.filter(**revision).exists()

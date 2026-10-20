@@ -18,7 +18,6 @@ from rest_framework.test import APIClient
 from apps.accounts.models import User
 from apps.clientes.models import Cliente
 from apps.productos.models import Producto
-from apps.proyectos.models import Proyecto
 from apps.servicios.models import CampoPlanilla, TipoServicio
 from apps.sitios.models import PuntoControl, Sitio
 from apps.visitas import api_views
@@ -62,14 +61,9 @@ class BaseApiTests(TestCase):
         self.empleado = self._usuario("emp", User.Rol.EMPLEADO)
         self.otro = self._usuario("otro", User.Rol.EMPLEADO)
         self.admin = self._usuario("adm", User.Rol.ADMINISTRADOR)
-        self.proyecto = Proyecto.objects.create(
-            sitio=self.sitio,
-            tipo_servicio=self.tipo,
-            titulo="Control",
-            encargado_inicial=self.empleado,
-            encargado_actual=self.empleado,
-        )
         self.punto = self.sitio.puntos.get(orden=0)
+        self.punto.servicio = self.tipo
+        self.punto.save()
         self.api = self._api(self.empleado)
 
     def _usuario(self, nombre, rol):
@@ -83,12 +77,13 @@ class BaseApiTests(TestCase):
     def _visita(self, empleado, **extra):
         extra.setdefault("origen", Visita.Origen.MANUAL)
         extra.setdefault("motivo_manual", "Carga")
-        return Visita.objects.create(proyecto=self.proyecto, empleado=empleado, **extra)
+        return Visita.objects.create(sitio=self.sitio, empleado=empleado, **extra)
 
     def _revision(self, visita, **extra):
         extra.setdefault("realizada_en", timezone.now())
         extra.setdefault("recibida_en", extra["realizada_en"])
         extra.setdefault("orden", visita.revisiones.count() + 1)
+        extra.setdefault("servicio", self.tipo)
         return Revision.objects.create(visita=visita, punto=self.punto, **extra)
 
     def _realizada(self, empleado, dia):
@@ -148,15 +143,19 @@ class ApiVisitasBase(BaseApiTests):
 
 class FlujoRevisionesTests(ApiVisitasBase):
     def test_abrir_tres_revisiones_cerrar(self):
-        self.proyecto.frecuencia_dias = 30
-        self.proyecto.save()
+        self.punto.frecuencia_dias = 30
+        self.punto.save()
         pendiente = self._visita(self.empleado, programada_para=date(2026, 9, 1))
-        sala = PuntoControl.objects.create(sitio=self.sitio, nombre="Sala")
-        galpon = PuntoControl.objects.create(sitio=self.sitio, nombre="Galpón")
+        sala = PuntoControl.objects.create(
+            sitio=self.sitio, nombre="Sala", servicio=self.tipo
+        )
+        galpon = PuntoControl.objects.create(
+            sitio=self.sitio, nombre="Galpón", servicio=self.tipo
+        )
 
         r = self.api.post(
             "/api/v1/visitas/abrir/",
-            {"proyecto": self.proyecto.id, "qr_codigo": str(self.punto.qr_codigo)},
+            {"qr_codigo": str(self.punto.qr_codigo)},
             format="json",
         )
         self.assertEqual(r.status_code, 201, r.content)
@@ -164,7 +163,7 @@ class FlujoRevisionesTests(ApiVisitasBase):
         self.assertEqual(r.data["estado"], "abierta")
         r = self.api.post(
             "/api/v1/visitas/abrir/",
-            {"proyecto": self.proyecto.id, "qr_codigo": str(self.punto.qr_codigo)},
+            {"qr_codigo": str(self.punto.qr_codigo)},
             format="json",
         )
         self.assertEqual(r.status_code, 200, r.content)
@@ -177,8 +176,8 @@ class FlujoRevisionesTests(ApiVisitasBase):
             self.assertEqual(r.data["punto"], {"id": punto.id, "nombre": punto.nombre})
             self.assertNotIn("latitud", r.data)
         self.assertEqual(pendiente.revisiones.count(), 3)
-        self.proyecto.refresh_from_db()
-        self.assertIsNone(self.proyecto.proxima_visita)
+        self.punto.refresh_from_db()
+        self.assertIsNotNone(self.punto.proximo_vencimiento)
 
         r = self._cerrar(pendiente, cuerpo={"observaciones": "Todo en orden"})
         self.assertEqual(r.status_code, 200, r.content)
@@ -187,9 +186,6 @@ class FlujoRevisionesTests(ApiVisitasBase):
         pendiente.refresh_from_db()
         self.assertEqual(pendiente.estado, Visita.Estado.REALIZADA)
         self.assertEqual(pendiente.cierre, Visita.Cierre.EMPLEADO)
-        self.proyecto.refresh_from_db()
-        self.assertEqual(self.proyecto.encargado_actual, self.empleado)
-        self.assertIsNotNone(self.proyecto.proxima_visita)
 
         historial = self.api.get("/api/v1/me/historial/")
         self.assertEqual([v["id"] for v in historial.data["results"]], [pendiente.id])
@@ -224,13 +220,13 @@ class FlujoRevisionesTests(ApiVisitasBase):
         ):
             self.assertEqual(vista.throttle_scope, "crear_visita")
 
-    def test_administrador_usa_las_rutas_de_escritura_sin_tocar_el_proyecto(self):
-        self.proyecto.frecuencia_dias = 30
-        self.proyecto.save()
+    def test_administrador_usa_las_rutas_de_escritura_sin_tocar_el_vencimiento(self):
+        self.punto.frecuencia_dias = 30
+        self.punto.save()
         admin = self._api(self.admin)
         r = admin.post(
             "/api/v1/visitas/abrir/",
-            {"proyecto": self.proyecto.id, "qr_codigo": str(self.punto.qr_codigo)},
+            {"qr_codigo": str(self.punto.qr_codigo)},
             format="json",
         )
         self.assertEqual(r.status_code, 201, r.content)
@@ -238,15 +234,13 @@ class FlujoRevisionesTests(ApiVisitasBase):
         self.assertEqual(visita.empleado, self.admin)
         self.assertEqual(self._post(visita, api=admin).status_code, 201)
         self.assertEqual(self._cerrar(visita, api=admin).status_code, 200)
-        self.proyecto.refresh_from_db()
-        self.assertEqual(self.proyecto.encargado_actual, self.empleado)
-        self.assertIsNone(self.proyecto.proxima_visita)
+        self.punto.refresh_from_db()
+        self.assertIsNone(self.punto.proximo_vencimiento)
         self.assertEqual(APIClient().post("/api/v1/revisiones/").status_code, 401)
 
 
 class AbrirVisitaTests(ApiVisitasBase):
     def _abrir(self, **cuerpo):
-        cuerpo.setdefault("proyecto", self.proyecto.id)
         cuerpo.setdefault("qr_codigo", str(self.punto.qr_codigo))
         return self.api.post("/api/v1/visitas/abrir/", cuerpo, format="json")
 
@@ -281,41 +275,30 @@ class AbrirVisitaTests(ApiVisitasBase):
                     visita = Visita.objects.get(pk=r.data["id"])
                     self.assertEqual(visita.precision_m, Decimal("99999.90"))
 
-    def test_proyecto_inexistente_o_pausado_da_400(self):
-        r = self._abrir(proyecto=999999)
+    def test_sitio_inactivo_da_400(self):
+        self.sitio.activo = False
+        self.sitio.save()
+        r = self._abrir()
         self.assertEqual(r.status_code, 400, r.content)
-        self.assertIn("proyecto", r.data["campos"])
-        self.proyecto.estado = Proyecto.Estado.PAUSADO
-        self.proyecto.save()
-        self.assertEqual(self._abrir().status_code, 400)
-        self.assertEqual(self._abrir(proyecto="x").status_code, 400)
+        self.assertIn("qr_codigo", r.data["campos"])
         self.assertFalse(Visita.objects.exists())
 
-    def test_sin_qr_del_sitio_da_400(self):
-        otro_sitio = Sitio.objects.create(cliente=self.sitio.cliente, nombre="Otra")
+    def test_qr_invalido_da_400_con_el_mismo_mensaje(self):
         inactivo = PuntoControl.objects.create(
             sitio=self.sitio, nombre="Baja", activo=False
         )
-        inexistente = self._abrir(proyecto=999999)
-        sin_qr = self.api.post(
-            "/api/v1/visitas/abrir/", {"proyecto": self.proyecto.id}, format="json"
-        )
+        sin_qr = self.api.post("/api/v1/visitas/abrir/", {}, format="json")
         self.assertEqual(sin_qr.status_code, 400, sin_qr.content)
         self.assertIn("qr_codigo", sin_qr.data["campos"])
-        ajeno = self._abrir(qr_codigo=str(otro_sitio.puntos.get().qr_codigo))
-        self.assertEqual(ajeno.status_code, 400, ajeno.content)
-        # Mismo mensaje que un proyecto inexistente: no se distingue el motivo.
-        self.assertEqual(
-            ajeno.data["campos"]["proyecto"], inexistente.data["campos"]["proyecto"]
-        )
+        inexistente = self._abrir(qr_codigo=str(uuid4()))
+        self.assertEqual(inexistente.status_code, 400, inexistente.content)
+        # Mismo mensaje que un QR inexistente: no se distingue el motivo.
         inactivo_r = self._abrir(qr_codigo=str(inactivo.qr_codigo))
         self.assertEqual(inactivo_r.status_code, 400, inactivo_r.content)
         self.assertEqual(
-            inactivo_r.data["campos"]["proyecto"],
-            inexistente.data["campos"]["proyecto"],
+            inactivo_r.data["campos"]["qr_codigo"],
+            inexistente.data["campos"]["qr_codigo"],
         )
-        inexistente_qr = self._abrir(qr_codigo=str(uuid4()))
-        self.assertEqual(inexistente_qr.status_code, 400, inexistente_qr.content)
         self.assertFalse(Visita.objects.exists())
 
 
@@ -373,10 +356,9 @@ class CrearRevisionTests(ApiVisitasBase):
         self.assertEqual(r.status_code, 400)
         self.assertIn("qr_codigo", r.data["campos"])
 
-    def test_sin_foto_da_400(self):
+    def test_sin_foto_se_acepta(self):
         r = self._enviar(fotos=None)
-        self.assertEqual(r.status_code, 400)
-        self.assertIn("fotos", r.data["campos"])
+        self.assertEqual(r.status_code, 201, r.content)
 
     def test_coordenadas_obligatorias(self):
         for campo in ("latitud", "longitud"):
@@ -386,8 +368,8 @@ class CrearRevisionTests(ApiVisitasBase):
                 self.assertIn(campo, r.data["campos"])
         self.assertFalse(Revision.objects.exists())
 
-    def test_mas_de_diez_fotos_da_400(self):
-        r = self._enviar(fotos=[jpeg_chico() for _ in range(11)])
+    def test_mas_de_dos_fotos_da_400(self):
+        r = self._enviar(fotos=[jpeg_chico() for _ in range(3)])
         self.assertEqual(r.status_code, 400)
         self.assertIn("fotos", r.data["campos"])
         self.assertFalse(Revision.objects.exists())
@@ -539,11 +521,11 @@ class CerrarVisitaApiTests(ApiVisitasBase):
         self.assertIn("datos", r.data["campos"])
         r = self._cerrar(
             self.visita,
-            cuerpo={"datos": {"resumen": "ok"}, "incidencia": True},
+            cuerpo={"datos": {self.tipo.slug: {"resumen": "ok"}}, "incidencia": True},
         )
         self.assertEqual(r.status_code, 200, r.content)
         self.assertTrue(r.data["incidencia"])
-        self.assertEqual(r.data["datos"], {"resumen": "ok"})
+        self.assertEqual(r.data["datos"], {self.tipo.slug: {"resumen": "ok"}})
 
 
 class CerrarVisitaTests(ApiVisitasBase):
@@ -609,9 +591,6 @@ class MisVisitasTests(BaseApiTests):
             [v["estado"] for v in r.data["results"]], ["abierta", "pendiente"]
         )
         item = r.data["results"][1]
-        self.assertEqual(
-            item["proyecto"], {"id": self.proyecto.id, "titulo": "Control"}
-        )
         self.assertEqual(
             item["sitio"],
             {"nombre": "Planta 1", "direccion": "Calle 1", "localidad": "Castelli"},

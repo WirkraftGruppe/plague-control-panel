@@ -9,6 +9,7 @@ from django.core.exceptions import ValidationError as ErrorDeValidacion
 from django.db.models import F
 from django.http import FileResponse
 from django.urls import reverse
+from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework import status
@@ -20,12 +21,11 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from apps.accounts.permisos import EsAdministrador, EsEmpleado
-from apps.proyectos.models import Proyecto
 from apps.visitas.models import Visita
 from apps.visitas.serializers import MAX_BYTES_FOTO
 
 from . import services
-from .estado import estados_de_puntos
+from .estado import estados_por_vencimiento
 from .models import Plano, PuntoControl, Sitio
 from .serializers import (
     AltaPuntoSerializer,
@@ -53,7 +53,7 @@ def _datos_plano(punto):
             "orden", "id"
         )
     )
-    estados = estados_de_puntos(marcadores)
+    estados = estados_por_vencimiento(marcadores, timezone.localdate())
     return {
         "id": plano.id,
         "nombre": plano.nombre,
@@ -74,7 +74,7 @@ def _datos_plano(punto):
 
 
 class ResolverQRView(APIView):
-    """Dado el UUID de un QR, devuelve el punto, su plano, el sitio y los proyectos."""
+    """Dado el UUID de un QR, devuelve el punto, su plano, el sitio y mis visitas."""
 
     permission_classes = [EsEmpleado | EsAdministrador]
     throttle_classes = [ScopedRateThrottle]
@@ -104,26 +104,20 @@ class ResolverQRView(APIView):
             raise NotFound("El código QR no corresponde a un sitio activo.")
         sitio = punto.sitio
 
-        proyectos = list(
-            Proyecto.objects.filter(sitio=sitio, estado=Proyecto.Estado.ACTIVO)
-            .select_related("tipo_servicio")
-            .prefetch_related("tipo_servicio__campos")
-            .order_by("id")
-        )
         # Una sola consulta para las visitas propias; la pendiente más antigua gana.
-        pendientes, abiertas = {}, {}
+        pendiente, abierta = None, None
         visitas = (
             Visita.objects.filter(
-                empleado=request.user,
-                estado__in=ESTADOS_CON_TRABAJO,
-                proyecto__in=proyectos,
+                empleado=request.user, estado__in=ESTADOS_CON_TRABAJO, sitio=sitio
             )
             .order_by(F("programada_para").asc(nulls_last=True), "id")
-            .values_list("proyecto_id", "id", "estado")
+            .values_list("id", "estado")
         )
-        for proyecto_id, visita_id, estado in visitas:
-            destino = abiertas if estado == Visita.Estado.ABIERTA else pendientes
-            destino.setdefault(proyecto_id, visita_id)
+        for visita_id, estado in visitas:
+            if estado == Visita.Estado.ABIERTA:
+                abierta = abierta or visita_id
+            else:
+                pendiente = pendiente or visita_id
 
         datos = {
             "punto": {
@@ -134,18 +128,8 @@ class ResolverQRView(APIView):
             },
             "sitio": sitio,
             "cliente": sitio.cliente,
-            "proyectos": [
-                {
-                    "id": p.id,
-                    "titulo": p.titulo,
-                    "tipo_servicio": p.tipo_servicio,
-                    "esquema_punto": p.tipo_servicio.esquema_planilla("punto"),
-                    "esquema_visita": p.tipo_servicio.esquema_planilla("visita"),
-                    "visita_pendiente_propia": pendientes.get(p.id),
-                    "visita_abierta_propia": abiertas.get(p.id),
-                }
-                for p in proyectos
-            ],
+            "visita_pendiente_propia": pendiente,
+            "visita_abierta_propia": abierta,
         }
         return Response(ResolverQRSerializer(datos).data)
 
@@ -170,7 +154,7 @@ class PlanoImagenView(APIView):
         summary="Descargar la imagen de un plano",
         description=(
             "Administradores, o empleados con una visita propia pendiente o abierta "
-            "en un proyecto del sitio. Sin acceso, plano inactivo o inexistente: "
+            "en el sitio. Sin acceso, plano inactivo o inexistente: "
             "el mismo 404."
         ),
         responses={
@@ -187,9 +171,9 @@ class PlanoImagenView(APIView):
             and not Visita.objects.filter(
                 empleado=request.user,
                 estado__in=ESTADOS_CON_TRABAJO,
-                proyecto__sitio_id=plano.sitio_id,
-                proyecto__sitio__activo=True,
-                proyecto__sitio__cliente__activo=True,
+                sitio_id=plano.sitio_id,
+                sitio__activo=True,
+                sitio__cliente__activo=True,
             ).exists()
         ):
             raise NotFound("El plano no existe.")
@@ -227,19 +211,19 @@ class MisPuntosView(APIView):
         sitios = Visita.objects.filter(
             empleado=request.user,
             estado__in=ESTADOS_CON_TRABAJO,
-            proyecto__sitio__activo=True,
-            proyecto__sitio__cliente__activo=True,
+            sitio__activo=True,
+            sitio__cliente__activo=True,
         )
         if sitio is not None:
-            sitios = sitios.filter(proyecto__sitio_id=sitio)
+            sitios = sitios.filter(sitio_id=sitio)
         puntos = list(
             PuntoControl.objects.filter(
-                activo=True, sitio_id__in=sitios.values("proyecto__sitio_id")
+                activo=True, sitio_id__in=sitios.values("sitio_id")
             )
             .select_related("sitio")
             .order_by("sitio__nombre", "sitio_id", "orden", "id")
         )
-        estados = estados_de_puntos(puntos)
+        estados = estados_por_vencimiento(puntos, timezone.localdate())
         for punto in puntos:
             punto.estado = estados[punto.id]
         return Response(MiPuntoSerializer(puntos, many=True).data)

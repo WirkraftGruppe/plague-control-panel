@@ -56,7 +56,6 @@ class DisenoTests(TestCase):
             "proxima": "warn",
             "al_dia": "ok",
             "sin_programar": "neutral",
-            "sin_revisar": "neutral",
             "abierta": "warn",
             "realizada": "ok",
             "pendiente": "warn",
@@ -90,12 +89,10 @@ class DisenoTests(TestCase):
         self.assertIn("cursor: pointer", bloque.group(1))
         self.assertIn("background: none", bloque.group(1))
 
-    def test_tablero_y_mapa_sin_style_propio(self):
-        for nombre in ("tablero.html", "mapa.html"):
-            with self.subTest(plantilla=nombre):
-                texto = (PLANTILLAS / nombre).read_text(encoding="utf-8")
-                self.assertNotIn("<style", texto)
-        for clase in (".contadores", ".contador-cifra", ".mapa-filtros", "#mapa"):
+    def test_mapa_sin_style_propio(self):
+        texto = (PLANTILLAS / "mapa.html").read_text(encoding="utf-8")
+        self.assertNotIn("<style", texto)
+        for clase in (".mapa-filtros", "#mapa"):
             self.assertIn(clase, CSS)
 
     def test_clases_de_fichas_tienen_estilo(self):

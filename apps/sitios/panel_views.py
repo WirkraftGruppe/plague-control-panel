@@ -22,12 +22,7 @@ from apps.panel.mapa import ORIGEN_TESELAS
 from apps.servicios.models import TipoServicio
 
 from . import geocodificacion, qr, services
-from .estado import (
-    EstadoPunto,
-    EstadoVencimiento,
-    estados_de_puntos,
-    estados_por_vencimiento,
-)
+from .estado import EstadoVencimiento, estados_por_vencimiento
 from .models import Plano, PuntoControl, Sitio
 from .panel_forms import (
     PlanoForm,
@@ -39,13 +34,6 @@ from .panel_forms import (
 )
 
 PESTANAS = ("mapa", "planos", "puntos")
-CLASE_ESTADO = {
-    EstadoPunto.AL_DIA: "ok",
-    EstadoPunto.PROXIMA: "warn",
-    EstadoPunto.VENCIDA: "danger",
-    EstadoPunto.SIN_REVISAR: "neutral",
-}
-
 CLASE_VENCIMIENTO = {
     EstadoVencimiento.AL_DIA: "ok",
     EstadoVencimiento.PROXIMA: "warn",
@@ -55,10 +43,10 @@ CLASE_VENCIMIENTO = {
 
 
 def _marcar_vencimiento(puntos):
-    """Agrega a cada punto la etiqueta y la clase de su estado por vencimiento."""
+    """Agrega a cada punto su estado por vencimiento, con etiqueta y clase."""
     estados = estados_por_vencimiento(puntos, timezone.localdate())
     for punto in puntos:
-        estado = estados[punto.pk]
+        estado = punto.estado = estados[punto.pk]
         punto.vencimiento_etiqueta = EstadoVencimiento(estado).label
         punto.vencimiento_clase = CLASE_VENCIMIENTO[estado]
 
@@ -144,18 +132,11 @@ class SitioFicha(AdministradorRequeridoMixin, DetailView):
         puntos = list(sitio.puntos.select_related("plano", "servicio"))
         _marcar_vencimiento(puntos)
         activos = [p for p in puntos if p.activo]
-        estados = estados_de_puntos(activos)
-        for punto in puntos:
-            estado = estados.get(punto.pk)
-            punto.estado = estado
-            punto.estado_etiqueta = EstadoPunto(estado).label if estado else ""
-            punto.estado_clase = CLASE_ESTADO.get(estado, "neutral")
         planos = list(sitio.planos.filter(activo=True))
         pk_plano = self.request.GET.get("plano", "")
         plano = next((p for p in planos if str(p.pk) == pk_plano), None)
         plano = plano or (planos[0] if planos else None)
         contexto.update(
-            proyectos=sitio.proyectos.select_related("tipo_servicio"),
             pestana=pestana,
             pestanas=(("puntos", "Puntos"), ("mapa", "Mapa"), ("planos", "Planos")),
             puntos=puntos,
@@ -346,12 +327,6 @@ class PuntoProgramacion(_PuntoMixin, SingleObjectMixin, View):
 
     def _fila(self, request, punto, form=None, estado=200):
         _marcar_vencimiento([punto])
-        punto.estado_etiqueta = ""
-        punto.estado_clase = "neutral"
-        if punto.activo:
-            estado_punto = estados_de_puntos([punto])[punto.pk]
-            punto.estado_etiqueta = EstadoPunto(estado_punto).label
-            punto.estado_clase = CLASE_ESTADO[estado_punto]
         contexto = {
             "punto": punto,
             "form": form,

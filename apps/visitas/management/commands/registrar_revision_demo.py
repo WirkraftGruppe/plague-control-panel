@@ -11,7 +11,6 @@ from PIL import Image
 
 from apps.accounts.models import User
 from apps.panel.demo import exigir_entorno_demo
-from apps.proyectos.models import Proyecto
 from apps.sitios.models import PuntoControl
 from apps.visitas import services
 
@@ -28,20 +27,15 @@ def _foto():
 class Command(BaseCommand):
     help = (
         "Registra una revisión de demostración con foto en el punto indicado, dentro "
-        "de la visita del empleado en el proyecto activo del sitio (con --proyecto, "
-        "el indicado). Con --lejos usa coordenadas a ~1 km del punto. Solo corre con "
-        "DEBUG, DJANGO_ENV=development y SQLite."
+        "de la visita del empleado en el sitio del punto. Con --lejos usa "
+        "coordenadas a ~1 km del punto. Solo corre con DEBUG, "
+        "DJANGO_ENV=development y SQLite."
     )
 
     def add_arguments(self, parser):
         parser.add_argument("punto", help="Nombre del punto de control.")
         parser.add_argument(
             "--empleado", help="Usuario del empleado (por defecto el primero activo)."
-        )
-        parser.add_argument(
-            "--proyecto",
-            type=int,
-            help="Id del proyecto activo del sitio (por defecto el primero).",
         )
         parser.add_argument(
             "--lejos", action="store_true", help="Coordenadas a ~1 km del punto."
@@ -51,16 +45,6 @@ class Command(BaseCommand):
         exigir_entorno_demo("registrar_revision_demo")
         punto = self._punto(opciones["punto"])
         empleado = self._empleado(opciones["empleado"])
-        proyectos = Proyecto.objects.filter(
-            sitio=punto.sitio, estado=Proyecto.Estado.ACTIVO
-        )
-        if opciones["proyecto"] is not None:
-            proyectos = proyectos.filter(pk=opciones["proyecto"])
-        proyecto = proyectos.order_by("pk").first()
-        if proyecto is None:
-            raise CommandError(
-                f"El sitio {punto.sitio} no tiene un proyecto activo que coincida."
-            )
         latitud = punto.latitud if punto.latitud is not None else punto.sitio.latitud
         longitud = (
             punto.longitud if punto.longitud is not None else punto.sitio.longitud
@@ -69,9 +53,7 @@ class Command(BaseCommand):
             raise CommandError("El punto y su sitio no tienen coordenadas.")
         if opciones["lejos"]:
             latitud += DESPLAZAMIENTO_LEJOS
-        visita, _ = services.abrir_visita(
-            empleado=empleado, proyecto=proyecto, qr_codigo=punto.qr_codigo
-        )
+        visita, _ = services.abrir_visita(empleado=empleado, qr_codigo=punto.qr_codigo)
         revision = services.registrar_revision(
             visita=visita,
             empleado=empleado,

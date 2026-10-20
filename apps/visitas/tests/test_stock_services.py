@@ -13,7 +13,7 @@ from django.utils import timezone
 from apps.accounts.models import User
 from apps.productos.models import MovimientoStock, Producto
 from apps.productos.services import registrar_ingreso, stock
-from apps.proyectos.models import Proyecto
+from apps.sitios.models import Sitio
 from apps.visitas.models import ProductoAplicado, Visita
 from apps.visitas.services import registrar_revision, registrar_visita_manual
 from apps.visitas.tests.test_models import crear_visita, punto_de
@@ -30,7 +30,8 @@ class ConsumoTests(SinArchivosMixin, TestCase):
     def setUp(self):
         self.pendiente = crear_visita(programada_para=date(2026, 9, 1))
         self.empleado = self.pendiente.empleado
-        self.proyecto = self.pendiente.proyecto
+        self.sitio = self.pendiente.sitio
+        self.tipo = self.pendiente.tipo
         self.punto = punto_de(self.pendiente)
         self.admin = User.objects.create_user(
             username="admin-stock", password="x", rol=User.Rol.ADMINISTRADOR
@@ -45,11 +46,11 @@ class ConsumoTests(SinArchivosMixin, TestCase):
             self._item(self.gel, cantidad="2", unidad="kg"),
             self._item(self.cebo, cantidad="3", unidad="unidad"),
         ]
-        # Las cargas manuales son anteriores a hoy: el proyecto ya existía.
-        Proyecto.objects.filter(pk=self.proyecto.pk).update(
+        # Las cargas manuales son anteriores a hoy: el sitio ya existía.
+        Sitio.objects.filter(pk=self.sitio.pk).update(
             creado=timezone.now() - timedelta(days=60)
         )
-        self.proyecto.refresh_from_db()
+        self.sitio.refresh_from_db()
 
     def _item(self, producto, **cambios):
         item = {
@@ -66,12 +67,12 @@ class ConsumoTests(SinArchivosMixin, TestCase):
 
     def _cargar(self, **extra):
         argumentos = {
-            "proyecto": self.proyecto,
+            "sitio": self.sitio,
             "empleado": self.empleado,
             "administrador": self.admin,
             "motivo": "Sin señal",
             "realizada_en": timezone.now() - timedelta(hours=3),
-            "puntos": [self.punto],
+            "items": [(self.punto, self.tipo)],
             "datos": {},
             "productos_aplicados": self.items,
             "fotos": [jpeg_chico()],
@@ -80,7 +81,7 @@ class ConsumoTests(SinArchivosMixin, TestCase):
         return registrar_visita_manual(**argumentos)
 
     def test_un_consumo_por_producto_aplicado_con_el_empleado(self):
-        visita, _ = abrir(empleado=self.empleado, proyecto=self.proyecto)
+        visita, _ = abrir(empleado=self.empleado, sitio=self.sitio)
         registrar_revision(
             visita=visita,
             empleado=self.empleado,
