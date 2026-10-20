@@ -4,13 +4,13 @@
         hx-get="." hx-target="#listado" hx-swap="outerHTML" hx-push-url="true"
         hx-trigger="submit, change, input changed delay:400ms from:#campo-q">
     <label class="visually-hidden" for="campo-q">Buscar</label>
-    <input id="campo-q" type="search" name="q" value="{{ q }}" placeholder="Buscar por proyecto o sitio">
+    <input id="campo-q" type="search" name="q" value="{{ q }}" placeholder="Buscar por sitio">
     {% if orden %}<input type="hidden" name="orden" value="{{ orden }}">{% endif %}
     <select name="empleado" aria-label="Empleado"><option value="">Todos los empleados</option>
       {% for e in empleados %}<option value="{{ e.pk }}"{% if filtros.empleado == e.pk|stringformat:"s" %} selected{% endif %}>{{ e.get_full_name|default:e.username }}</option>{% endfor %}
     </select>
-    <select name="proyecto" aria-label="Proyecto"><option value="">Todos los proyectos</option>
-      {% for p in proyectos %}<option value="{{ p.pk }}"{% if filtros.proyecto == p.pk|stringformat:"s" %} selected{% endif %}>{{ p.titulo }}</option>{% endfor %}
+    <select name="sitio" aria-label="Sitio"><option value="">Todos los sitios</option>
+      {% for s in sitios %}<option value="{{ s.pk }}"{% if filtros.sitio == s.pk|stringformat:"s" %} selected{% endif %}>{{ s.nombre }}</option>{% endfor %}
     </select>
     <select name="estado" aria-label="Estado"><option value="">Todos los estados</option>
       {% for valor, texto in estados %}<option value="{{ valor }}"{% if filtros.estado == valor %} selected{% endif %}>{{ texto }}</option>{% endfor %}
@@ -23,8 +23,8 @@
   <table class="tabla">
     <thead>
       <tr>
-        {% include "panel/partials/th_orden.html" with campo="creado" etiqueta="Visita" %}
-        <th scope="col">Proyecto</th>
+        {% include "panel/partials/th_orden.html" with campo="creado" etiqueta="Turno" %}
+        <th scope="col">Sitio</th>
         <th scope="col">Empleado</th>
         {% include "panel/partials/th_orden.html" with campo="estado" etiqueta="Estado" %}
         {% include "panel/partials/th_orden.html" with campo="programada_para" etiqueta="Programada" %}
@@ -35,8 +35,8 @@
     <tbody>
       {% for v in visitas %}
         <tr>
-          <td><a href="{% url 'panel:visitas:ficha' v.pk %}">Visita {{ v.pk }}</a></td>
-          <td>{{ v.proyecto.titulo }} ({{ v.proyecto.sitio.nombre }})</td>
+          <td><a href="{% url 'panel:visitas:ficha' v.pk %}">Turno {{ v.pk }}</a></td>
+          <td>{{ v.sitio.nombre }}</td>
           <td>{{ v.empleado.get_full_name|default:v.empleado.username }}</td>
           <td>{% include "panel/partials/etiqueta_estado.html" with tono=v.estado|tono_estado texto=v.get_estado_display %}</td>
           <td>{{ v.programada_para|date:"d/m/Y"|default:"—" }}</td>
@@ -49,7 +49,7 @@
           </td>
         </tr>
       {% empty %}
-        <tr><td colspan="7">No hay visitas que coincidan.</td></tr>
+        <tr><td colspan="7">No hay turnos que coincidan.</td></tr>
       {% endfor %}
     </tbody>
   </table>

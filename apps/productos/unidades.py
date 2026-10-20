@@ -2,6 +2,8 @@
 
 from decimal import ROUND_HALF_UP, Decimal
 
+from django.core.exceptions import ValidationError
+
 VOLUMEN = "volumen"
 MASA = "masa"
 CONTEO = "conteo"
@@ -20,6 +22,18 @@ UNIDADES = {
 CHOICES = [(codigo, codigo) for codigo in UNIDADES]
 
 CUANTO = Decimal("0.0001")
+
+# Mayor valor que cabe en MovimientoStock.cantidad_base (14 dígitos, 4 decimales)
+MAXIMO_CANTIDAD_BASE = Decimal("9999999999.9999")
+
+
+def validar_cantidad_base(valor):
+    """Lanza `ValidationError` si `valor` (en unidad base) no cabe en el campo."""
+    if abs(Decimal(valor)) > MAXIMO_CANTIDAD_BASE:
+        raise ValidationError(
+            "La cantidad es demasiado grande: supera el máximo de "
+            f"{MAXIMO_CANTIDAD_BASE} en unidad base."
+        )
 
 
 def magnitud_de(unidad):

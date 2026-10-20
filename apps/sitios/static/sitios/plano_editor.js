@@ -14,7 +14,7 @@
     al_dia: "Al día",
     proxima: "Próxima",
     vencida: "Vencida",
-    sin_revisar: "Sin revisar",
+    sin_programar: "Sin programar",
   };
 
   var limites = [[0, 0], [datos.alto, datos.ancho]];
@@ -190,7 +190,7 @@
     if (provisorio) {
       provisorio.setLatLng(evento.latlng);
     } else {
-      provisorio = L.marker(evento.latlng, { icon: icono("sin_revisar", true) }).addTo(mapa);
+      provisorio = L.marker(evento.latlng, { icon: icono("sin_programar", true) }).addTo(mapa);
     }
     formulario.hidden = false;
     document.getElementById("plano-alta-nombre").focus();

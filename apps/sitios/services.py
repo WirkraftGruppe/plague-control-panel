@@ -7,23 +7,20 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import ProtectedError
 
-from apps.proyectos.models import Proyecto
-
 from .models import Plano, PuntoControl, Sitio
 
 TOPE_REGENERAR_QR = 20
 
 
 def suprimir_sitio(sitio):
-    """Suprime el sitio y su historial, y el de sus proyectos (Ley 25.326).
+    """Suprime el sitio y su historial (Ley 25.326).
 
-    Si el sitio tiene proyectos, ``ProtectedError`` se propaga y no se borra nada.
+    Si el sitio tiene visitas, ``ProtectedError`` se propaga y no se borra nada.
     """
     with transaction.atomic():
         pk = sitio.pk
         sitio.delete()
         Sitio.history.filter(id=pk).delete()
-        Proyecto.history.filter(sitio_id=pk).delete()
         PuntoControl.history.filter(sitio_id=pk).delete()
         Plano.history.filter(sitio_id=pk).delete()
 
@@ -31,19 +28,19 @@ def suprimir_sitio(sitio):
 def suprimir_sitios(sitios):
     """Suprime cada sitio por separado.
 
-    Devuelve ``(suprimidos, con_proyectos)``: la cantidad suprimida y la lista de
-    sitios que no se pudieron suprimir por tener proyectos.
+    Devuelve ``(suprimidos, con_visitas)``: la cantidad suprimida y la lista de
+    sitios que no se pudieron suprimir por tener visitas.
     """
     suprimidos = 0
-    con_proyectos = []
+    con_visitas = []
     for sitio in sitios:
         try:
             suprimir_sitio(sitio)
         except ProtectedError:
-            con_proyectos.append(sitio)
+            con_visitas.append(sitio)
         else:
             suprimidos += 1
-    return suprimidos, con_proyectos
+    return suprimidos, con_visitas
 
 
 def regenerar_qr(punto):
@@ -246,3 +243,26 @@ def fijar_ubicacion_en_campo(*, administrador, punto, latitud, longitud, precisi
         )
     punto.latitud, punto.longitud = bloqueado.latitud, bloqueado.longitud
     punto.precision_m = bloqueado.precision_m
+
+
+def actualizar_programacion(
+    punto, servicio, frecuencia_dias, proximo_vencimiento, usuario
+):
+    """Guarda servicio, frecuencia y vencimiento del punto, con motivo en el historial.
+
+    Editar la frecuencia no recalcula el vencimiento.
+    """
+    with transaction.atomic():
+        bloqueado = _bloquear_punto(punto)
+        bloqueado.servicio = servicio
+        bloqueado.frecuencia_dias = frecuencia_dias
+        bloqueado.proximo_vencimiento = proximo_vencimiento
+        bloqueado._change_reason = "Programación editada"
+        bloqueado._history_user = usuario
+        bloqueado.save(
+            update_fields=["servicio", "frecuencia_dias", "proximo_vencimiento"]
+        )
+    punto.servicio = servicio
+    punto.frecuencia_dias = frecuencia_dias
+    punto.proximo_vencimiento = proximo_vencimiento
+    return punto

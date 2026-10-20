@@ -1,4 +1,4 @@
-"""Vistas del panel de Visitas: listado, ficha, fotos, asignación y carga manual."""
+"""Vistas del panel de Visitas: listado, ficha, fotos, nuevo turno y carga manual."""
 
 import logging
 from urllib.parse import urlencode
@@ -16,16 +16,17 @@ from django.views.generic import DetailView, FormView
 from apps.accounts.mixins import AdministradorRequeridoMixin
 from apps.accounts.models import User
 from apps.panel.listados import ListadoPanelMixin
-from apps.proyectos.models import Proyecto
+from apps.sitios.estado import EstadoVencimiento
+from apps.sitios.models import Sitio
 
 from .models import Foto, Revision, Visita
-from .panel_forms import FormSetProductos, FormularioAsignar, FormularioManual
+from .panel_forms import FormSetProductos, FormularioManual, FormularioTurno
 from .planillas import filas_planilla
-from .services import marcar_incidencia_revisada, registrar_visita_manual
+from .services import crear_turno, marcar_incidencia_revisada, registrar_visita_manual
 
 logger = logging.getLogger(__name__)
 
-FILTROS = ("empleado", "proyecto", "estado", "incidencia")
+FILTROS = ("empleado", "sitio", "estado", "incidencia")
 INCIDENCIAS = (
     ("sin_revisar", "Sin revisar"),
     ("todas", "Todas las incidencias"),
@@ -57,7 +58,7 @@ class ListadoVisitas(AdministradorRequeridoMixin, ListadoPanelMixin):
     template_parcial = "visitas/panel/_listado.html"
     context_object_name = "visitas"
     orden_permitido = ("creado", "programada_para", "cerrada_en", "estado")
-    campos_busqueda = ("proyecto__titulo", "proyecto__sitio__nombre")
+    campos_busqueda = ("sitio__nombre",)
 
     def get_filtros(self):
         valores = {f: self.request.GET.get(f, "").strip() for f in FILTROS}
@@ -71,7 +72,7 @@ class ListadoVisitas(AdministradorRequeridoMixin, ListadoPanelMixin):
         queryset = (
             super()
             .get_queryset()
-            .select_related("proyecto__sitio", "empleado")
+            .select_related("sitio", "empleado")
             .annotate(
                 con_ubicacion=ExpressionWrapper(
                     Q(incidencia_ubicacion=True) | Exists(en_revision),
@@ -82,7 +83,7 @@ class ListadoVisitas(AdministradorRequeridoMixin, ListadoPanelMixin):
         filtros = self.get_filtros()
         for parametro, campo in (
             ("empleado", "empleado_id"),
-            ("proyecto", "proyecto_id"),
+            ("sitio", "sitio_id"),
         ):
             valor = filtros.get(parametro)
             if _es_id_valido(valor):
@@ -112,7 +113,7 @@ class ListadoVisitas(AdministradorRequeridoMixin, ListadoPanelMixin):
         contexto["empleados"] = User.objects.filter(
             rol=User.Rol.EMPLEADO, is_active=True
         ).order_by("username")
-        contexto["proyectos"] = Proyecto.objects.order_by("titulo")
+        contexto["sitios"] = Sitio.objects.order_by("nombre")
         contexto["estados"] = Visita.Estado.choices
         contexto["incidencias"] = INCIDENCIAS
         return contexto
@@ -148,16 +149,29 @@ class FichaVisita(AdministradorRequeridoMixin, DetailView):
     template_name = "visitas/panel/ficha.html"
     context_object_name = "visita"
     queryset = Visita.objects.select_related(
-        "proyecto__sitio", "empleado", "asignada_por", "incidencia_revisada_por"
+        "sitio", "empleado", "asignada_por", "incidencia_revisada_por"
     ).prefetch_related(
-        "revisiones__punto", "revisiones__fotos", "revisiones__productos__producto"
+        "revisiones__punto",
+        "revisiones__servicio",
+        "revisiones__fotos",
+        "revisiones__productos__producto",
+        "items__punto",
+        "items__servicio",
     )
 
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
         visita = contexto["visita"]
-        contexto["filas"] = filas_planilla(visita.esquema_planilla, visita.datos)
+        contexto["planillas"] = [
+            (slug, filas_planilla(esquema, visita.datos.get(slug)))
+            for slug, esquema in visita.esquema_planilla.items()
+            if esquema
+        ]
         contexto["revisiones"] = list(visita.revisiones.all())
+        revisados = {r.punto_id for r in contexto["revisiones"]}
+        contexto["items"] = list(visita.items.all())
+        for item in contexto["items"]:
+            item.revisado = item.punto_id in revisados
         contexto["con_ubicacion"] = visita.incidencia_ubicacion or any(
             r.incidencia_ubicacion for r in contexto["revisiones"]
         )
@@ -201,59 +215,91 @@ class FotoVisita(AdministradorRequeridoMixin, View):
         return respuesta
 
 
-class AsignarVisita(AdministradorRequeridoMixin, FormView):
-    form_class = FormularioAsignar
-    template_name = "visitas/panel/asignar.html"
+class _SitioMixin:
+    """Carga el sitio de la URL (con su cliente) y se lo pasa al formulario."""
 
     @cached_property
-    def proyecto(self):
+    def sitio(self):
         return get_object_or_404(
-            Proyecto.objects.select_related("sitio__cliente"),
-            pk=self.kwargs["proyecto_pk"],
-        )
-
-    def get_context_data(self, **kwargs):
-        contexto = super().get_context_data(**kwargs)
-        contexto["proyecto"] = self.proyecto
-        return contexto
-
-    def form_valid(self, form):
-        if self.proyecto.estado != Proyecto.Estado.ACTIVO:
-            form.add_error(None, "Solo se asignan visitas a proyectos activos.")
-            return self.form_invalid(form)
-        if not (self.proyecto.sitio.activo and self.proyecto.sitio.cliente.activo):
-            form.add_error(None, "El sitio o el cliente del proyecto están de baja.")
-            return self.form_invalid(form)
-        Visita.objects.create(
-            proyecto=self.proyecto,
-            empleado=form.cleaned_data["empleado"],
-            origen=Visita.Origen.APP,
-            estado=Visita.Estado.PENDIENTE,
-            programada_para=form.cleaned_data["programada_para"],
-            asignada_por=self.request.user,
-        )
-        messages.success(self.request, "Visita asignada.")
-        return redirect(self.get_success_url())
-
-    def get_success_url(self):
-        return reverse("panel:proyectos:ficha", args=[self.proyecto.pk])
-
-
-class RegistrarVisitaManual(AdministradorRequeridoMixin, FormView):
-    form_class = FormularioManual
-    template_name = "visitas/panel/manual.html"
-
-    @cached_property
-    def proyecto(self):
-        return get_object_or_404(
-            Proyecto.objects.select_related(
-                "sitio__cliente", "tipo_servicio"
-            ).prefetch_related("tipo_servicio__campos"),
-            pk=self.kwargs["proyecto_pk"],
+            Sitio.objects.select_related("cliente"), pk=self.kwargs["sitio_pk"]
         )
 
     def get_form_kwargs(self):
-        return {**super().get_form_kwargs(), "proyecto": self.proyecto}
+        return {**super().get_form_kwargs(), "sitio": self.sitio}
+
+    def get_context_data(self, **kwargs):
+        contexto = super().get_context_data(**kwargs)
+        contexto["sitio"] = self.sitio
+        return contexto
+
+
+def _numero(valor):
+    """Decimal de la base a número de JSON; vacío queda en ``None``."""
+    return None if valor is None else float(valor)
+
+
+class NuevoTurnoView(AdministradorRequeridoMixin, _SitioMixin, FormView):
+    form_class = FormularioTurno
+    template_name = "visitas/panel/nuevo_turno.html"
+
+    def datos_planos(self, form):
+        """Planos activos del sitio con sus puntos ubicados, para dibujarlos."""
+        estados = {f["punto"].pk: f["estado"] for f in form.filas()}
+        planos = []
+        for plano in self.sitio.planos.filter(activo=True):
+            puntos = [
+                {
+                    "id": p.pk,
+                    "nombre": p.nombre,
+                    "x": _numero(p.x),
+                    "y": _numero(p.y),
+                    "estado": estados[p.pk],
+                    "estado_texto": EstadoVencimiento(estados[p.pk]).label,
+                }
+                for p in form.puntos_activos
+                if p.plano_id == plano.pk and p.x is not None and p.y is not None
+            ]
+            planos.append(
+                {
+                    "id": plano.pk,
+                    "nombre": plano.nombre,
+                    "imagen": reverse("panel:sitios:plano_imagen", args=[plano.pk]),
+                    "ancho": plano.ancho_px,
+                    "alto": plano.alto_px,
+                    "puntos": puntos,
+                }
+            )
+        return planos
+
+    def get_context_data(self, **kwargs):
+        contexto = super().get_context_data(**kwargs)
+        contexto["planos"] = self.datos_planos(contexto["form"])
+        return contexto
+
+    def form_valid(self, form):
+        datos = form.cleaned_data
+        try:
+            crear_turno(
+                sitio=self.sitio,
+                empleado=datos["empleado"],
+                programada_para=datos["programada_para"],
+                items=form.items(),
+                asignada_por=self.request.user,
+            )
+        except ValidationError as error:
+            for mensaje in error.messages:
+                form.add_error(None, mensaje)
+            return self.form_invalid(form)
+        messages.success(self.request, "Turno creado.")
+        return redirect(self.get_success_url())
+
+    def get_success_url(self):
+        return reverse("panel:sitios:ficha", args=[self.sitio.pk])
+
+
+class CargarVisitaView(AdministradorRequeridoMixin, _SitioMixin, FormView):
+    form_class = FormularioManual
+    template_name = "visitas/panel/cargar.html"
 
     def get_productos(self):
         if self.request.method == "POST":
@@ -262,7 +308,6 @@ class RegistrarVisitaManual(AdministradorRequeridoMixin, FormView):
 
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
-        contexto["proyecto"] = self.proyecto
         contexto.setdefault("productos", self.get_productos())
         return contexto
 
@@ -279,12 +324,12 @@ class RegistrarVisitaManual(AdministradorRequeridoMixin, FormView):
         datos = form.cleaned_data
         try:
             visita = registrar_visita_manual(
-                proyecto=self.proyecto,
+                sitio=self.sitio,
                 empleado=datos["empleado"],
                 administrador=self.request.user,
                 motivo=datos["motivo"],
                 realizada_en=datos["realizada_en"],
-                puntos=datos["puntos"],
+                items=form.items(),
                 datos=form.datos_planilla(),
                 datos_visita=form.datos_planilla_visita(),
                 productos_aplicados=[

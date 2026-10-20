@@ -1,6 +1,0 @@
-{% extends "panel/base.html" %}
-{% block panel_contenido %}
-  <h1>Proyectos</h1>
-  <p><a class="boton boton-primario" href="{% url 'panel:proyectos:alta' %}">Nuevo proyecto</a></p>
-  {% include "proyectos/panel/_listado.html" %}
-{% endblock %}

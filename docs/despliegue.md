@@ -2,7 +2,7 @@
 
 Guía para alojar una instancia de Detach. Nada de esto se ejecuta solo: lo hace el usuario desde su cuenta. La configuración ya está en el repositorio (`railway.json`, `.python-version`, `config/settings/prod.py`).
 
-## 1. Cuenta y proyecto
+## 1. Cuenta y servicio
 1. Crear la cuenta en railway.com y conectar el repositorio de GitHub.
 2. `New Project` -> `Deploy from GitHub repo` -> elegir el repositorio y la rama a alojar.
 3. Railway lee `railway.json`:
@@ -12,7 +12,7 @@ Guía para alojar una instancia de Detach. Nada de esto se ejecuta solo: lo hace
 4. Python 3.13 sale de `.python-version`.
 
 ## 2. Base de datos
-1. En el proyecto: `New` -> `Database` -> `Add PostgreSQL`.
+1. En el entorno de Railway: `New` -> `Database` -> `Add PostgreSQL`.
 2. En el servicio web, variable `DATABASE_URL` como referencia a la base: `${{Postgres.DATABASE_URL}}`.
 
 ## 3. Variables del servicio web

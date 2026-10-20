@@ -5,8 +5,9 @@ from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.utils.functional import cached_property
 from django.utils.text import slugify
@@ -18,25 +19,38 @@ from apps.accounts.mixins import AdministradorRequeridoMixin
 from apps.clientes.models import Cliente
 from apps.panel.listados import ListadoPanelMixin
 from apps.panel.mapa import ORIGEN_TESELAS
+from apps.servicios.models import TipoServicio
+from apps.visitas.models import Visita
 
 from . import geocodificacion, qr, services
-from .estado import EstadoPunto, estados_de_puntos
+from .estado import EstadoVencimiento, estados_por_vencimiento
 from .models import Plano, PuntoControl, Sitio
 from .panel_forms import (
     PlanoForm,
     PosicionForm,
+    ProgramacionForm,
     PuntoAltaForm,
     PuntoForm,
     SitioForm,
 )
 
 PESTANAS = ("mapa", "planos", "puntos")
-CLASE_ESTADO = {
-    EstadoPunto.AL_DIA: "ok",
-    EstadoPunto.PROXIMA: "warn",
-    EstadoPunto.VENCIDA: "danger",
-    EstadoPunto.SIN_REVISAR: "neutral",
+TURNOS_REALIZADOS_MAXIMO = 10
+CLASE_VENCIMIENTO = {
+    EstadoVencimiento.AL_DIA: "ok",
+    EstadoVencimiento.PROXIMA: "warn",
+    EstadoVencimiento.VENCIDA: "danger",
+    EstadoVencimiento.SIN_PROGRAMAR: "neutral",
 }
+
+
+def _marcar_vencimiento(puntos):
+    """Agrega a cada punto su estado por vencimiento, con etiqueta y clase."""
+    estados = estados_por_vencimiento(puntos, timezone.localdate())
+    for punto in puntos:
+        estado = punto.estado = estados[punto.pk]
+        punto.vencimiento_etiqueta = EstadoVencimiento(estado).label
+        punto.vencimiento_clase = CLASE_VENCIMIENTO[estado]
 
 
 class SitioListado(AdministradorRequeridoMixin, ListadoPanelMixin):
@@ -117,32 +131,46 @@ class SitioFicha(AdministradorRequeridoMixin, DetailView):
         pestana = self.request.GET.get("pestana", "puntos")
         if pestana not in PESTANAS:
             pestana = "puntos"
-        puntos = list(sitio.puntos.select_related("plano"))
+        puntos = list(sitio.puntos.select_related("plano", "servicio"))
+        _marcar_vencimiento(puntos)
         activos = [p for p in puntos if p.activo]
-        estados = estados_de_puntos(activos)
-        for punto in puntos:
-            estado = estados.get(punto.pk)
-            punto.estado = estado
-            punto.estado_etiqueta = EstadoPunto(estado).label if estado else ""
-            punto.estado_clase = CLASE_ESTADO.get(estado, "neutral")
         planos = list(sitio.planos.filter(activo=True))
         pk_plano = self.request.GET.get("plano", "")
         plano = next((p for p in planos if str(p.pk) == pk_plano), None)
         plano = plano or (planos[0] if planos else None)
         contexto.update(
-            proyectos=sitio.proyectos.select_related("tipo_servicio"),
             pestana=pestana,
             pestanas=(("puntos", "Puntos"), ("mapa", "Mapa"), ("planos", "Planos")),
             puntos=puntos,
             puntos_activos=activos,
+            servicios=TipoServicio.objects.filter(activo=True).order_by("nombre"),
             planos=planos,
             plano=plano,
+            turnos_pendientes=self._turnos(sitio, Visita.Estado.PENDIENTE),
+            turnos_realizados=self._turnos(sitio, Visita.Estado.REALIZADA)[
+                :TURNOS_REALIZADOS_MAXIMO
+            ],
         )
         if pestana == "mapa":
             contexto["datos_mapa"] = self._datos_mapa(sitio)
         if pestana == "planos" and plano:
             contexto["datos_plano"] = self._datos_plano(plano, activos)
         return contexto
+
+    @staticmethod
+    def _turnos(sitio, estado):
+        """Turnos del sitio en un estado: pendientes por fecha, el resto recientes."""
+        orden = (
+            ("programada_para", "pk")
+            if estado == Visita.Estado.PENDIENTE
+            else ("-cerrada_en", "-pk")
+        )
+        return (
+            sitio.visitas.filter(estado=estado)
+            .select_related("empleado")
+            .prefetch_related("items")
+            .order_by(*orden)
+        )
 
     @staticmethod
     def _datos_mapa(sitio):
@@ -310,6 +338,40 @@ class _AccionPunto(_PuntoMixin, SingleObjectMixin, View):
     """Acción POST sobre un punto, para HTMX o para un botón de la ficha."""
 
     http_method_names = ["post"]
+
+
+class PuntoProgramacion(_PuntoMixin, SingleObjectMixin, View):
+    """Edición en línea de servicio, frecuencia y vencimiento; devuelve la fila."""
+
+    http_method_names = ["get", "post"]
+    template_name = "sitios/panel/_fila_punto.html"
+
+    def _fila(self, request, punto, form=None, estado=200):
+        _marcar_vencimiento([punto])
+        contexto = {
+            "punto": punto,
+            "form": form,
+            "servicios": TipoServicio.objects.filter(activo=True).order_by("nombre"),
+        }
+        return render(request, self.template_name, contexto, status=estado)
+
+    def get(self, request, pk):
+        return self._fila(request, self.get_object())
+
+    def post(self, request, pk):
+        punto = self.get_object()
+        form = ProgramacionForm(request.POST)
+        if not form.is_valid():
+            return self._fila(request, punto, form, estado=422)
+        datos = form.cleaned_data
+        services.actualizar_programacion(
+            punto,
+            datos["servicio"],
+            datos["frecuencia_dias"],
+            datos["proximo_vencimiento"],
+            request.user,
+        )
+        return self._fila(request, punto)
 
 
 class PuntoPosicion(_AccionPunto):

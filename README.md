@@ -1,6 +1,6 @@
 # Detach
 
-Detach es un sistema de gestión para empresas de control de plagas: un único proyecto Django con el panel de gestión (`/panel/`, administradores) y la API (`/api/v1/`, app móvil de los empleados). Clientes, sitios con puntos de control y QR, proyectos, visitas, mapa, productos y certificados.
+Detach es un sistema de gestión para empresas de control de plagas: una única aplicación Django con el panel de gestión (`/panel/`, administradores) y la API (`/api/v1/`, app móvil de los empleados). Clientes, sitios con puntos de control y QR (cada punto con su servicio, frecuencia y vencimiento), turnos, mapa, productos y certificados.
 
 `/` redirige al login del panel. El nombre de la empresa sale de la variable `NOMBRE_EMPRESA` (`config/settings/base.py`). El sitio público de cada empresa vive en otro repositorio.
 
@@ -28,7 +28,7 @@ PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.p
 PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py cargar_demo
 ```
 
-Siembra clientes, sitios, proyectos y visitas de ejemplo, con un administrador de clave pública. Solo corre con `DEBUG`, `DJANGO_ENV=development` y SQLite; se niega en cualquier otro caso. No hay paquete portátil de la demostración.
+Siembra clientes, sitios, turnos y visitas de ejemplo, con un administrador de clave pública. Solo corre con `DEBUG`, `DJANGO_ENV=development` y SQLite; se niega en cualquier otro caso. No hay paquete portátil de la demostración.
 
 ## Contrato de la API
 

@@ -1,0 +1,46 @@
+{% extends "panel/base.html" %}
+{% load static %}
+{% block extra_head %}
+  {{ block.super }}
+  {% if planos %}<link rel="stylesheet" href="{% static 'vendor/leaflet/leaflet.css' %}">{% endif %}
+  <link rel="stylesheet" href="{% static 'sitios/puntos.css' %}">
+{% endblock %}
+{% block panel_contenido %}
+  <h1>Nuevo turno</h1>
+  <p>Sitio: {{ sitio.nombre }} ({{ sitio.cliente.razon_social }})</p>
+  <form class="formulario" method="post">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="errores">{{ form.non_field_errors }}</div>{% endif %}
+    {% for campo in form.visible_fields %}
+      {% if not campo.field.agrupado %}
+      <div class="campo{% if campo.errors %} campo-error{% endif %}">
+        {{ campo.label_tag }}
+        {{ campo }}
+        {% for error in campo.errors %}<small class="error">{{ error }}</small>{% endfor %}
+      </div>
+      {% endif %}
+    {% endfor %}
+    {% if planos %}
+    <section>
+      <h2>Plano</h2>
+      {% if planos|length > 1 %}
+      <div class="campo"><label for="turno-plano-selector">Plano</label>
+        <select id="turno-plano-selector">{% for p in planos %}<option value="{{ p.id }}">{{ p.nombre }}</option>{% endfor %}</select>
+      </div>
+      {% endif %}
+      <p class="ayuda">Pulse un punto del plano o tilde la lista: ambos se resaltan juntos. El color indica el estado del vencimiento.</p>
+      <div id="turno-plano" class="mapa-leaflet"></div>
+      {{ planos|json_script:"datos-turno-plano" }}
+    </section>
+    {% endif %}
+    {% include "visitas/panel/_puntos_servicio.html" with con_atajos=True %}
+    <div class="acciones">
+      <button class="boton boton-primario" type="submit">Crear turno</button>
+      <a class="boton boton-secundario" href="{% url 'panel:sitios:ficha' sitio.pk %}">Cancelar</a>
+    </div>
+  </form>
+{% endblock %}
+{% block scripts %}
+  {% if planos %}<script src="{% static 'vendor/leaflet/leaflet.js' %}"></script>{% endif %}
+  <script src="{% static 'visitas/nuevo_turno.js' %}"></script>
+{% endblock %}

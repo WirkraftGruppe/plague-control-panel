@@ -53,7 +53,7 @@ class VisitaAdminTests(TestCase):
 
     def _pendiente_de(self, otra):
         return Visita.objects.create(
-            proyecto=otra.proyecto, empleado=otra.empleado, origen=Visita.Origen.APP
+            sitio=otra.sitio, empleado=otra.empleado, origen=Visita.Origen.APP
         )
 
     def setUp(self):
@@ -86,7 +86,7 @@ class VisitaAdminTests(TestCase):
         for campo in CAMPOS_EVIDENCIA:
             self.assertIn(campo, solo_lectura)
         solo_lectura = modeladmin.get_readonly_fields(self._request(), pendiente)
-        for campo in ("proyecto", "empleado"):
+        for campo in ("sitio", "empleado"):
             self.assertNotIn(campo, solo_lectura)
 
     def test_no_se_borran_visitas_revisiones_ni_fotos(self):
@@ -256,7 +256,7 @@ class AdminPendienteTests(TestCase):
                 "cerrada_en_0": "2026-10-01",
                 "cerrada_en_1": "10:00:00",
                 "datos": '{"a": 1}',
-                "proyecto": pendiente.proyecto_id,
+                "sitio": pendiente.sitio_id,
                 "empleado": pendiente.empleado_id,
                 "origen": Visita.Origen.APP,
             },
@@ -278,7 +278,7 @@ class AdminPendienteTests(TestCase):
         respuesta = self.client.post(
             url,
             {
-                "proyecto": pendiente.proyecto_id,
+                "sitio": pendiente.sitio_id,
                 "empleado": pendiente.empleado_id,
                 "origen": Visita.Origen.APP,
             },
@@ -306,7 +306,7 @@ class AdminPendienteTests(TestCase):
         self.assertEqual(set(form.fields["empleado"].queryset), {empleado})
         antes = Visita.objects.count()
         datos = {
-            "proyecto": base.proyecto_id,
+            "sitio": base.sitio_id,
             "empleado": administrador.pk,
             "origen": Visita.Origen.APP,
         }

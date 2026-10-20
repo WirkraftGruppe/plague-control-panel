@@ -25,6 +25,24 @@
   <dt>Estado</dt><dd>{% if sitio.activo %}Activo{% else %}Inactivo{% endif %}</dd>
 </dl>
 
+<section>
+  <h2>Turnos</h2>
+  <p class="acciones">
+    <a class="boton boton-primario" href="{% url 'panel:visitas:nuevo_turno' sitio.pk %}">Nuevo turno</a>
+    <a class="boton boton-secundario" href="{% url 'panel:visitas:cargar' sitio.pk %}">Cargar visita</a>
+  </p>
+  <div class="turnos-ficha">
+    <div>
+      <h3>Turnos pendientes</h3>
+      {% include "sitios/panel/_turnos.html" with turnos=turnos_pendientes vacio="No hay turnos pendientes." fecha_pendiente=True %}
+    </div>
+    <div>
+      <h3>Turnos realizados</h3>
+      {% include "sitios/panel/_turnos.html" with turnos=turnos_realizados vacio="Todavía no hay turnos realizados." %}
+    </div>
+  </div>
+</section>
+
 <nav class="pestanas" aria-label="Puntos de control del sitio">
   {% for clave, nombre in pestanas %}
   <a href="?pestana={{ clave }}"{% if clave == pestana %} aria-current="page"{% endif %}>{{ nombre }}</a>
@@ -45,16 +63,6 @@
   {% include "sitios/panel/_pestana_puntos.html" %}
 {% endif %}
 
-<section>
-  <h2>Proyectos</h2>
-  <ul>
-    {% for proyecto in proyectos %}
-    <li>{% url 'panel:proyectos:ficha' proyecto.pk as u %}{% if u %}<a href="{{ u }}">{{ proyecto.titulo }}</a>{% else %}{{ proyecto.titulo }}{% endif %} · {{ proyecto.tipo_servicio }} · {{ proyecto.get_estado_display }}</li>
-    {% empty %}
-    <li>Este sitio no tiene proyectos.</li>
-    {% endfor %}
-  </ul>
-</section>
 {% endwith %}
 {% endblock %}
 {% block scripts %}

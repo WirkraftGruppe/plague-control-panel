@@ -17,6 +17,7 @@ from apps.panel.demo_imagenes import foto_de_demostracion
 from apps.productos.services import registrar_consumo
 from apps.productos.unidades import convertir, unidades_permitidas
 from apps.visitas.models import Foto, ProductoAplicado, Revision, Visita
+from apps.visitas.services import abrir_visita, crear_turno
 from apps.visitas.ubicacion import verificar
 
 METROS_POR_GRADO = 111_000
@@ -51,7 +52,7 @@ def _coordenada(valor, desvio_m, sentido):
 
 
 class GeneradorHistoria:
-    """Crea las jornadas realizadas y la visita pendiente de cada proyecto."""
+    """Crea las jornadas realizadas, el turno abierto y el pendiente de cada sitio."""
 
     def __init__(self, empleado, administrador, productos, archivos):
         self.empleado = empleado
@@ -94,8 +95,9 @@ class GeneradorHistoria:
         )
         aplicado.save(update_fields=["movimiento"])
 
-    def _revision(self, visita, punto, esquema, orden, momento, lejos, numero):
-        """Revisión de un punto: cerca de él o, con `lejos`, a más del máximo."""
+    def _revision(self, visita, item, esquema, orden, momento, lejos, numero):
+        """Revisión de un ítem: cerca de su punto o, con `lejos`, a más del máximo."""
+        punto, servicio = item
         desvio = settings.DISTANCIA_MAXIMA_M * 2 if lejos else 12
         latitud = _coordenada(punto.latitud, desvio, 1)
         longitud = _coordenada(punto.longitud, desvio // 2, -1)
@@ -104,6 +106,7 @@ class GeneradorHistoria:
         revision = Revision(
             visita=visita,
             punto=punto,
+            servicio=servicio,
             orden=orden,
             realizada_en=momento,
             recibida_en=momento + timedelta(minutes=1),
@@ -129,35 +132,39 @@ class GeneradorHistoria:
             self._producto_aplicado(revision, numero // 3)
         return revision
 
-    def jornada(self, proyecto, puntos, fecha, lejanos):
-        """Jornada realizada ese día, con una revisión por punto activo."""
+    def jornada(self, sitio, items, fecha, lejanos):
+        """Turno realizado ese día, con una revisión por ítem `(punto, servicio)`."""
         inicio = timezone.make_aware(datetime.combine(fecha, time(9, 0)))
-        tipo = proyecto.tipo_servicio
-        esquema_visita = tipo.esquema_planilla("visita")
-        esquema_punto = tipo.esquema_planilla("punto") or ESQUEMA_PUNTO
-        visita = Visita(
-            proyecto=proyecto,
+        visita = crear_turno(
+            sitio=sitio,
             empleado=self.empleado,
-            origen=Visita.Origen.APP,
-            estado=Visita.Estado.REALIZADA,
-            cierre=Visita.Cierre.EMPLEADO,
-            abierta_en=inicio,
-            cerrada_en=inicio + timedelta(minutes=8 * len(puntos) + 5),
-            datos=datos_de_planilla(esquema_visita, fecha.toordinal(), fecha),
-            esquema_planilla=esquema_visita,
-            precision_m=Decimal("8.00"),
-            incidencia_ubicacion=bool(lejanos),
+            programada_para=fecha,
+            items=items,
+            asignada_por=self.administrador,
         )
+        esquemas = {s.slug: s.esquema_planilla("visita") for _, s in items}
+        visita.estado = Visita.Estado.REALIZADA
+        visita.cierre = Visita.Cierre.EMPLEADO
+        visita.abierta_en = inicio
+        visita.cerrada_en = inicio + timedelta(minutes=8 * len(items) + 5)
+        visita.datos = {
+            slug: datos_de_planilla(esquema, fecha.toordinal(), fecha)
+            for slug, esquema in esquemas.items()
+        }
+        visita.esquema_planilla = esquemas
+        visita.precision_m = Decimal("8.00")
+        visita.incidencia_ubicacion = bool(lejanos)
         visita.full_clean()
         visita.save()
         distancias = []
-        for orden, punto in enumerate(puntos, start=1):
+        for orden, item in enumerate(items, start=1):
             self.semilla += 1
             momento = inicio + timedelta(minutes=8 * orden)
+            esquema = item[1].esquema_planilla("punto") or ESQUEMA_PUNTO
             revision = self._revision(
                 visita,
-                punto,
-                esquema_punto,
+                item,
+                esquema,
                 orden,
                 momento,
                 orden - 1 in lejanos,
@@ -176,16 +183,20 @@ class GeneradorHistoria:
         )
         return visita
 
-    def pendiente(self, proyecto, fecha):
-        """Visita programada para `fecha`, asignada por el administrador."""
-        visita = Visita(
-            proyecto=proyecto,
+    def pendiente(self, sitio, items, fecha):
+        """Turno programado para `fecha`, asignado por el administrador."""
+        return crear_turno(
+            sitio=sitio,
             empleado=self.empleado,
-            origen=Visita.Origen.APP,
-            estado=Visita.Estado.PENDIENTE,
             programada_para=fecha,
+            items=items,
             asignada_por=self.administrador,
         )
-        visita.full_clean()
-        visita.save()
+
+    def abierto(self, sitio, items, fecha):
+        """Turno de hoy que el empleado ya abrió escaneando el primer punto."""
+        self.pendiente(sitio, items, fecha)
+        visita, _ = abrir_visita(
+            empleado=self.empleado, qr_codigo=items[0][0].qr_codigo
+        )
         return visita

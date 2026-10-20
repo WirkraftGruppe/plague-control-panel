@@ -77,6 +77,15 @@ class Sitio(models.Model):
     )
     horario_acceso = models.CharField("horario de acceso", max_length=200, blank=True)
     notas = models.TextField("notas", blank=True)
+    responsable = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="responsable",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="sitios_a_cargo",
+        limit_choices_to={"rol": "empleado", "is_active": True},
+    )
     activo = models.BooleanField("activo", default=True)
     creado = models.DateTimeField("creado", auto_now_add=True)
     actualizado = models.DateTimeField("actualizado", auto_now=True)
@@ -247,6 +256,21 @@ class PuntoControl(models.Model):
         null=True,
         blank=True,
     )
+    servicio = models.ForeignKey(
+        "servicios.TipoServicio",
+        verbose_name="servicio",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="puntos",
+    )
+    frecuencia_dias = models.PositiveIntegerField(
+        "frecuencia (días)",
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1)],
+    )
+    proximo_vencimiento = models.DateField("próximo vencimiento", null=True, blank=True)
     foto = models.ImageField("foto", upload_to=ruta_foto_punto, null=True, blank=True)
     ubicacion_fijada_por = models.ForeignKey(
         settings.AUTH_USER_MODEL,

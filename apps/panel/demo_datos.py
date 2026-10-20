@@ -155,13 +155,19 @@ ESQUEMA_PUNTO = [
     },
 ]
 
-# Días desde la última jornada hasta hoy, uno por proyecto: reparte el mapa entre
-# al día, próximo y vencido. El proyecto de `PENDIENTE` tiene la visita próxima.
+# Días desde la última jornada de cada sitio hasta hoy; el sitio de `PENDIENTE`
+# tiene un turno por delante y el de `ABIERTO`, uno abierto.
 DESFASES = (1, 3, 5, 8, 12, 16)
-PROYECTO_CON_PENDIENTE = 3
-FRECUENCIA_DIAS = 14
+SITIO_CON_PENDIENTE = 3
+SITIO_CON_ABIERTO = 1
+CADENCIA_HISTORIA_DIAS = 14
 DIAS_DE_HISTORIA = 92
 
-# (proyecto, jornada, punto): revisiones hechas lejos del punto. La jornada 0 es
+# Frecuencia (días) de los puntos, por turnos, y días hasta su próximo vencimiento
+# (negativo: vencido; `None`: sin programar y sin frecuencia).
+FRECUENCIAS = (7, 14, 30)
+VENCIMIENTOS = (-3, 4, 20, None, 45, -1)
+
+# (sitio, jornada, punto): revisiones hechas lejos del punto. La jornada 0 es
 # la más reciente.
 INCIDENCIAS_UBICACION = {(0, 1): {2}, (2, 2): {1}, (4, 1): {3}}

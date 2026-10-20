@@ -1,0 +1,33 @@
+<tr id="punto-{{ punto.pk }}"{% if punto.activo %} hx-post="{% url 'panel:sitios:punto_programacion' punto.pk %}" hx-trigger="change" hx-include="this" hx-target="this" hx-swap="outerHTML"{% endif %}>
+  <td>{{ punto.nombre }}{% if not punto.activo %} <span class="etiqueta-estado etiqueta-neutral">Inactivo</span>{% endif %}{% if punto.ubicacion_fijada_en %} <span class="etiqueta-estado etiqueta-neutral" title="{{ punto.ubicacion_fijada_en|date:'d/m/Y H:i' }}">Punto fijado por escaneo</span>{% endif %}</td>
+  <td>{{ punto.sector|default:"—" }}</td>
+  {% if punto.activo %}
+  <td>
+    <select name="servicio" aria-label="Servicio de {{ punto.nombre }}">
+      <option value="">Sin servicio</option>
+      {% for servicio in servicios %}<option value="{{ servicio.pk }}"{% if servicio.pk == punto.servicio_id %} selected{% endif %}>{{ servicio.nombre }}</option>{% endfor %}
+    </select>
+    {% if form.servicio.errors %}<span class="error" role="alert">{{ form.servicio.errors|join:" " }}</span>{% endif %}
+  </td>
+  <td>
+    <input type="number" name="frecuencia_dias" min="1" max="3650" value="{% if form %}{{ form.data.frecuencia_dias }}{% else %}{{ punto.frecuencia_dias|default_if_none:'' }}{% endif %}" aria-label="Frecuencia en días de {{ punto.nombre }}">
+    {% if form.frecuencia_dias.errors %}<span class="error" role="alert">{{ form.frecuencia_dias.errors|join:" " }}</span>{% endif %}
+  </td>
+  <td>
+    <input type="date" name="proximo_vencimiento" value="{% if form %}{{ form.data.proximo_vencimiento }}{% else %}{{ punto.proximo_vencimiento|date:'Y-m-d' }}{% endif %}" aria-label="Próximo vencimiento de {{ punto.nombre }}">
+    <span class="etiqueta-estado etiqueta-{{ punto.vencimiento_clase }}">{{ punto.vencimiento_etiqueta }}</span>
+    {% if form.proximo_vencimiento.errors %}<span class="error" role="alert">{{ form.proximo_vencimiento.errors|join:" " }}</span>{% endif %}
+  </td>
+  {% else %}
+  <td>{{ punto.servicio.nombre|default:"—" }}</td>
+  <td>{{ punto.frecuencia_dias|default:"—" }}</td>
+  <td>{{ punto.proximo_vencimiento|date:"d/m/Y"|default:"—" }}</td>
+  {% endif %}
+  <td>{{ punto.qr_impreso_el|date:"d/m/Y"|default:"No impreso" }}</td>
+  <td class="acciones-punto">
+    <a href="{% url 'panel:sitios:punto_editar' punto.pk %}">Editar</a>
+    <a href="{% url 'panel:sitios:punto_qr_png' punto.pk %}">Descargar QR</a>
+    <a href="{% url 'panel:sitios:punto_regenerar_qr' punto.pk %}">Regenerar QR</a>
+    {% if punto.activo %}<a href="{% url 'panel:sitios:punto_desactivar' punto.pk %}">Desactivar</a>{% endif %}
+  </td>
+</tr>

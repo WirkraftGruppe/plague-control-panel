@@ -43,6 +43,7 @@ MENSAJE_DUPLICADA = "La revisión ya fue registrada."
 MAX_BYTES_PEDIDO = MAX_FOTOS * MAX_BYTES_FOTO + 1024 * 1024
 PRECARGA_REVISIONES = (
     "revisiones__punto",
+    "revisiones__servicio",
     "revisiones__fotos",
     "revisiones__productos",
 )
@@ -72,18 +73,20 @@ class MisVisitasView(generics.ListAPIView):
                 empleado=self.request.user,
                 estado__in=[Visita.Estado.ABIERTA, Visita.Estado.PENDIENTE],
             )
-            .select_related("proyecto__sitio")
+            .select_related("sitio")
+            .prefetch_related("items__punto", "items__servicio", "revisiones")
             .order_by("estado", F("programada_para").asc(nulls_last=True), "id")
         )
 
     @extend_schema(summary="Mis visitas pendientes y abiertas")
     def get(self, request, *args, **kwargs):
-        """Lista paginada; las abiertas van primero y cada una trae su `estado`."""
+        """Lista paginada; las abiertas van primero y cada una trae su `estado` y
+        los `items` (punto y servicio) del turno."""
         return super().get(request, *args, **kwargs)
 
 
 class AbrirVisitaView(APIView):
-    """Abre la jornada del empleado o del administrador en un proyecto (idempotente)."""
+    """Abre la jornada del empleado o del administrador en un sitio (idempotente)."""
 
     permission_classes = [EsEmpleado | EsAdministrador]
     throttle_classes = [ScopedRateThrottle]
@@ -92,19 +95,19 @@ class AbrirVisitaView(APIView):
     @extend_schema(
         summary="Abrir una visita",
         description=(
-            "Abre la pendiente asignada o crea una visita nueva. `qr_codigo` es el de "
-            "un punto activo del sitio del proyecto. Si el empleado ya tiene una "
-            "abierta en el proyecto la devuelve con 200. `latitud`, `longitud` y "
-            "`precision_m` son opcionales: con coordenadas se guarda la distancia al "
-            "punto y la incidencia de ubicación, sin rechazar nunca por distancia. La "
-            "visita de un administrador no toma pendientes."
+            "Abre el turno pendiente más antiguo del empleado en el sitio del QR o "
+            "crea una visita sin ítems. `qr_codigo` es el de un punto activo. Si el "
+            "empleado ya tiene una abierta en el sitio la devuelve con 200. `latitud`, "
+            "`longitud` y `precision_m` son opcionales: con coordenadas se guarda la "
+            "distancia al punto y la incidencia de ubicación, sin rechazar nunca por "
+            "distancia. La visita de un administrador no toma pendientes."
         ),
         request=AbrirVisitaSerializer,
         responses={
             201: VisitaActivaSerializer,
             200: VisitaActivaSerializer,
             400: OpenApiResponse(
-                description="Proyecto inexistente o inactivo, o QR ajeno al sitio."
+                description="QR inexistente, de un punto o sitio inactivo."
             ),
         },
     )
@@ -114,7 +117,6 @@ class AbrirVisitaView(APIView):
         entrada.is_valid(raise_exception=True)
         visita, creada = abrir_visita(
             empleado=request.user,
-            proyecto=entrada.validated_data["proyecto"],
             qr_codigo=entrada.validated_data["qr_codigo"],
             latitud=entrada.validated_data["latitud"],
             longitud=entrada.validated_data["longitud"],
@@ -140,8 +142,8 @@ class CrearRevisionView(APIView):
             "Multipart. `qr_codigo` es el del punto escaneado. `datos` y "
             "`productos_aplicados` son texto JSON, una lista donde cada ítem lleva "
             "`producto`, `lote`, `dosis`, `unidad_dosis`, `cantidad` y `unidad` (la "
-            "unidad de la cantidad, válida para el producto); `fotos` se repite de 1 "
-            "a 10 veces (hasta 8 MB cada una). Un `cliente_uuid` ya registrado "
+            "unidad de la cantidad, válida para el producto); `fotos` se repite de 0 "
+            "a 2 veces (hasta 8 MB cada una). Un `cliente_uuid` ya registrado "
             "responde 409; "
             "`revision` y `visita` solo vienen si son del mismo empleado. Un "
             "administrador que escanea un punto sin coordenadas, con precisión de a lo "
@@ -153,8 +155,9 @@ class CrearRevisionView(APIView):
             400: OpenApiResponse(
                 description=(
                     "Validación: QR que no es de un punto del sitio, visita no "
-                    "abierta, coordenadas o foto faltantes, planilla inválida o "
-                    "revisión con más horas de atraso que el máximo (168 por defecto)."
+                    "abierta, coordenadas faltantes, punto sin servicio, planilla "
+                    "inválida o revisión con más horas de atraso que el máximo "
+                    "(168 por defecto)."
                 )
             ),
             404: OpenApiResponse(
@@ -210,7 +213,7 @@ class CerrarVisitaView(APIView):
             "`datos` es la planilla de ámbito visita; todo es opcional. Cerrar de "
             "nuevo una visita que ya cerró el mismo usuario devuelve 200 con la "
             "visita; si la cerró el sistema o un administrador, 409. Cerrar la "
-            "visita de un administrador no modifica el proyecto."
+            "visita de un administrador no cuenta como servicio."
         ),
         request=CerrarVisitaSerializer,
         responses={
@@ -244,7 +247,7 @@ class CerrarVisitaView(APIView):
         except VisitaYaCerrada:
             raise VisitaYaCerradaError()
         cerrada = (
-            Visita.objects.select_related("proyecto__sitio")
+            Visita.objects.select_related("sitio")
             .prefetch_related(*PRECARGA_REVISIONES)
             .get(pk=cerrada.pk)
         )
@@ -274,7 +277,7 @@ class HistorialView(generics.ListAPIView):
         if "hasta" in fechas:
             consulta = consulta.filter(cerrada_en__date__lte=fechas["hasta"])
         return (
-            consulta.select_related("proyecto__sitio")
+            consulta.select_related("sitio")
             .prefetch_related(*PRECARGA_REVISIONES)
             .order_by("-cerrada_en", "-id")
         )

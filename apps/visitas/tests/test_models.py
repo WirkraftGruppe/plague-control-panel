@@ -15,44 +15,47 @@ from PIL import Image
 from apps.accounts.models import User
 from apps.clientes.models import Cliente
 from apps.productos.models import Producto
-from apps.proyectos.models import Proyecto
 from apps.servicios.models import TipoServicio
 from apps.sitios.models import Sitio
 from apps.visitas.models import Foto, ProductoAplicado, Revision, Visita, ruta_foto
 
 
 def crear_visita(**extra):
-    """Visita guardada con proyecto, empleado y administrador propios."""
-    cliente = Cliente.objects.create(razon_social="ACME")
-    sitio = Sitio.objects.create(cliente=cliente, nombre="Planta 1")
+    """Visita guardada con sitio y empleado propios.
+
+    El punto General del sitio, si no tenía servicio, queda con "Roedores"
+    (`visita.tipo`).
+    """
     sufijo = uuid4().hex[:8]
     tipo = TipoServicio.objects.create(nombre="Roedores", slug=f"roedores-{sufijo}")
-    empleado = User.objects.create_user(
-        username=f"emp-{sufijo}", password="x", rol=User.Rol.EMPLEADO
-    )
-    proyecto = Proyecto.objects.create(
-        sitio=sitio,
-        tipo_servicio=tipo,
-        titulo="Roedores mensual",
-        encargado_inicial=empleado,
-        encargado_actual=empleado,
-    )
-    datos = {"proyecto": proyecto, "empleado": empleado, "origen": Visita.Origen.APP}
+    if "sitio" not in extra:
+        cliente = Cliente.objects.create(razon_social="ACME")
+        extra["sitio"] = Sitio.objects.create(cliente=cliente, nombre="Planta 1")
+    extra["sitio"].puntos.filter(orden=0, servicio__isnull=True).update(servicio=tipo)
+    if "empleado" not in extra:
+        extra["empleado"] = User.objects.create_user(
+            username=f"emp-{sufijo}", password="x", rol=User.Rol.EMPLEADO
+        )
+    datos = {"origen": Visita.Origen.APP}
     datos.update(extra)
-    return Visita.objects.create(**datos)
+    visita = Visita.objects.create(**datos)
+    visita.tipo = tipo
+    return visita
 
 
 def punto_de(visita):
     """Punto "General" del sitio de la visita (su QR es `punto.qr_codigo`)."""
-    return visita.proyecto.sitio.puntos.get(orden=0)
+    return visita.sitio.puntos.get(orden=0)
 
 
 def crear_revision(visita, **extra):
     """Revisión guardada en el punto General del sitio de la visita."""
+    punto = punto_de(visita)
     ahora = timezone.now()
     datos = {
         "visita": visita,
-        "punto": punto_de(visita),
+        "punto": punto,
+        "servicio": punto.servicio,
         "orden": visita.revisiones.count() + 1,
         "realizada_en": ahora,
         "recibida_en": ahora,

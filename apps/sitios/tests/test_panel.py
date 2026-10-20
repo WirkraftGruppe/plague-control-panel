@@ -523,7 +523,7 @@ class PuntoPanelTests(_BaseAdminTests):
         self.assertContains(r, "sitios/sondeo.js")
         self.assertNotContains(r, "<script>")
         r = self.client.get(ficha, {"pestana": "puntos"})
-        self.assertContains(r, "Al día", msg_prefix="Sin proyectos activos")
+        self.assertContains(r, "Sin programar", msg_prefix="Punto sin vencimiento")
         self._entrar_como_empleado()
         self.assertEqual(self.client.get(ficha).status_code, 403)
 

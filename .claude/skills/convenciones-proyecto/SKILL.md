@@ -1,14 +1,14 @@
 ---
 name: convenciones-proyecto
-description: Convenciones y referencia de Detach (stack, estructura de apps, comandos canónicos, mapa de rutas, roles, variables de entorno, prohibiciones de código); leerla antes de codificar o de citar comandos/rutas del proyecto.
+description: Convenciones y referencia de Detach (stack, estructura de apps, comandos canónicos, mapa de rutas, roles, variables de entorno, prohibiciones de código); leerla antes de codificar o de citar comandos y rutas de Detach.
 ---
 
-# Convenciones del proyecto — Detach
+# Convenciones de Detach
 
 ## Qué es
-Detach: sistema de gestión para empresas de control de plagas, en un único proyecto Django. El nombre de la empresa sale de `NOMBRE_EMPRESA` (`config/settings/base.py`); el sitio público vive en otro repositorio.
-- **Raíz** `/` — redirige al login del panel; no hay sitio público en este proyecto.
-- **Panel de gestión** `/panel/` — administradores: clientes, sitios con QR, proyectos, visitas, mapa, productos, certificados.
+Detach: sistema de gestión para empresas de control de plagas, en una única aplicación Django. El nombre de la empresa sale de `NOMBRE_EMPRESA` (`config/settings/base.py`); el sitio público vive en otro repositorio.
+- **Raíz** `/` — redirige al login del panel; no hay sitio público en esta aplicación.
+- **Panel de gestión** `/panel/` — administradores: clientes, sitios con QR y la programación de cada punto, turnos, mapa, productos, certificados.
 - **API** `/api/v1/` — para la app móvil de los empleados (Expo, etapa final) y para el mapa del panel.
 
 Fuente de verdad del dominio: `docs/01-modelo-y-arquitectura.md`. Del diseño del panel: `docs/02-diseno.md`. De la API: `docs/contrato-api.md`.
@@ -18,7 +18,7 @@ Fuente de verdad del dominio: `docs/01-modelo-y-arquitectura.md`. Del diseño de
 - PostgreSQL en producción (`DATABASE_URL` obligatoria); en desarrollo, `DATABASE_URL` si está definida y si no SQLite (`db.sqlite3`)
 - Templates de Django + Tailwind CSS (CLI, sin Node en producción) + HTMX + Leaflet/OpenStreetMap
 - WeasyPrint (PDF: certificados, informes, historial, etiquetas QR) · `segno` (QR) · Pillow (fotos)
-- `django-simple-history` (auditoría de Sitio, Proyecto, Visita) · `django-storages` (fotos, backend intercambiable)
+- `django-simple-history` (auditoría de Sitio, PuntoControl, Plano, Visita, Revision y ProductoAplicado) · `django-storages` (fotos, backend intercambiable)
 - Calidad: `ruff` (lint + formato), tests con el runner de Django (`manage.py test`)
 - `SitioAdministracion.login` (`config/admin.py`) copia `AdminSite.login` de Django 5.2 para usar el mixin de límites: revisarla al actualizar Django
 
@@ -28,12 +28,11 @@ config/            settings/{__init__,base,dev,prod}.py · urls.py · asgi/wsgi
 apps/
   accounts/        User (rol: administrador | empleado), login del panel, JWT de la API
   clientes/        Cliente
-  sitios/          Sitio (lat/lng, sector), PuntoControl (qr_codigo UUID, x/y en el plano), Plano
+  sitios/          Sitio (lat/lng, sector, responsable), PuntoControl (qr_codigo UUID, x/y en el plano, servicio, frecuencia_dias, proximo_vencimiento), Plano
                    publico_views.py · publico_urls.py (página de aterrizaje `/q/<uuid>/`, con `X-Robots-Tag`)
-                   estado.py (estado de un punto) · planos.py + rasterizar_pdf.py (JPG/PNG/PDF a PNG, PDF en subproceso) · qr.py (etiqueta QR del punto)
+                   estado.py (estado de un punto por su vencimiento y resumen por sitio) · planos.py + rasterizar_pdf.py (JPG/PNG/PDF a PNG, PDF en subproceso) · qr.py (etiqueta QR del punto)
   servicios/       TipoServicio, CampoPlanilla (planilla dinámica por servicio)
-  proyectos/       Proyecto (estado, frecuencia, próxima visita, encargados)
-  visitas/         Visita (jornada), Revision (escaneo de un punto), Foto, ProductoAplicado; abrir_visita, registrar_revision y cerrar_visita
+  visitas/         Visita (turno de un empleado en un sitio), ItemTurno (punto + servicio del turno), Revision (escaneo de un punto, con servicio y fuera_de_turno), Foto, ProductoAplicado; crear_turno, abrir_visita, registrar_revision, actualizar_vencimiento y cerrar_visita
                    management/commands/cerrar_visitas_abiertas.py (cron diario: cierra por sistema las abiertas hace más de VISITA_ABIERTA_MAXIMO_HORAS)
   productos/       Producto (catálogo con registro ANMAT/SENASA)
   informes/        Certificado, informes PDF, historial del empleado
@@ -58,7 +57,7 @@ apps/<app>/
 ```
 - `api_urls.py` y `panel_urls.py` declaran `app_name = "<app>"`.
 - `apps/api/urls.py` y `apps/panel/urls.py` son routers de una línea por app: `path("sitios/", include("apps.sitios.api_urls"))`.
-- `apps/api` conserva solo lo transversal (JWT, permisos base, paginación, excepciones); `apps/panel`, el layout, el login, el tablero y el mapa agregado.
+- `apps/api` conserva solo lo transversal (JWT, permisos base, paginación, excepciones); `apps/panel`, el layout, el login y el mapa agregado.
 - `apps/informes` es transversal pero expone sus propios `api_urls` y `panel_urls`.
 
 ### Tabla de propiedad
@@ -77,10 +76,9 @@ Una subtarea cuyo `Puede tocar` incluya un archivo de otro dueño es hallazgo bl
 ### Olas por grafo de FK
 ```
 Ola 1: accounts, clientes, servicios, productos    (sin FK entre sí)
-Ola 2: sitios        → clientes
-Ola 3: proyectos     → sitios, servicios, accounts
-Ola 4: visitas       → proyectos, productos, accounts
-Ola 5: informes      → visitas, clientes
+Ola 2: sitios        → clientes, servicios, accounts
+Ola 3: visitas       → sitios, servicios, productos, accounts
+Ola 4: informes      → visitas, clientes
 ```
 Dentro de una ola, todo en paralelo; dos subtareas de la misma ola nunca crean migraciones en la misma app.
 
@@ -137,10 +135,13 @@ Para ver las rutas de una app: `grep -n "path(" apps/<app>/api_urls.py apps/<app
 - Las cuentas se crean a mano desde el panel o el admin; sin autorregistro, sin recuperación de contraseña pública en etapa 1.
 
 ## Reglas de dominio que el código hace cumplir
-- El QR identifica un punto de control (`PuntoControl.qr_codigo`), no un sitio. Una visita con `origen=app` solo se abre (`abrir_visita`, `POST /api/v1/visitas/abrir/`) con `proyecto` y el `qr_codigo` de un punto activo del sitio del proyecto; un QR ajeno o inactivo da el mismo 400 que un proyecto inexistente. Cada escaneo es una `Revision` (`POST /api/v1/revisiones/`) con geolocalización y de 1 a 10 fotos, dentro de una visita abierta del empleado. No hay ruta alternativa para el empleado.
+- El QR identifica un punto de control (`PuntoControl.qr_codigo`), no un sitio. Una visita con `origen=app` solo se abre (`abrir_visita`, `POST /api/v1/visitas/abrir/`) con el `qr_codigo` de un punto activo: abre el turno pendiente más antiguo del empleado en el sitio de ese punto, devuelve el abierto si ya hay uno o crea una visita sin ítems; un QR inexistente o inactivo da 400. Cada escaneo es una `Revision` (`POST /api/v1/revisiones/`) con geolocalización y de 0 a 2 fotos (`MAX_FOTOS = 2`, sin mínimo), dentro de una visita abierta del empleado. No hay ruta alternativa para el empleado.
+- El servicio de una revisión lo decide el servidor: el del `ItemTurno` de la visita para ese punto o, si no hay, `PuntoControl.servicio`, y entonces la revisión queda con `fuera_de_turno = true`; sin ninguno de los dos, 400. `Revision.servicio` no es nulo.
 - Una visita con `origen=manual` solo la crea un administrador y lleva `motivo_manual` obligatorio.
-- Al cerrar una visita (`cerrar_visita`): exige al menos una revisión, pasa a `realizada` con `cierre` empleado, sistema o administrador, y actualiza el proyecto: `proyecto.encargado_actual = visita.empleado`, `proyecto.actualizado = now()`, y si `frecuencia_dias` está definida, `proxima_visita = cerrada_en + frecuencia_dias`. Esta regla vive en un servicio de `apps/visitas/` (no en la vista ni en el serializer) y tiene test. Abrir una visita o registrar una revisión no toca el proyecto.
-- El estado de un punto (`al_dia`, `proxima`, `vencida`, `sin_revisar`) sale de `apps/sitios/estado.py`; el color de un sitio en el mapa es el peor estado de sus puntos activos.
+- Al cerrar una visita (`cerrar_visita`): exige al menos una revisión, pasa a `realizada` con `cierre` empleado, sistema o administrador, y valida la planilla de visita por servicio (`datos = {slug: {clave: valor}}`); no toca los puntos.
+- El vencimiento es por punto: `registrar_revision` y `registrar_visita_manual` llaman a `actualizar_vencimiento(punto)` (`apps/visitas/services.py`), que fija `proximo_vencimiento = fecha de la revisión más reciente que cuenta + frecuencia_dias` si el punto tiene frecuencia. Cuentan las revisiones de visitas abiertas o realizadas con `cuenta_como_servicio`. Editar la frecuencia en el panel no recalcula la fecha. La regla vive en un servicio de `apps/visitas/` (no en la vista ni en el serializer) y tiene test.
+- El orden de bloqueo es único: Sitio, Visita, PuntoControl.
+- El estado de un punto (`al_dia`, `proxima`, `vencida`, `sin_revisar`) sale de `apps/sitios/estado.py`; el color de un sitio en el mapa es el peor estado de sus puntos activos (`vencida` > `proxima` > `sin_programar` > `al_dia`).
 - Las imágenes de planos y las fotos se sirven por vistas con permiso, nunca por `MEDIA_URL`: un plano exige una visita abierta o pendiente del empleado en ese sitio (con sitio y cliente activos).
 - `ProductoAplicado.producto` siempre apunta al catálogo; la API no acepta nombres libres de producto.
 - Un `Certificado` emitido no se edita; una corrección emite uno nuevo con `reemplaza_a`.

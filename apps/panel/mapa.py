@@ -1,71 +1,51 @@
-"""Mapa de sitios: datos agregados por sitio con el peor estado de sus puntos."""
+"""Mapa de sitios: estado y vencimiento más cercano de los puntos de cada sitio."""
 
-from django.db.models import Max, Prefetch, Q
 from django.urls import NoReverseMatch, reverse
+from django.utils import timezone
 
-from apps.proyectos.models import Proyecto
-from apps.sitios.estado import estados_de_puntos, peor_estado_punto
-from apps.sitios.models import PuntoControl, Sitio
-from apps.visitas.models import Visita
+from apps.sitios.estado import resumen_de_sitios
+from apps.sitios.models import Sitio
 
 ORIGEN_TESELAS = "https://tile.openstreetmap.org"
 
 
-def url_ficha(sitio):
-    """URL de la ficha del sitio, o None mientras la ruta no exista."""
+def _url(nombre, sitio):
+    """URL de una ruta del panel para el sitio, o None mientras no exista."""
     try:
-        return reverse("panel:sitios:ficha", args=[sitio.pk])
+        return reverse(nombre, args=[sitio.pk])
     except NoReverseMatch:
         return None
 
 
-def _fecha(valor):
-    return valor.isoformat() if valor else None
+def url_ficha(sitio):
+    """URL de la ficha del sitio, o None mientras la ruta no exista."""
+    return _url("panel:sitios:ficha", sitio)
 
 
 def sitios_para_mapa(cliente=None, servicio=None, estado=None):
-    """Sitios activos con coordenadas, en un número fijo de consultas."""
-    proyectos = Proyecto.objects.filter(estado=Proyecto.Estado.ACTIVO)
-    if servicio:
-        proyectos = proyectos.filter(tipo_servicio_id=servicio)
-    proyectos = proyectos.select_related("tipo_servicio", "encargado_actual").annotate(
-        ultima_visita=Max(
-            "visitas__cerrada_en",
-            filter=Q(
-                visitas__estado=Visita.Estado.REALIZADA,
-                visitas__cuenta_como_servicio=True,
-            ),
-        )
-    )
-    sitios = (
-        Sitio.objects.filter(activo=True, latitud__isnull=False, longitud__isnull=False)
-        .select_related("cliente")
-        .prefetch_related(
-            Prefetch("proyectos", queryset=proyectos, to_attr="activos"),
-            Prefetch(
-                "puntos",
-                queryset=PuntoControl.objects.filter(activo=True),
-                to_attr="puntos_activos",
-            ),
-        )
-    )
+    """Sitios activos con coordenadas, en un número fijo de consultas.
+
+    El color del sitio es el peor estado por vencimiento de sus puntos activos y
+    `vencimiento` la fecha más próxima. `servicio` deja los sitios con algún punto
+    activo de ese servicio.
+    """
+    sitios = Sitio.objects.filter(
+        activo=True, latitud__isnull=False, longitud__isnull=False
+    ).select_related("cliente")
     if cliente:
         sitios = sitios.filter(cliente_id=cliente)
     if servicio:
         sitios = sitios.filter(
-            proyectos__estado=Proyecto.Estado.ACTIVO,
-            proyectos__tipo_servicio_id=servicio,
+            puntos__activo=True, puntos__servicio_id=servicio
         ).distinct()
 
     sitios = list(sitios)
-    # Una sola llamada para todos los puntos: el costo no crece con los sitios.
-    estados = estados_de_puntos(p for s in sitios for p in s.puntos_activos)
+    resumen = resumen_de_sitios(sitios, timezone.localdate())
     resultado = []
     for sitio in sitios:
-        color = peor_estado_punto(estados[p.pk] for p in sitio.puntos_activos)
+        color, vencimiento = resumen[sitio.pk]
         if estado and color != estado:
             continue
-        ultimas = [p.ultima_visita for p in sitio.activos if p.ultima_visita]
         resultado.append(
             {
                 "id": sitio.pk,
@@ -74,20 +54,9 @@ def sitios_para_mapa(cliente=None, servicio=None, estado=None):
                 "lat": float(sitio.latitud),
                 "lng": float(sitio.longitud),
                 "estado": color.value,
-                "ultima_visita": _fecha(max(ultimas, default=None)),
+                "vencimiento": vencimiento.isoformat() if vencimiento else None,
                 "url_ficha": url_ficha(sitio),
-                "proyectos": [
-                    {
-                        "titulo": p.titulo,
-                        "servicio": p.tipo_servicio.nombre,
-                        "estado": p.estado_visita.value,
-                        "proxima_visita": _fecha(p.proxima_visita),
-                        "ultima_visita": _fecha(p.ultima_visita),
-                        "encargado": p.encargado_actual.get_full_name()
-                        or p.encargado_actual.get_username(),
-                    }
-                    for p in sitio.activos
-                ],
+                "url_nuevo_turno": _url("panel:visitas:nuevo_turno", sitio),
             }
         )
     return resultado

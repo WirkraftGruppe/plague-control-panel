@@ -15,7 +15,6 @@ from rest_framework.throttling import ScopedRateThrottle
 
 from apps.accounts.models import User
 from apps.clientes.models import Cliente
-from apps.proyectos.models import Proyecto
 from apps.servicios.models import CampoPlanilla, TipoServicio
 from apps.sitios.api_views import (
     MAX_BYTES_PEDIDO_PUNTO,
@@ -72,23 +71,12 @@ class ResolverQRTests(TestCase):
         self.admin = User.objects.create_user(
             username="adm", password="x", rol=User.Rol.ADMINISTRADOR
         )
-        self.proyecto = self._proyecto("Control")
         self.cliente_api = APIClient()
         self.cliente_api.force_authenticate(self.empleado)
 
-    def _proyecto(self, titulo, **extra):
-        return Proyecto.objects.create(
-            sitio=self.sitio,
-            tipo_servicio=self.tipo,
-            titulo=titulo,
-            encargado_inicial=self.empleado,
-            encargado_actual=self.empleado,
-            **extra,
-        )
-
-    def _visita(self, proyecto, empleado, dias):
+    def _visita(self, empleado, dias):
         return Visita.objects.create(
-            proyecto=proyecto,
+            sitio=self.sitio,
             empleado=empleado,
             origen=Visita.Origen.MANUAL,
             programada_para=datetime.date(2026, 1, 1) + datetime.timedelta(days=dias),
@@ -98,8 +86,7 @@ class ResolverQRTests(TestCase):
         codigo = codigo or self.punto.qr_codigo
         return (cliente or self.cliente_api).post(f"/api/v1/qr/{codigo}/resolver/")
 
-    def test_qr_valido_devuelve_proyectos_y_esquema(self):
-        self._proyecto("Pausado", estado=Proyecto.Estado.PAUSADO)
+    def test_qr_valido_devuelve_punto_sitio_cliente_y_visitas_propias(self):
         r = self._resolver()
         self.assertEqual(r.status_code, 200)
         self.assertEqual(
@@ -107,22 +94,20 @@ class ResolverQRTests(TestCase):
             {"nombre": "Planta 1", "direccion": "Calle 1", "localidad": "Castelli"},
         )
         self.assertEqual(r.json()["cliente"], {"razon_social": "ACME"})
-        proyectos = r.json()["proyectos"]
-        self.assertEqual(len(proyectos), 1)
-        self.assertEqual(proyectos[0]["id"], self.proyecto.id)
-        self.assertEqual(
-            proyectos[0]["tipo_servicio"],
-            {"id": self.tipo.id, "nombre": "Desratización"},
-        )
-        self.assertEqual(proyectos[0]["esquema_punto"], self.tipo.esquema_planilla())
-        self.assertEqual(
-            proyectos[0]["esquema_visita"], self.tipo.esquema_planilla("visita")
-        )
-        self.assertIsNone(proyectos[0]["visita_pendiente_propia"])
-        self.assertIsNone(proyectos[0]["visita_abierta_propia"])
+        self.assertIsNone(r.json()["visita_pendiente_propia"])
+        self.assertIsNone(r.json()["visita_abierta_propia"])
         self.assertEqual(
             r.json()["punto"],
-            {"id": self.punto.id, "nombre": "General", "sector": "", "plano": None},
+            {
+                "id": self.punto.id,
+                "nombre": "General",
+                "sector": "",
+                "plano": None,
+                "estado": "sin_programar",
+                "proximo_vencimiento": None,
+                "servicio": None,
+                "en_turno": False,
+            },
         )
 
     def test_devuelve_punto_plano_y_visita_abierta(self):
@@ -140,11 +125,11 @@ class ResolverQRTests(TestCase):
         PuntoControl.objects.create(  # inactivo: no aparece
             sitio=self.sitio, nombre="Baja", plano=plano, x="0.1", y="0.1", activo=False
         )
-        abierta = self._visita(self.proyecto, self.empleado, 1)
+        abierta = self._visita(self.empleado, 1)
         abierta.estado = Visita.Estado.ABIERTA
         abierta.abierta_en = "2026-01-02T10:00:00Z"
         abierta.save()
-        pendiente = self._visita(self.proyecto, self.empleado, 5)
+        pendiente = self._visita(self.empleado, 5)
         r = self._resolver()
         self.assertEqual(r.status_code, 200)
         cuerpo = r.json()
@@ -162,21 +147,20 @@ class ResolverQRTests(TestCase):
                         "nombre": "General",
                         "x": 0.25,
                         "y": 0.5,
-                        "estado": "sin_revisar",
+                        "estado": "sin_programar",
                     },
                     {
                         "id": vecino.id,
                         "nombre": "Depósito",
                         "x": 0.75,
                         "y": 0.1,
-                        "estado": "sin_revisar",
+                        "estado": "sin_programar",
                     },
                 ],
             },
         )
-        proyecto = cuerpo["proyectos"][0]
-        self.assertEqual(proyecto["visita_abierta_propia"], abierta.id)
-        self.assertEqual(proyecto["visita_pendiente_propia"], pendiente.id)
+        self.assertEqual(cuerpo["visita_abierta_propia"], abierta.id)
+        self.assertEqual(cuerpo["visita_pendiente_propia"], pendiente.id)
         self.assertNotIn("latitud", r.content.decode())
 
     def test_plano_inactivo_no_se_devuelve(self):
@@ -232,22 +216,17 @@ class ResolverQRTests(TestCase):
         ):
             self.assertNotIn(prohibido, texto)
 
-    def test_pendiente_propia_por_proyecto(self):
-        segundo = self._proyecto("Segundo")
-        tercero = self._proyecto("Tercero")
-        self._visita(self.proyecto, self.empleado, 10)
-        antigua = self._visita(self.proyecto, self.empleado, 1)
-        self._visita(tercero, self.otro, 1)  # de otro empleado: no aparece
-        realizada = self._visita(segundo, self.empleado, 1)
+    def test_pendiente_propia_es_la_mas_antigua_del_sitio(self):
+        self._visita(self.empleado, 10)
+        antigua = self._visita(self.empleado, 1)
+        self._visita(self.otro, 1)  # de otro empleado: no aparece
+        realizada = self._visita(self.empleado, 1)
         realizada.estado = Visita.Estado.REALIZADA
         realizada.abierta_en = realizada.cerrada_en = "2026-01-02T10:00:00Z"
         realizada.save()
-        por_id = {p["id"]: p for p in self._resolver().json()["proyectos"]}
-        self.assertEqual(
-            por_id[self.proyecto.id]["visita_pendiente_propia"], antigua.id
-        )
-        self.assertIsNone(por_id[segundo.id]["visita_pendiente_propia"])
-        self.assertIsNone(por_id[tercero.id]["visita_pendiente_propia"])
+        cuerpo = self._resolver().json()
+        self.assertEqual(cuerpo["visita_pendiente_propia"], antigua.id)
+        self.assertIsNone(cuerpo["visita_abierta_propia"])
 
     def test_throttle_por_usuario(self):
         for _ in range(30):
@@ -275,21 +254,11 @@ class PlanoApiTests(TestCase):
         self.admin = User.objects.create_user(
             username="adm", password="x", rol=User.Rol.ADMINISTRADOR
         )
-        self.proyecto = self._proyecto(self.sitio)
         self.url = f"/api/v1/planos/{self.plano.id}/imagen/"
 
-    def _proyecto(self, sitio):
-        return Proyecto.objects.create(
-            sitio=sitio,
-            tipo_servicio=self.tipo,
-            titulo="Control",
-            encargado_inicial=self.empleado,
-            encargado_actual=self.empleado,
-        )
-
-    def _visita(self, proyecto, empleado, estado=Visita.Estado.PENDIENTE):
+    def _visita(self, sitio, empleado, estado=Visita.Estado.PENDIENTE):
         return Visita.objects.create(
-            proyecto=proyecto,
+            sitio=sitio,
             empleado=empleado,
             origen=Visita.Origen.MANUAL,
             estado=estado,
@@ -306,13 +275,13 @@ class PlanoApiTests(TestCase):
         self.assertEqual(self._get(None).status_code, 401)
         self.assertEqual(self._get(self.empleado).status_code, 404)  # sin visita
         # visita propia en otro sitio, o ajena en este: sigue sin acceso
-        self._visita(self._proyecto(self.otro_sitio), self.empleado)
-        self._visita(self.proyecto, self.ajeno)
+        self._visita(self.otro_sitio, self.empleado)
+        self._visita(self.sitio, self.ajeno)
         self.assertEqual(self._get(self.empleado).status_code, 404)
-        self._visita(self.proyecto, self.empleado, Visita.Estado.CANCELADA)
+        self._visita(self.sitio, self.empleado, Visita.Estado.CANCELADA)
         self.assertEqual(self._get(self.empleado).status_code, 404)
 
-        visita = self._visita(self.proyecto, self.empleado)
+        visita = self._visita(self.sitio, self.empleado)
         respuesta = self._get(self.empleado)
         self.assertEqual(respuesta.status_code, 200)
         self.assertEqual(respuesta["Content-Type"], "image/png")
@@ -326,7 +295,7 @@ class PlanoApiTests(TestCase):
         self.assertEqual(self._get(self.admin).status_code, 200)
 
     def test_plano_inactivo_o_inexistente_da_404(self):
-        self._visita(self.proyecto, self.empleado)
+        self._visita(self.sitio, self.empleado)
         Plano.objects.filter(pk=self.plano.pk).update(activo=False)
         self.assertEqual(self._get(self.empleado).status_code, 404)
         self.assertEqual(self._get(self.admin).status_code, 404)
@@ -335,12 +304,12 @@ class PlanoApiTests(TestCase):
         self.assertEqual(api.get("/api/v1/planos/99999/imagen/").status_code, 404)
 
     def test_archivo_faltante_da_404(self):
-        self._visita(self.proyecto, self.empleado)
+        self._visita(self.sitio, self.empleado)
         self.plano.imagen.storage.delete(self.plano.imagen.name)
         self.assertEqual(self._get(self.empleado).status_code, 404)
 
     def test_cliente_inactivo_da_404(self):
-        self._visita(self.proyecto, self.empleado)
+        self._visita(self.sitio, self.empleado)
         self.assertEqual(self._get(self.empleado).status_code, 200)
         Cliente.objects.filter(pk=self.sitio.cliente_id).update(activo=False)
         self.assertEqual(self._get(self.empleado).status_code, 404)
@@ -351,13 +320,8 @@ class PlanoApiTests(TestCase):
     def test_abrir_sin_qr_no_da_acceso_al_plano(self):
         api = APIClient()
         api.force_authenticate(self.empleado)
-        qr_ajeno = str(self.otro_sitio.puntos.get().qr_codigo)
-        for cuerpo in (
-            {"proyecto": self.proyecto.id},
-            {"proyecto": self.proyecto.id, "qr_codigo": qr_ajeno},
-        ):
-            r = api.post("/api/v1/visitas/abrir/", cuerpo, format="json")
-            self.assertEqual(r.status_code, 400, r.content)
+        r = api.post("/api/v1/visitas/abrir/", {}, format="json")
+        self.assertEqual(r.status_code, 400, r.content)
         self.assertFalse(Visita.objects.exists())
         self.assertEqual(api.get("/api/v1/me/puntos/").json(), [])
         self.assertEqual(self._get(self.empleado).status_code, 404)
@@ -385,15 +349,8 @@ class MisPuntosTests(TestCase):
         self.api.force_authenticate(self.empleado)
 
     def _visita(self, sitio, empleado, estado=Visita.Estado.PENDIENTE):
-        proyecto = Proyecto.objects.create(
-            sitio=sitio,
-            tipo_servicio=self.tipo,
-            titulo="Control",
-            encargado_inicial=self.empleado,
-            encargado_actual=self.empleado,
-        )
         return Visita.objects.create(
-            proyecto=proyecto,
+            sitio=sitio,
             empleado=empleado,
             origen=Visita.Origen.MANUAL,
             estado=estado,
@@ -422,7 +379,7 @@ class MisPuntosTests(TestCase):
         techo = next(p for p in r.json() if p["id"] == extra.id)
         self.assertEqual(techo["latitud"], -36.1)
         self.assertEqual(techo["longitud"], -57.8)
-        self.assertEqual(techo["estado"], "sin_revisar")
+        self.assertEqual(techo["estado"], "sin_programar")
         self.assertEqual(techo["sector"], "Norte")
 
         filtrado = self.api.get(self.URL, {"sitio": self.sitio2.id}).json()
@@ -617,16 +574,8 @@ class ModoCampoTests(TestCase):
     def test_administrador_resuelve_qr_y_ve_mis_puntos(self):
         sitio = Sitio.objects.create(cliente=self.cliente, nombre="Planta")
         punto = sitio.puntos.get()
-        tipo = TipoServicio.objects.create(nombre="Desratización", slug="desrat")
-        proyecto = Proyecto.objects.create(
-            sitio=sitio,
-            tipo_servicio=tipo,
-            titulo="Control",
-            encargado_inicial=self.empleado,
-            encargado_actual=self.empleado,
-        )
         Visita.objects.create(
-            proyecto=proyecto,
+            sitio=sitio,
             empleado=self.admin,
             origen=Visita.Origen.MANUAL,
             programada_para=datetime.date(2026, 1, 1),
@@ -641,19 +590,11 @@ class ModoCampoTests(TestCase):
     def test_administrador_resuelve_qr_y_abre_visita(self):
         sitio = Sitio.objects.create(cliente=self.cliente, nombre="Planta")
         punto = sitio.puntos.get()
-        tipo = TipoServicio.objects.create(nombre="Desratización", slug="desrat")
-        proyecto = Proyecto.objects.create(
-            sitio=sitio,
-            tipo_servicio=tipo,
-            titulo="Control",
-            encargado_inicial=self.empleado,
-            encargado_actual=self.empleado,
-        )
         r = self.api.post(f"/api/v1/qr/{punto.qr_codigo}/resolver/")
         self.assertEqual(r.status_code, 200, r.content)
         r = self.api.post(
             "/api/v1/visitas/abrir/",
-            {"proyecto": proyecto.id, "qr_codigo": str(punto.qr_codigo)},
+            {"qr_codigo": str(punto.qr_codigo)},
             format="json",
         )
         self.assertEqual(r.status_code, 201, r.content)
