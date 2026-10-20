@@ -29,11 +29,14 @@ docs/planes/2026-09-23-endurecer-hooks.md y T2 de docs/planes/2026-09-23-endurec
    con fallas → reemite el informe guardado sin volver a ejecutar criterios.
 8. Ejecuta los criterios de las subtareas `hecha` con `bash -c` desde la raíz, cada uno en un
    grupo de procesos propio, con la salida a un archivo temporal y con timeout por criterio
-   (`VERIFICAR_PLAN_TIMEOUT`, 300 s por defecto). Al vencer se mata el árbol entero
+   (`VERIFICAR_PLAN_TIMEOUT`, 300 s por defecto; 700 s para la suite completa o por app,
+   `VERIFICAR_PLAN_TIMEOUT_SUITE`, ver `es_suite`). Al vencer se mata el árbol entero
    (`taskkill /T /F /PID` en Windows, `os.killpg` en POSIX). Todo el hook (congelado.sh, git
    y criterios) tiene un presupuesto de 780 s: cada criterio recibe
    `min(timeout, presupuesto_restante)` y, agotado el presupuesto, los que faltan se reportan
-   como no ejecutados. Así el peor caso queda por debajo de los 900 s del hook.
+   como no ejecutados. Así el peor caso queda por debajo de los 900 s del hook. Los criterios
+   con el mismo tipo y comando se ejecutan una sola vez por corrida y su resultado se reutiliza
+   en el informe de cada subtarea.
 9. Si todas las subtareas están `hecha`, ejecuta además los criterios de cierre global.
 10. Sin fallas → 0. Con fallas → stderr con el detalle y exit según `.claude/hooks/modo`:
     `aviso` → 1 (no bloquea), `bloqueo` → 2 (bloquea y se lo muestra al modelo).
@@ -59,16 +62,18 @@ import hashlib
 import json
 import os
 import re
+import shlex
 import shutil
 import signal
 import subprocess
 import sys
 import tempfile
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path, PureWindowsPath
 
 TIMEOUT_CRITERIO = 300
+TIMEOUT_SUITE = 700
 PRESUPUESTO_TOTAL = 780
 TIMEOUT_CONGELADO = 60
 LINEAS_DE_SALIDA = 20
@@ -78,6 +83,7 @@ CONGELADO_SH = Path(__file__).resolve().parent / "congelado.sh"
 NOMBRE_CACHE = ".ultimo-verificado"
 TAMANO_BLOQUE = 1 << 16
 
+RE_ETIQUETA_APP = re.compile(r"apps\.\w+")
 RE_HASH_COMMIT = re.compile(r"[0-9a-f]{40}(?:[0-9a-f]{24})?")
 RE_PLAN_ACTIVO = re.compile(r"^Plan activo:\s*(.*?)\s*$")
 RE_FECHA_SLUG = re.compile(r"^\d{4}-\d{2}-\d{2}-")
@@ -471,13 +477,40 @@ class Presupuesto:
         return min(timeout, self.restante())
 
 
-def leer_timeout(entorno: dict[str, str]) -> float:
-    """Timeout por criterio: `VERIFICAR_PLAN_TIMEOUT` (segundos, > 0) o 300 por defecto."""
+def leer_timeout(
+    entorno: dict[str, str], variable: str = "VERIFICAR_PLAN_TIMEOUT", defecto: float = TIMEOUT_CRITERIO
+) -> float:
+    """Timeout en segundos de `variable` (> 0), o `defecto` si falta o no es válido."""
     try:
-        valor = float(entorno.get("VERIFICAR_PLAN_TIMEOUT", ""))
+        valor = float(entorno.get(variable, ""))
     except ValueError:
-        return float(TIMEOUT_CRITERIO)
-    return valor if valor > 0 else float(TIMEOUT_CRITERIO)
+        return float(defecto)
+    return valor if valor > 0 else float(defecto)
+
+
+def leer_timeout_suite(entorno: dict[str, str]) -> float:
+    """Timeout de la suite: `VERIFICAR_PLAN_TIMEOUT_SUITE` (segundos, > 0) o 700 por defecto."""
+    return leer_timeout(entorno, "VERIFICAR_PLAN_TIMEOUT_SUITE", TIMEOUT_SUITE)
+
+
+def es_suite(comando: str) -> bool:
+    """True si es `manage.py test` sin etiquetas o solo con etiquetas de app (`apps.<app>`),
+    con o sin `--keepdb`. Un módulo, una clase o un test nombrado no es la suite.
+    """
+    try:
+        tokens = shlex.split(comando)
+    except ValueError:
+        return False
+    if "manage.py" not in tokens:
+        return False
+    indice = tokens.index("manage.py")
+    previos = tokens[:indice]
+    if not all("=" in t or Path(t).name.lower() in ("python", "python.exe", "python3", "py") for t in previos):
+        return False
+    resto = tokens[indice + 1 :]
+    if not resto or resto[0] != "test":
+        return False
+    return all(t == "--keepdb" or RE_ETIQUETA_APP.fullmatch(t) for t in resto[1:])
 
 
 def matar_arbol(proceso: subprocess.Popen) -> None:
@@ -581,22 +614,35 @@ def criterios_a_ejecutar(plan: Plan) -> list[Criterio]:
 
 
 def ejecutar_seleccion(
-    seleccion: list[Criterio], raiz: Path, bash: str, timeout: float, presupuesto: Presupuesto | None = None
+    seleccion: list[Criterio],
+    raiz: Path,
+    bash: str,
+    timeout: float,
+    presupuesto: Presupuesto | None = None,
+    timeout_suite: float = TIMEOUT_SUITE,
 ) -> list[Resultado]:
-    """Ejecuta los criterios en orden. Cada uno recibe `min(timeout, presupuesto_restante)`;
-    agotado el presupuesto, los que faltan se reportan como no ejecutados.
+    """Ejecuta los criterios en orden. Cada uno recibe `min(timeout, presupuesto_restante)`
+    (`timeout_suite` si es la suite, ver `es_suite`); agotado el presupuesto, los que faltan se
+    reportan como no ejecutados. Un criterio con el mismo tipo y comando que uno ya ejecutado
+    reutiliza su resultado.
     """
     if presupuesto is None:
         presupuesto = Presupuesto(PRESUPUESTO_TOTAL)
     resultados: list[Resultado] = []
+    ejecutados: dict[tuple[str, str], Resultado] = {}
     for criterio in seleccion:
-        limite = presupuesto.recortar(timeout)
+        clave = (criterio.tipo, criterio.comando)
+        if clave in ejecutados:
+            resultados.append(replace(ejecutados[clave], criterio=criterio))
+            continue
+        limite = presupuesto.recortar(timeout_suite if es_suite(criterio.comando) else timeout)
         if limite <= 0:
             resultados.append(
                 Resultado(criterio, False, None, f"no se ejecutó: presupuesto total de {presupuesto.total:g} s agotado")
             )
             continue
-        resultados.append(evaluar(criterio, raiz, bash, limite))
+        ejecutados[clave] = evaluar(criterio, raiz, bash, limite)
+        resultados.append(ejecutados[clave])
     return resultados
 
 
@@ -955,7 +1001,9 @@ def main(texto_stdin: str, entorno: dict[str, str]) -> int:
         return 0
 
     seleccion, sin_resolver = reemplazar_commit_base(seleccion, commit_base, motivo_base, plan)
-    resultados = sin_resolver + ejecutar_seleccion(seleccion, raiz, bash, leer_timeout(entorno), presupuesto)
+    resultados = sin_resolver + ejecutar_seleccion(
+        seleccion, raiz, bash, leer_timeout(entorno), presupuesto, leer_timeout_suite(entorno)
+    )
     fallas = [r for r in resultados if not r.pasa]
     texto_informe = informe(fallas, plan) if fallas else ""
     if firma_actual is not None:
