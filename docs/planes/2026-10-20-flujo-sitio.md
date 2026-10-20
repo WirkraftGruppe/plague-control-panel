@@ -342,7 +342,7 @@ commit_base: fefbf2d
 | T8 | hecha |
 | T9 | hecha |
 | T10 | en curso |
-| T11 | en curso |
+| T11 | hecha |
 
 ### Corridas
 
@@ -363,6 +363,7 @@ commit_base: fefbf2d
 | 2026-10-20 | TODO (auditor-seguridad) | 2993dda | sin bloqueantes | 1 importante (P-flujo-sitio-11), 1 menor (P-flujo-sitio-12), 3 observaciones (P-flujo-sitio-13 a -15); migraciones sin restricciones perdidas |
 | 2026-10-20 | TODO (verificador-b) | 8d84bb2 | FALLA 1/122 | único FALLA: P-flujo-sitio-10; suite 717 tests en 391 s; contrato intacto (una corrida previa la detuvo el usuario) |
 | 2026-10-20 | TODO (verificador) | 8d84bb2 | FALLA 1/122 | coincide con verificador-b; los dos tests corregidos siguen probando lo mismo (el del menú delega la ausencia de la sección quitada al `[grep-0]` de T8) |
+| 2026-10-20 | merge (usuario) | cf27f54 | aprobado | el usuario aprueba fusionar con el FALLA de P-flujo-sitio-10 a la vista y lo cierra como aceptado sin cambios; T10 queda `en curso` porque su primer `[grep-0]` sigue en FALLA |
 
 ## Pendientes que deja este plan
 
@@ -387,6 +388,8 @@ commit_base: fefbf2d
 ### Decisiones
 
 - 2026-10-20 — La skill `convenciones-proyecto` se renombra en un plan aparte para que el criterio de T10 pueda pasar; este plan no modifica su contrato — decisión del usuario — reemplaza a: (nada)
+- 2026-10-20 — La skill `convenciones-proyecto` no se renombra: en su nombre "proyecto" es el repositorio, no la entidad borrada; el FALLA del primer `[grep-0]` de T10 es un error del criterio y P-flujo-sitio-10 se cierra como aceptado sin cambios — decisión del usuario — reemplaza a: 2026-10-20 (renombrar la skill en un plan aparte)
+- 2026-10-20 — El usuario acepta las decisiones del plan marcadas 'decidida por Claude, revisable' y fusiona `plan/flujo-sitio` en `main` (cf27f54) con el FALLA de P-flujo-sitio-10 a la vista — decisión del usuario — reemplaza a: (nada)
 - 2026-10-20 — El resolver de QR elige, entre varios turnos propios con ese punto, el abierto antes que el pendiente y después el de `programada_para` más antigua; `SitioResumenSerializer` suma `id` en todas las respuestas — decidida por Claude (implementador T7), revisable — reemplaza a: (nada)
 - 2026-10-20 — En el menú, "Catálogo" es un encabezado no clicable con "Servicios" y "Productos"; el contador de incidencias devuelve 0 sin consultar la base si no hay un administrador autenticado — decidida por Claude (implementador T8), revisable — reemplaza a: (nada)
 - 2026-10-20 — El 400 "El punto no tiene servicio asignado." va bajo la clave `qr_codigo` — es el campo que identifica al punto — decidida por Claude (implementador T5), revisable — reemplaza a: (nada)
@@ -395,9 +398,10 @@ commit_base: fefbf2d
 
 ### Cierra
 
-- cierra: P-catalogo-stock-1 — tope `MAXIMO_CANTIDAD_BASE` tras convertir en API, carga manual e ingreso de envases (T1, T5, T8)
+- cierra: P-catalogo-stock-1 — tope `MAXIMO_CANTIDAD_BASE` tras convertir en la API, la carga manual y el servicio de ingresos (T1, T5, T8); el 500 que queda en el ingreso en envases desde el panel sigue como P-flujo-sitio-1
 - cierra: P-catalogo-stock-10 — timeout propio de la suite completa y criterios sin repetir en el hook de cierre (T2)
 - cierra: P-catalogo-stock-8 — el menú lateral deja "Planillas" por "Catálogo › Servicios" (T8)
+- cierra: P-flujo-sitio-10 — aceptado sin cambios: el criterio era el error, la skill no se renombra (decisión del usuario 2026-10-20)
 
 ## Verificación de punta a punta (para el usuario)
 
