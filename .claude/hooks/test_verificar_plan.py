@@ -599,6 +599,69 @@ class TestPresupuesto(ProyectoTemporal):
         self.assertNotIn("timeout de 300 s", error)
 
 
+class TestTimeoutSuite(ProyectoTemporal):
+    """P-catalogo-stock-10: la suite completa o por app tiene un timeout propio (700 s)."""
+
+    PY = "PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test"
+
+    def limites(self, comandos, timeout=300.0, timeout_suite=700.0, presupuesto=780):
+        """Ejecuta los comandos con `evaluar` simulado y devuelve (límites recibidos, resultados)."""
+        recibidos = []
+
+        def falso(criterio, raiz, bash, limite):
+            recibidos.append(limite)
+            return verificar_plan.Resultado(criterio, True, 0, "")
+
+        criterios = [verificar_plan.Criterio(f"T{i}", "cmd", c) for i, c in enumerate(comandos, 1)]
+        with mock.patch.object(verificar_plan, "evaluar", falso):
+            resultados = verificar_plan.ejecutar_seleccion(
+                criterios, self.raiz, "bash", timeout, verificar_plan.Presupuesto(presupuesto), timeout_suite
+            )
+        return recibidos, resultados
+
+    def test_suite_sin_etiquetas_usa_timeout_de_suite(self):
+        for comando in (f"{self.PY} --keepdb", self.PY, f"{self.PY} --keepdb -v 2".replace(" -v 2", "")):
+            self.assertTrue(verificar_plan.es_suite(comando), comando)
+        recibidos, _ = self.limites([f"{self.PY} --keepdb"])
+        self.assertEqual(recibidos, [700.0])
+        self.assertEqual(verificar_plan.TIMEOUT_SUITE, 700)
+        self.assertEqual(verificar_plan.leer_timeout_suite({}), 700.0)
+        self.assertEqual(verificar_plan.leer_timeout_suite({"VERIFICAR_PLAN_TIMEOUT_SUITE": "50"}), 50.0)
+        for invalido in ("0", "-3", "x", ""):
+            self.assertEqual(verificar_plan.leer_timeout_suite({"VERIFICAR_PLAN_TIMEOUT_SUITE": invalido}), 700.0)
+        # Siempre recortado por el presupuesto.
+        recibidos, _ = self.limites([f"{self.PY} --keepdb"], presupuesto=100)
+        self.assertLessEqual(recibidos[0], 100)
+
+    def test_suite_por_app_usa_timeout_de_suite(self):
+        for comando in (f"{self.PY} apps.visitas --keepdb", f"{self.PY} apps.visitas apps.sitios"):
+            self.assertTrue(verificar_plan.es_suite(comando), comando)
+        recibidos, _ = self.limites([f"{self.PY} apps.visitas --keepdb"])
+        self.assertEqual(recibidos, [700.0])
+
+    def test_test_nombrado_usa_timeout_comun(self):
+        for comando in (
+            f"{self.PY} apps.visitas.tests.test_qr --keepdb",
+            f"{self.PY} apps.visitas.tests.test_qr.ResolverQRTests.test_x --keepdb",
+            f"{self.PY} apps.visitas --keepdb && echo hola",
+            "py -3 -m pytest .claude/hooks/test_verificar_plan.py -q",
+        ):
+            self.assertFalse(verificar_plan.es_suite(comando), comando)
+        recibidos, _ = self.limites([f"{self.PY} apps.visitas.tests.test_qr --keepdb"])
+        self.assertEqual(recibidos, [300.0])
+
+    def test_criterio_repetido_se_ejecuta_una_vez(self):
+        recibidos, resultados = self.limites(["echo a", "echo b", "echo a"])
+        self.assertEqual(len(recibidos), 2)
+        self.assertEqual([r.criterio.origen for r in resultados], ["T1", "T2", "T3"])
+        self.assertEqual([r.criterio.comando for r in resultados], ["echo a", "echo b", "echo a"])
+
+    def test_presupuesto_total_queda_bajo_el_timeout_del_stop(self):
+        configuracion = json.loads((DIR_HOOKS.parent / "settings.json").read_text(encoding="utf-8"))
+        timeout_stop = configuracion["hooks"]["Stop"][0]["hooks"][0]["timeout"]
+        self.assertLess(verificar_plan.PRESUPUESTO_TOTAL, timeout_stop)
+
+
 class TestParseo(unittest.TestCase):
     def test_bloque_de_codigo_con_numeral_no_corta_la_subtarea(self):
         plan = verificar_plan.parsear_plan(FIXTURE_CON_PLAN.joinpath("docs", "planes", "plan.md").read_text(encoding="utf-8"))
