@@ -16,13 +16,13 @@ urlpatterns = [
     ),
     path("fotos/<uuid:codigo>/", panel_views.FotoVisita.as_view(), name="foto"),
     path(
-        "proyectos/<int:proyecto_pk>/asignar/",
-        panel_views.AsignarVisita.as_view(),
-        name="asignar",
+        "sitios/<int:sitio_pk>/turnos/nuevo/",
+        panel_views.NuevoTurnoView.as_view(),
+        name="nuevo_turno",
     ),
     path(
-        "proyectos/<int:proyecto_pk>/manual/",
-        panel_views.RegistrarVisitaManual.as_view(),
-        name="manual",
+        "sitios/<int:sitio_pk>/cargar/",
+        panel_views.CargarVisitaView.as_view(),
+        name="cargar",
     ),
 ]

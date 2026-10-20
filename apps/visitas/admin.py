@@ -7,7 +7,7 @@ from apps.accounts.models import User
 from .models import Foto, ProductoAplicado, Revision, Visita
 
 CAMPOS_EVIDENCIA = (
-    "proyecto",
+    "sitio",
     "empleado",
     "origen",
     "motivo_manual",
@@ -35,7 +35,7 @@ CAMPOS_DE_LA_APP = (
 
 CAMPOS_VISITA = (
     (
-        "proyecto",
+        "sitio",
         "empleado",
         "origen",
         "motivo_manual",
@@ -111,7 +111,7 @@ class RevisionInline(SoloLectura, admin.TabularInline):
 class VisitaAdmin(SimpleHistoryAdmin):
     list_display = (
         "id",
-        "proyecto",
+        "sitio",
         "empleado",
         "origen",
         "estado",
@@ -120,8 +120,8 @@ class VisitaAdmin(SimpleHistoryAdmin):
         "incidencia",
     )
     list_filter = ("estado", "origen", "incidencia")
-    search_fields = ("proyecto__titulo", "empleado__username")
-    raw_id_fields = ("proyecto",)
+    search_fields = ("sitio__nombre", "empleado__username")
+    raw_id_fields = ("sitio",)
     fields = CAMPOS_VISITA
     readonly_fields = (
         ("estado", "abierta_en", "cerrada_en", "cierre", "esquema_planilla")
@@ -177,7 +177,7 @@ class VisitaAdmin(SimpleHistoryAdmin):
 class RevisionAdmin(SoloLectura, SimpleHistoryAdmin):
     list_display = ("id", "visita", "punto", "orden", "realizada_en")
     list_filter = ("punto__sitio",)
-    search_fields = ("visita__proyecto__titulo", "punto__nombre")
+    search_fields = ("visita__sitio__nombre", "punto__nombre")
     inlines = (FotoInline, ProductoAplicadoInline)
 
     def history_form_view(self, request, object_id, version_id, extra_context=None):

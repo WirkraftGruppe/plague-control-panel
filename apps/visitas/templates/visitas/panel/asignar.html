@@ -1,7 +1,0 @@
-{% extends "panel/base.html" %}
-{% block panel_contenido %}
-  <h1>Asignar visita</h1>
-  <p>Proyecto: {{ proyecto.titulo }} ({{ proyecto.sitio.nombre }})</p>
-  {% url 'panel:proyectos:ficha' proyecto.pk as volver %}
-  {% include "panel/partials/formulario.html" with cancelar_url=volver enviar="Asignar" %}
-{% endblock %}

@@ -70,15 +70,15 @@ class SitioAdmin(_AdministradorMixin, SimpleHistoryAdmin):
                 "Se borrarán estos sitios y todo su historial de cambios. "
                 "No se puede deshacer.",
             )
-        suprimidos, con_proyectos = services.suprimir_sitios(list(queryset))
+        suprimidos, con_visitas = services.suprimir_sitios(list(queryset))
         self.message_user(
             request, f"Se suprimieron los datos de {suprimidos} sitio(s)."
         )
-        if con_proyectos:
-            nombres = ", ".join(sitio.nombre for sitio in con_proyectos)
+        if con_visitas:
+            nombres = ", ".join(sitio.nombre for sitio in con_visitas)
             self.message_user(
                 request,
-                f"No se suprimieron por tener proyectos asociados: {nombres}.",
+                f"No se suprimieron por tener visitas asociadas: {nombres}.",
                 level=messages.WARNING,
             )
 

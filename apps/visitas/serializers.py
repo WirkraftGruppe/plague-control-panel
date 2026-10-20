@@ -45,10 +45,9 @@ class CampoJSON(serializers.CharField):
 
 
 class AbrirVisitaSerializer(serializers.Serializer):
-    """Entrada de `POST visitas/abrir/`: el proyecto, el QR escaneado en el sitio y,
-    opcionales, las coordenadas del teléfono para verificar la ubicación."""
+    """Entrada de `POST visitas/abrir/`: el QR escaneado en el sitio y, opcionales,
+    las coordenadas del teléfono para verificar la ubicación."""
 
-    proyecto = serializers.IntegerField()
     qr_codigo = serializers.UUIDField()
     latitud = serializers.DecimalField(
         max_digits=9,
@@ -113,7 +112,8 @@ class CrearRevisionSerializer(serializers.Serializer):
         child=serializers.FileField(
             allow_empty_file=False, validators=[validar_tamano_foto]
         ),
-        min_length=1,
+        required=False,
+        default=list,
         max_length=MAX_FOTOS,
     )
     observaciones = serializers.CharField(
@@ -134,11 +134,6 @@ class CrearRevisionSerializer(serializers.Serializer):
         return valor
 
 
-class ProyectoResumenSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
-    titulo = serializers.CharField()
-
-
 class SitioResumenSerializer(serializers.Serializer):
     """Sitio sin coordenadas, contactos ni notas."""
 
@@ -150,12 +145,11 @@ class SitioResumenSerializer(serializers.Serializer):
 class VisitaActivaSerializer(serializers.ModelSerializer):
     """Visita pendiente o abierta, sin coordenadas: lista propia y apertura."""
 
-    proyecto = ProyectoResumenSerializer(read_only=True)
-    sitio = SitioResumenSerializer(source="proyecto.sitio", read_only=True)
+    sitio = SitioResumenSerializer(read_only=True)
 
     class Meta:
         model = Visita
-        fields = ["id", "estado", "proyecto", "sitio", "programada_para", "abierta_en"]
+        fields = ["id", "estado", "sitio", "programada_para", "abierta_en"]
         read_only_fields = fields
 
 
@@ -230,8 +224,7 @@ class CerrarVisitaSerializer(serializers.Serializer):
 class VisitaRealizadaSerializer(serializers.ModelSerializer):
     """Visita realizada con sus revisiones (sin coordenadas): historial y cierre."""
 
-    proyecto = ProyectoResumenSerializer(read_only=True)
-    sitio = SitioResumenSerializer(source="proyecto.sitio", read_only=True)
+    sitio = SitioResumenSerializer(read_only=True)
     realizada_en = serializers.DateTimeField(source="cerrada_en", read_only=True)
     revisiones = RevisionSerializer(many=True, read_only=True)
 
@@ -239,7 +232,6 @@ class VisitaRealizadaSerializer(serializers.ModelSerializer):
         model = Visita
         fields = [
             "id",
-            "proyecto",
             "sitio",
             "realizada_en",
             "datos",

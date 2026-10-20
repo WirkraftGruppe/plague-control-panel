@@ -3,7 +3,7 @@
   <p><a class="boton boton-primario" href="{% url 'panel:sitios:punto_alta' object.pk %}">Nuevo punto</a></p>
   <table class="tabla">
     <thead>
-      <tr><th>Punto</th><th>Sector</th><th>Servicio</th><th>Frecuencia (días)</th><th>Próximo vencimiento</th><th>Estado</th><th>QR impreso</th><th>Acciones</th></tr>
+      <tr><th>Punto</th><th>Sector</th><th>Servicio</th><th>Frecuencia (días)</th><th>Próximo vencimiento</th><th>QR impreso</th><th>Acciones</th></tr>
     </thead>
     <tbody>
       {% for punto in puntos %}{% include "sitios/panel/_fila_punto.html" %}

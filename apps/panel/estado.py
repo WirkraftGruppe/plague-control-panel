@@ -5,10 +5,11 @@ solo cambia esta vista.
 """
 
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from django.views.generic import TemplateView
 
 from apps.accounts.mixins import AdministradorRequeridoMixin
-from apps.sitios.estado import estados_de_puntos
+from apps.sitios.estado import estados_por_vencimiento
 from apps.sitios.models import PuntoControl, Sitio
 
 
@@ -21,6 +22,6 @@ class EstadoSitioView(AdministradorRequeridoMixin, TemplateView):
         contexto = super().get_context_data(**kwargs)
         sitio = get_object_or_404(Sitio, pk=self.kwargs["pk"])
         puntos = list(PuntoControl.objects.filter(sitio=sitio, activo=True))
-        estados = estados_de_puntos(puntos)
+        estados = estados_por_vencimiento(puntos, timezone.localdate())
         contexto["puntos"] = [(p, estados[p.pk]) for p in puntos]
         return contexto

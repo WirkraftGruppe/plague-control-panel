@@ -13,30 +13,32 @@ from apps.accounts.models import User
 from apps.clientes.models import Cliente
 from apps.panel.demo import exigir_entorno_demo, limpiar_datos_demo
 from apps.panel.demo_datos import (
+    CADENCIA_HISTORIA_DIAS,
     CASTELLI,
     CHASCOMUS,
     CLAVE_DEMO,
     CLIENTES,
     DESFASES,
     DIAS_DE_HISTORIA,
-    FRECUENCIA_DIAS,
+    FRECUENCIAS,
     INCIDENCIAS_UBICACION,
     MARCA_DEMO,
     PRODUCTOS,
-    PROYECTO_CON_PENDIENTE,
+    SITIO_CON_ABIERTO,
+    SITIO_CON_PENDIENTE,
     SITIOS,
     SUFIJO_PRODUCTO,
     TELEFONO_FICTICIO,
     TIPOS,
+    VENCIMIENTOS,
 )
 from apps.panel.demo_historia import GeneradorHistoria
 from apps.panel.demo_imagenes import plano_esquematico, posicion_en_plano
 from apps.productos.models import Producto
 from apps.productos.services import registrar_ingreso
-from apps.proyectos.models import Proyecto
 from apps.servicios.models import TipoServicio
 from apps.sitios import services as servicios_sitio
-from apps.sitios.models import Plano, Sitio
+from apps.sitios.models import Plano, PuntoControl, Sitio
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +50,8 @@ PASO_PUNTO = Decimal("0.0003")
 class Command(BaseCommand):
     help = (
         "Carga datos de demostración (4 clientes, 6 sitios con sus puntos, un plano, "
-        "proyectos y unos 90 días de visitas con revisiones, fotos y productos). "
+        "servicios y vencimientos por punto, turnos pendientes, abiertos y realizados "
+        "con unos 90 días de revisiones, fotos y productos). "
         "Borra y recrea solo los datos marcados como demo (notas que empiezan con "
         "'[demo]', productos con sufijo ' (demo)' y el formato viejo 'Cliente Demo "
         "N'); no toca nada sin marca. Regenera los QR de los puntos demo. Solo corre "
@@ -190,8 +193,30 @@ class Command(BaseCommand):
             for slug, nombre in TIPOS.items()
         ]
 
+    def _programar_puntos(self, numero, puntos, tipos):
+        """Servicio, frecuencia y vencimiento de cada punto: de todo un poco.
+
+        Devuelve los ítems `(punto, servicio)`. Los puntos se actualizan por
+        `update()` para no pasar por el recálculo del vencimiento.
+        """
+        hoy = timezone.localdate()
+        items = []
+        for indice, punto in enumerate(puntos):
+            segundo = (numero >= 4) != (indice % 3 == 2)
+            servicio = tipos[1 if segundo else 0]
+            dias = VENCIMIENTOS[(numero + indice) % len(VENCIMIENTOS)]
+            programado = dias is not None
+            PuntoControl.objects.filter(pk=punto.pk).update(
+                servicio=servicio,
+                frecuencia_dias=FRECUENCIAS[indice % 3] if programado else None,
+                proximo_vencimiento=hoy + timedelta(days=dias) if programado else None,
+            )
+            punto.servicio = servicio
+            items.append((punto, servicio))
+        return items
+
     def _crear_historia(self, sitios, administrador, empleado):
-        """Un proyecto por sitio y sus jornadas quincenales de unos 90 días."""
+        """Servicios por punto, jornadas quincenales de unos 90 días y turnos."""
         tipos = self._tipos()
         generador = GeneradorHistoria(
             empleado,
@@ -202,27 +227,15 @@ class Command(BaseCommand):
         hoy = timezone.localdate()
         antiguo = timezone.now() - timedelta(days=DIAS_DE_HISTORIA + 3)
         for numero, sitio in enumerate(sitios):
-            proyecto = Proyecto.objects.create(
-                sitio=sitio,
-                tipo_servicio=tipos[0 if numero < 4 else 1],
-                titulo=f"Control quincenal de {sitio.nombre}",
-                encargado_inicial=empleado,
-                encargado_actual=empleado,
-                frecuencia_dias=FRECUENCIA_DIAS,
-            )
             puntos = list(sitio.puntos.filter(activo=True))
-            dias = range(DESFASES[numero], DIAS_DE_HISTORIA, FRECUENCIA_DIAS)
+            items = self._programar_puntos(numero, puntos, tipos)
+            dias = range(DESFASES[numero], DIAS_DE_HISTORIA, CADENCIA_HISTORIA_DIAS)
             for jornada, atras in enumerate(dias):
                 lejanos = INCIDENCIAS_UBICACION.get((numero, jornada), set())
-                generador.jornada(
-                    proyecto, puntos, hoy - timedelta(days=atras), lejanos
-                )
-            # La más reciente es la primera: la próxima visita sale de ella.
-            proxima = hoy - timedelta(days=DESFASES[numero] - FRECUENCIA_DIAS)
-            if numero == PROYECTO_CON_PENDIENTE:
-                generador.pendiente(proyecto, proxima)
-            Proyecto.objects.filter(pk=proyecto.pk).update(
-                proxima_visita=proxima, creado=antiguo
-            )
+                generador.jornada(sitio, items, hoy - timedelta(days=atras), lejanos)
+            if numero == SITIO_CON_PENDIENTE:
+                generador.pendiente(sitio, items, hoy + timedelta(days=3))
+            if numero == SITIO_CON_ABIERTO:
+                generador.abierto(sitio, items, hoy)
         Cliente.objects.filter(notas=MARCA_DEMO).update(creado=antiguo)
         Sitio.objects.filter(notas=MARCA_DEMO).update(creado=antiguo)

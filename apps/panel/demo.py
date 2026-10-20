@@ -15,7 +15,6 @@ from apps.panel.demo_datos import (
     SUFIJO_PRODUCTO,
 )
 from apps.productos.models import MovimientoStock, Producto
-from apps.proyectos.models import Proyecto
 from apps.servicios.models import TipoServicio
 from apps.sitios.models import Sitio
 from apps.sitios.services import suprimir_sitio
@@ -71,7 +70,7 @@ def _sitios_demo():
 def limpiar_datos_demo():
     """Borra solo los datos de demo y devuelve cuántos sitios se eliminaron.
 
-    Orden: visitas, proyectos, planos y puntos con sus sitios, clientes y
+    Orden: visitas, planos y puntos con sus sitios, clientes y
     productos demo, respetando los PROTECT. Los archivos de plano y foto salen
     por las señales de borrado al confirmar la transacción y las filas
     `Historical*` se borran a mano. Un cliente demo que conserva un sitio sin
@@ -79,8 +78,7 @@ def limpiar_datos_demo():
     """
     with transaction.atomic():
         sitios = list(_sitios_demo())
-        proyectos = Proyecto.objects.filter(sitio__in=sitios)
-        visitas = Visita.objects.filter(proyecto__in=proyectos)
+        visitas = Visita.objects.filter(sitio__in=sitios)
         ids_visitas = list(visitas.values_list("pk", flat=True))
         ids_revisiones = list(
             Revision.objects.filter(visita__in=ids_visitas).values_list("pk", flat=True)
@@ -101,9 +99,8 @@ def limpiar_datos_demo():
         _borrar_historial(Visita, ids_visitas)
         _borrar_historial(Revision, ids_revisiones)
         _borrar_historial(ProductoAplicado, ids_aplicados)
-        proyectos.delete()
         for sitio in sitios:
-            # Borra también el historial de sitio, proyectos, puntos y planos.
+            # Borra también el historial de sitio, puntos y planos.
             suprimir_sitio(sitio)
         _clientes_demo().filter(sitios__isnull=True).delete()
         productos = Producto.objects.filter(
@@ -112,6 +109,9 @@ def limpiar_datos_demo():
         MovimientoStock.objects.filter(producto__in=productos).delete()
         productos.delete()
         TipoServicio.objects.filter(
-            slug=SLUG_TIPO_VIEJO, proyectos__isnull=True
+            slug=SLUG_TIPO_VIEJO,
+            puntos__isnull=True,
+            items_turno__isnull=True,
+            revisiones__isnull=True,
         ).delete()
     return len(sitios)

@@ -19,23 +19,6 @@ class ClienteQRSerializer(serializers.Serializer):
     razon_social = serializers.CharField()
 
 
-class TipoServicioQRSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
-    nombre = serializers.CharField()
-
-
-class ProyectoQRSerializer(serializers.Serializer):
-    """Proyecto activo del sitio con las planillas que debe completar el empleado."""
-
-    id = serializers.IntegerField()
-    titulo = serializers.CharField()
-    tipo_servicio = TipoServicioQRSerializer()
-    esquema_punto = serializers.ListField(child=serializers.DictField())
-    esquema_visita = serializers.ListField(child=serializers.DictField())
-    visita_pendiente_propia = serializers.IntegerField(allow_null=True)
-    visita_abierta_propia = serializers.IntegerField(allow_null=True)
-
-
 class PuntoPlanoSerializer(serializers.Serializer):
     """Marcador de un punto sobre el plano, con su estado de revisión."""
 
@@ -68,7 +51,8 @@ class ResolverQRSerializer(serializers.Serializer):
     punto = PuntoQRSerializer()
     sitio = SitioQRSerializer()
     cliente = ClienteQRSerializer()
-    proyectos = ProyectoQRSerializer(many=True)
+    visita_pendiente_propia = serializers.IntegerField(allow_null=True)
+    visita_abierta_propia = serializers.IntegerField(allow_null=True)
 
 
 class SitioPuntoSerializer(serializers.Serializer):

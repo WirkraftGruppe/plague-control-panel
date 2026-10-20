@@ -23,7 +23,6 @@
   <td>{{ punto.frecuencia_dias|default:"—" }}</td>
   <td>{{ punto.proximo_vencimiento|date:"d/m/Y"|default:"—" }}</td>
   {% endif %}
-  <td>{% if punto.activo %}<span class="etiqueta-estado etiqueta-{{ punto.estado_clase }}">{{ punto.estado_etiqueta }}</span>{% else %}—{% endif %}</td>
   <td>{{ punto.qr_impreso_el|date:"d/m/Y"|default:"No impreso" }}</td>
   <td class="acciones-punto">
     <a href="{% url 'panel:sitios:punto_editar' punto.pk %}">Editar</a>

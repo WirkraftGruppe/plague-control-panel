@@ -9,7 +9,7 @@
     {% if visita.incidencia_asignacion %}{% include "panel/partials/etiqueta_estado.html" with tono="danger" texto="Incidencia de asignación" %}{% endif %}
   </p>
   <dl>
-    <dt>Proyecto</dt><dd><a href="{% url 'panel:proyectos:ficha' visita.proyecto.pk %}">{{ visita.proyecto.titulo }}</a> ({{ visita.proyecto.sitio.nombre }})</dd>
+    <dt>Sitio</dt><dd><a href="{% url 'panel:sitios:ficha' visita.sitio.pk %}">{{ visita.sitio.nombre }}</a></dd>
     <dt>Empleado</dt><dd>{{ visita.empleado.get_full_name|default:visita.empleado.username }}</dd>
     <dt>Origen</dt><dd>{{ visita.get_origen_display }}</dd>
     {% if visita.motivo_manual %}<dt>Motivo</dt><dd>{{ visita.motivo_manual }}</dd>{% endif %}
@@ -35,17 +35,17 @@
     {% endif %}
   {% endif %}
 
-  {% if filas %}
-    <h2>Planilla de la visita</h2>
+  {% for servicio, filas in planillas %}
+    <h2>Planilla de la visita · {{ servicio }}</h2>
     <table class="tabla planilla">
       <tbody>{% for etiqueta, valor in filas %}<tr><th scope="row">{{ etiqueta }}</th><td>{{ valor }}</td></tr>{% endfor %}</tbody>
     </table>
-  {% endif %}
+  {% endfor %}
 
   <h2>Revisiones</h2>
   {% for revision in revisiones %}
     <section>
-      <h3>{{ revision.punto.nombre }} · {{ revision.realizada_en|date:"d/m/Y H:i" }}</h3>
+      <h3>{{ revision.punto.nombre }} · {{ revision.servicio }}{% if revision.fuera_de_turno %} (fuera de turno){% endif %} · {{ revision.realizada_en|date:"d/m/Y H:i" }}</h3>
       {% if revision.distancia_m is not None %}<p>Distancia al punto: {{ revision.distancia_m }} m{% if revision.incidencia_ubicacion %} (fuera del radio permitido){% endif %}</p>{% endif %}
       {% if revision.filas %}
         <table class="tabla planilla">

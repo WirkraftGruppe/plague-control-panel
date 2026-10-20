@@ -6,24 +6,25 @@ from uuid import UUID
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
-from django.db.models import Exists, F, OuterRef
+from django.db.models import Exists, F, Max, OuterRef, Q
 from django.utils import timezone
 from simple_history.utils import update_change_reason
 
 from apps.productos import unidades
 from apps.productos.models import Producto
 from apps.productos.services import registrar_consumo
-from apps.proyectos.models import Proyecto
-from apps.sitios.models import PuntoControl
-from apps.visitas.models import Foto, ProductoAplicado, Revision, Visita
+from apps.servicios.models import TipoServicio
+from apps.sitios.models import PuntoControl, Sitio
+from apps.visitas.models import Foto, ItemTurno, ProductoAplicado, Revision, Visita
 from apps.visitas.planillas import validar_datos
 from apps.visitas.ubicacion import verificar
 
 # Topes de una revisión desde la app; los comparte el serializer de la API.
-MAX_FOTOS = 10
+MAX_FOTOS = 2
 MAX_PRODUCTOS = 30
 TOLERANCIA_FUTURO = timedelta(minutes=10)
-MENSAJE_QR_INVALIDO = "El código QR no corresponde a este proyecto."
+MENSAJE_QR_INVALIDO = "El código QR no corresponde a este sitio."
+MENSAJE_SIN_SERVICIO = "El punto no tiene servicio asignado."
 MOTIVO_UBICACION_FIJADA = "Ubicación fijada por el primer escaneo"
 
 logger = logging.getLogger(__name__)
@@ -68,24 +69,8 @@ def _transaccion_con_archivos():
             _borrar_archivos(guardadas)
 
 
-def _cargar_proyecto(proyecto):
-    """Devuelve el proyecto (con sitio y cliente) si existe y está activo."""
-    pk = getattr(proyecto, "pk", proyecto)
-    try:
-        proyecto = (
-            Proyecto.objects.select_related("sitio__cliente")
-            .prefetch_related("tipo_servicio__campos")
-            .get(pk=pk)
-        )
-    except (Proyecto.DoesNotExist, TypeError, ValueError):
-        raise ValidationError({"proyecto": "El proyecto no existe o no está activo."})
-    if proyecto.estado != Proyecto.Estado.ACTIVO:
-        raise ValidationError({"proyecto": "El proyecto no existe o no está activo."})
-    return proyecto
-
-
-def _resolver_punto(proyecto, qr_codigo):
-    """Punto activo del sitio del proyecto que tiene ese QR; si no, error genérico.
+def _resolver_punto(sitio_id, qr_codigo):
+    """Punto activo del sitio que tiene ese QR; si no, error genérico.
 
     Mismo mensaje para QR ajeno, punto o sitio inactivo y cliente dado de baja: no
     se revela el motivo.
@@ -96,12 +81,17 @@ def _resolver_punto(proyecto, qr_codigo):
         raise ValidationError({"qr_codigo": MENSAJE_QR_INVALIDO})
     punto = (
         PuntoControl.objects.select_related("sitio__cliente")
-        .filter(qr_codigo=codigo, activo=True, sitio_id=proyecto.sitio_id)
+        .filter(qr_codigo=codigo, activo=True, sitio_id=sitio_id)
         .first()
     )
     if punto is None or not punto.sitio.activo or not punto.sitio.cliente.activo:
         raise ValidationError({"qr_codigo": MENSAJE_QR_INVALIDO})
     return punto
+
+
+def _servicio_con_campos(pk):
+    """Servicio con sus campos de planilla precargados."""
+    return TipoServicio.objects.prefetch_related("campos").get(pk=pk)
 
 
 def _id_producto(item):
@@ -140,6 +130,11 @@ def _errores_de_cantidad(aplicado, producto):
         )
         if aplicado.cantidad_base <= 0:
             errores["cantidad"] = ["La cantidad es demasiado chica para el producto."]
+        else:
+            try:
+                unidades.validar_cantidad_base(aplicado.cantidad_base)
+            except ValidationError as error:
+                errores["cantidad"] = error.messages
     return errores
 
 
@@ -218,6 +213,14 @@ def _validar_evidencia(esquema, datos, productos_aplicados):
     errores_datos = _errores_planilla(esquema, datos)
     if errores_datos:
         errores["datos"] = errores_datos
+    errores_productos, aplicados = _validar_productos(productos_aplicados)
+    errores.update(errores_productos)
+    return errores, aplicados
+
+
+def _validar_productos(productos_aplicados):
+    """Valida los productos aplicados; devuelve (errores por campo, armados)."""
+    errores = {}
     if len(productos_aplicados) > MAX_PRODUCTOS:
         errores["productos_aplicados"] = [
             f"Se permiten hasta {MAX_PRODUCTOS} productos por revisión."
@@ -240,12 +243,10 @@ def _borrar_archivos(fotos):
             logger.exception("No se pudo borrar un archivo de foto.")
 
 
-def _pendiente_para(proyecto, empleado):
+def _pendiente_para(sitio, empleado):
     """Pendiente propia bloqueada (la más antigua) y si hay una de otro empleado."""
-    pendientes = Visita.objects.filter(
-        proyecto=proyecto, estado=Visita.Estado.PENDIENTE
-    )
-    # Una pendiente con revisiones (evidencia migrada) no se reutiliza.
+    pendientes = Visita.objects.filter(sitio=sitio, estado=Visita.Estado.PENDIENTE)
+    # Una pendiente con revisiones no se reutiliza.
     sin_revisiones = ~Exists(Revision.objects.filter(visita=OuterRef("pk")))
     propia = (
         pendientes.select_for_update()
@@ -256,16 +257,64 @@ def _pendiente_para(proyecto, empleado):
     return propia, pendientes.exclude(empleado=empleado).exists()
 
 
+def _errores_de_items(sitio_id, items):
+    """Errores de los ítems `(punto, servicio)` de un turno o carga manual.
+
+    Exige al menos uno, puntos activos del sitio sin repetir y servicios activos.
+    """
+    if not items:
+        return {"puntos": ["Elija al menos un punto de control."]}
+    errores = {}
+    puntos = [punto for punto, _ in items]
+    if any(not p.activo or p.sitio_id != sitio_id for p in puntos):
+        errores["puntos"] = ["Los puntos deben ser activos y del sitio."]
+    elif len({p.pk for p in puntos}) != len(puntos):
+        errores["puntos"] = ["Un punto no puede repetirse."]
+    if any(servicio is None or not servicio.activo for _, servicio in items):
+        errores["servicios"] = ["Cada punto necesita un servicio activo."]
+    return errores
+
+
+def crear_turno(*, sitio, empleado, programada_para, items, asignada_por):
+    """Crea un turno pendiente para un empleado y devuelve la `Visita`.
+
+    `items` es una lista de `(punto, servicio)`: los puntos que debe revisar, cada
+    uno con el servicio que se le hará. Exige al menos un ítem, puntos activos del
+    sitio, servicios activos, un empleado activo y un sitio y cliente activos.
+    Levanta `ValidationError` con errores por campo.
+    """
+    errores = _errores_de_items(sitio.pk, items)
+    if not (sitio.activo and sitio.cliente.activo):
+        errores["sitio"] = ["El sitio o el cliente están de baja."]
+    if not (empleado.is_active and empleado.es_empleado):
+        errores["empleado"] = ["Debe ser un empleado activo."]
+    if errores:
+        raise ValidationError(errores)
+    with transaction.atomic():
+        visita = Visita.objects.create(
+            sitio=sitio,
+            empleado=empleado,
+            origen=Visita.Origen.APP,
+            estado=Visita.Estado.PENDIENTE,
+            programada_para=programada_para,
+            asignada_por=asignada_por,
+        )
+        ItemTurno.objects.bulk_create(
+            ItemTurno(visita=visita, punto=punto, servicio=servicio)
+            for punto, servicio in items
+        )
+    return visita
+
+
 def abrir_visita(
     *,
     empleado,
-    proyecto,
     qr_codigo,
     latitud=None,
     longitud=None,
     precision_m=None,
 ):
-    """Abre la jornada del empleado en el proyecto; devuelve `(visita, creada)`.
+    """Abre la jornada del empleado en el sitio del QR; devuelve `(visita, creada)`.
 
     `latitud` y `longitud` (opcionales) verifican la ubicación: la distancia al punto
     queda en la visita y nunca se rechaza. `precision_m` se guarda tal cual. La
@@ -273,32 +322,29 @@ def abrir_visita(
     en `False`, según su rol al abrir): no toma pendientes ni marca
     `incidencia_asignacion`.
 
-    Es idempotente: si el empleado ya tiene una visita abierta para el proyecto la
-    devuelve con `creada=False`. Si tiene una pendiente asignada, la abre. Si no,
-    crea una nueva, con `incidencia_asignacion` cuando otro empleado tiene la
-    pendiente. Levanta `ValidationError` si el proyecto, su sitio o su cliente no
-    están activos, o si `qr_codigo` no es el de un punto activo del sitio del
-    proyecto (prueba de que el empleado escaneó el QR): mismo error para ambos casos,
-    antes de tomar locks y de crear nada.
+    Es idempotente: si el empleado ya tiene una visita abierta en el sitio la
+    devuelve con `creada=False`. Si tiene un turno pendiente, abre el más antiguo. Si
+    no, crea una visita nueva sin ítems, con `incidencia_asignacion` cuando otro
+    empleado tiene un turno pendiente en el sitio. Levanta `ValidationError` si
+    `qr_codigo` no es el de un punto activo de un sitio y cliente activos, antes de
+    tomar locks y de crear nada.
     """
     with transaction.atomic():
-        proyecto = _cargar_proyecto(proyecto)
-        if not (proyecto.sitio.activo and proyecto.sitio.cliente.activo):
-            raise ValidationError(
-                {"proyecto": "El proyecto no existe o no está activo."}
-            )
         try:
-            punto = _resolver_punto(proyecto, qr_codigo)
-        except ValidationError:
-            raise ValidationError(
-                {"proyecto": "El proyecto no existe o no está activo."}
+            punto = PuntoControl.objects.select_related("sitio__cliente").get(
+                qr_codigo=UUID(str(qr_codigo)), activo=True
             )
-        # Orden de bloqueo: Proyecto -> Visita -> PuntoControl.
-        # Serializa las aperturas del mismo proyecto: no quedan dos abiertas.
-        Proyecto.objects.select_for_update(of=("self",)).get(pk=proyecto.pk)
+        except (PuntoControl.DoesNotExist, ValueError):
+            raise ValidationError({"qr_codigo": MENSAJE_QR_INVALIDO})
+        sitio = punto.sitio
+        if not (sitio.activo and sitio.cliente.activo):
+            raise ValidationError({"qr_codigo": MENSAJE_QR_INVALIDO})
+        # Orden de bloqueo: Sitio -> Visita -> PuntoControl.
+        # Serializa las aperturas del mismo sitio: no quedan dos abiertas.
+        Sitio.objects.select_for_update(of=("self",)).get(pk=sitio.pk)
         abierta = (
             Visita.objects.select_for_update()
-            .filter(proyecto=proyecto, empleado=empleado, estado=Visita.Estado.ABIERTA)
+            .filter(sitio=sitio, empleado=empleado, estado=Visita.Estado.ABIERTA)
             .order_by("pk")
             .first()
         )
@@ -307,7 +353,7 @@ def abrir_visita(
         if empleado.es_administrador:
             propia, hay_de_otro = None, False
         else:
-            propia, hay_de_otro = _pendiente_para(proyecto, empleado)
+            propia, hay_de_otro = _pendiente_para(sitio, empleado)
         distancia, incidencia_ubicacion = verificar(punto, latitud, longitud)
         ahora = timezone.now()
         if propia is not None:
@@ -322,7 +368,7 @@ def abrir_visita(
             propia.save()
             return propia, True
         visita = Visita.objects.create(
-            proyecto=proyecto,
+            sitio=sitio,
             empleado=empleado,
             origen=Visita.Origen.APP,
             estado=Visita.Estado.ABIERTA,
@@ -386,6 +432,48 @@ def _guardar_fotos_y_productos(revision, fotos, aplicados, guardadas, usuario):
         aplicado.save(update_fields=["movimiento"])
 
 
+def actualizar_vencimiento(punto):
+    """Recalcula `proximo_vencimiento` del punto desde su revisión más reciente.
+
+    Cuentan las revisiones de visitas abiertas o realizadas que cuentan como
+    servicio; la fecha es la de la última más la `frecuencia_dias` del punto. Sin
+    frecuencia o sin revisiones que cuenten no cambia nada, y una revisión anterior
+    a la última no pisa la fecha. Bloquea el punto.
+    """
+    bloqueado = PuntoControl.objects.select_for_update(no_key=True).get(pk=punto.pk)
+    if not bloqueado.frecuencia_dias:
+        return bloqueado
+    ultima = Revision.objects.filter(
+        punto=bloqueado,
+        visita__estado__in=[Visita.Estado.ABIERTA, Visita.Estado.REALIZADA],
+        visita__cuenta_como_servicio=True,
+    ).aggregate(ultima=Max("realizada_en"))["ultima"]
+    if ultima is None:
+        return bloqueado
+    vence = timezone.localdate(ultima) + timedelta(days=bloqueado.frecuencia_dias)
+    if bloqueado.proximo_vencimiento != vence:
+        bloqueado.proximo_vencimiento = vence
+        bloqueado.save(update_fields=["proximo_vencimiento"])
+    return bloqueado
+
+
+def _servicio_de_la_revision(visita, punto):
+    """Servicio y `fuera_de_turno` de un punto en la visita.
+
+    El servicio es el del ítem del turno para ese punto; si no hay ítem, el del
+    punto (y la revisión queda fuera de turno). Sin ninguno de los dos, error.
+    """
+    item = (
+        ItemTurno.objects.select_related("servicio")
+        .filter(visita=visita, punto=punto)
+        .first()
+    )
+    servicio = item.servicio if item else punto.servicio
+    if servicio is None:
+        raise ValidationError({"qr_codigo": MENSAJE_SIN_SERVICIO})
+    return _servicio_con_campos(servicio.pk), item is None
+
+
 def _guardar_revision(
     *,
     visita,
@@ -405,17 +493,15 @@ def _guardar_revision(
     guardadas,
 ):
     """Valida y crea la revisión dentro de la transacción del llamador."""
-    proyecto = _cargar_proyecto(visita.proyecto_id)
-    punto = _resolver_punto(proyecto, qr_codigo)
+    punto = _resolver_punto(visita.sitio_id, qr_codigo)
+    servicio, fuera_de_turno = _servicio_de_la_revision(visita, punto)
     errores = _validar_coordenadas(latitud, longitud, obligatorias=True)
-    esquema = proyecto.tipo_servicio.esquema_planilla("punto")
+    esquema = servicio.esquema_planilla("punto")
     errores_evidencia, aplicados = _validar_evidencia(
         esquema, datos, productos_aplicados
     )
     errores.update(errores_evidencia)
-    if not fotos:
-        errores["fotos"] = ["Se requiere al menos una foto."]
-    elif len(fotos) > MAX_FOTOS:
+    if len(fotos) > MAX_FOTOS:
         errores["fotos"] = [f"Se permiten hasta {MAX_FOTOS} fotos por revisión."]
     ahora = timezone.now()
     if realizada_en > ahora + TOLERANCIA_FUTURO:
@@ -432,6 +518,8 @@ def _guardar_revision(
     revision = Revision.objects.create(
         visita=visita,
         punto=punto,
+        servicio=servicio,
+        fuera_de_turno=fuera_de_turno,
         orden=visita.revisiones.count() + 1,
         realizada_en=realizada_en,
         recibida_en=ahora,
@@ -449,6 +537,7 @@ def _guardar_revision(
     )
     _guardar_fotos_y_productos(revision, fotos, aplicados, guardadas, empleado)
     _fijar_ubicacion_por_escaneo(punto, revision, empleado)
+    actualizar_vencimiento(punto)
     return revision
 
 
@@ -480,10 +569,13 @@ def registrar_revision(
     """Registra el escaneo de un punto en una visita abierta y devuelve la `Revision`.
 
     `visita` es la instancia o el id; `qr_codigo` es el del punto (el servidor lo
-    resuelve y exige que sea de un punto activo del sitio del proyecto);
+    resuelve y exige que sea de un punto activo del sitio de la visita);
     `productos_aplicados` es una lista de dicts con `producto` como id; `fotos`, una
-    lista de archivos. Valida coordenadas, de 1 a `MAX_FOTOS` fotos, planilla de
-    ámbito `punto` y el atraso. Guarda la distancia al punto sin rechazar por ella.
+    lista de archivos. El servidor decide el servicio: el del ítem del turno para el
+    punto o, fuera del turno, el del punto (sin servicio, error). Valida
+    coordenadas, de 0 a `MAX_FOTOS` fotos, planilla de ámbito `punto` del servicio y
+    el atraso. Actualiza el vencimiento del punto (`actualizar_vencimiento`). Guarda
+    la distancia al punto sin rechazar por ella.
     Si el punto no tiene ubicación, la primera revisión con precisión de a lo sumo
     `PRECISION_MAXIMA_M` y sin incidencia de ubicación la fija (ver
     `_fijar_ubicacion_por_escaneo`). Todo ocurre en una transacción (y sin fotos
@@ -534,7 +626,7 @@ def registrar_revision(
 
 
 def _cerrar_sin_revisiones(visita):
-    """Cierre por sistema de una visita sin revisiones: no toca el proyecto.
+    """Cierre por sistema de una visita sin revisiones.
 
     Si venía asignada vuelve a pendiente; si no, queda cancelada.
     """
@@ -550,6 +642,26 @@ def _cerrar_sin_revisiones(visita):
     return visita
 
 
+def _errores_planilla_visita(esquemas, datos):
+    """Mensajes de la planilla de visita por servicio: `datos = {slug: {clave: valor}}`.
+
+    Valida cada servicio presente con su esquema y rechaza los servicios ajenos.
+    """
+    if not isinstance(datos, dict):
+        return ["Debe ser un objeto con la planilla de cada servicio."]
+    errores = []
+    for slug, esquema in esquemas.items():
+        errores += [
+            f"{slug}: {m}" for m in _errores_planilla(esquema, datos.get(slug, {}))
+        ]
+    errores += [
+        f"{slug}: El servicio no figura en la visita."
+        for slug in datos
+        if slug not in esquemas
+    ]
+    return errores
+
+
 def cerrar_visita(
     visita,
     *,
@@ -561,33 +673,26 @@ def cerrar_visita(
     incidencia_detalle=None,
     cerrada_en=None,
 ):
-    """Cierra la visita abierta y actualiza el proyecto; devuelve la copia cerrada.
+    """Cierra la visita abierta; devuelve la copia cerrada.
 
     La instancia recibida no se modifica: todo ocurre sobre una copia bloqueada.
     Exige al menos una revisión, salvo en el cierre por sistema (ver
     `_cerrar_sin_revisiones`). `datos` es la planilla de ámbito `visita` (se valida,
-    salvo en el cierre por sistema). `cerrada_en` es la hora de cierre: por defecto
-    ahora, o la de la última revisión en el cierre por sistema. Solo la visita más
-    reciente del proyecto fija `encargado_actual` y `proxima_visita`, salvo que la
-    visita no cuente como servicio (`cuenta_como_servicio`, fijado al abrir). Bloquea
-    en el orden Proyecto -> Visita. Cerrar de nuevo por el mismo empleado es
-    idempotente; si la cerró el sistema o un administrador, levanta
+    salvo en el cierre por sistema). `datos` va por servicio, `{slug: {clave: valor}}`,
+    con un servicio por cada uno de los ítems y las revisiones de la visita; el
+    esquema de cada uno queda copiado en `esquema_planilla`. `cerrada_en` es la hora
+    de cierre: por defecto ahora, o la de la última revisión en el cierre por
+    sistema. Bloquea en el orden Sitio -> Visita. Cerrar de nuevo por el mismo
+    empleado es idempotente; si la cerró el sistema o un administrador, levanta
     `VisitaYaCerrada`.
     """
     if cierre not in Visita.Cierre.values:
         raise ValidationError({"cierre": "Tipo de cierre inválido."})
     with transaction.atomic():
-        # El proyecto se lee sin bloquear solo para saber cuál bloquear primero;
+        # El sitio se lee sin bloquear solo para saber cuál bloquear primero;
         # el estado se evalúa recién con la visita bloqueada.
-        proyecto_id = Visita.objects.values_list("proyecto_id", flat=True).get(
-            pk=visita.pk
-        )
-        proyecto = (
-            Proyecto.objects.select_for_update(of=("self",))
-            .select_related("tipo_servicio")
-            .prefetch_related("tipo_servicio__campos")
-            .get(pk=proyecto_id)
-        )
+        sitio_id = Visita.objects.values_list("sitio_id", flat=True).get(pk=visita.pk)
+        Sitio.objects.select_for_update(of=("self",)).get(pk=sitio_id)
         visita_bd = Visita.objects.select_for_update().get(pk=visita.pk)
 
         if cierre == Visita.Cierre.EMPLEADO and (
@@ -625,11 +730,19 @@ def cerrar_visita(
             cerrada_en = ultima.realizada_en if sistema else timezone.now()
         if cerrada_en > timezone.now() + TOLERANCIA_FUTURO:
             raise ValidationError("La fecha de cierre no puede ser futura.")
-        esquema = proyecto.tipo_servicio.esquema_planilla("visita")
+        servicios = (
+            TipoServicio.objects.filter(
+                Q(items_turno__visita=visita_bd) | Q(revisiones__visita=visita_bd)
+            )
+            .prefetch_related("campos")
+            .distinct()
+            .order_by("pk")
+        )
+        esquema = {s.slug: s.esquema_planilla("visita") for s in servicios}
         if datos is not None:
             visita_bd.datos = datos
         if cierre != Visita.Cierre.SISTEMA:
-            errores = _errores_planilla(esquema, visita_bd.datos)
+            errores = _errores_planilla_visita(esquema, visita_bd.datos)
             if errores:
                 raise ValidationError({"datos": errores})
         for campo, valor in (
@@ -645,38 +758,17 @@ def cerrar_visita(
         visita_bd.cerrada_en = cerrada_en
         visita_bd.full_clean()
         visita_bd.save()
-
-        # La visita de un administrador no es servicio: no anula la del empleado.
-        hay_posterior = (
-            Visita.objects.filter(
-                proyecto=proyecto,
-                estado=Visita.Estado.REALIZADA,
-                cerrada_en__gt=cerrada_en,
-            )
-            .exclude(pk=visita_bd.pk)
-            .filter(cuenta_como_servicio=True)
-            .exists()
-        )
-        if not hay_posterior and visita_bd.cuenta_como_servicio:
-            proyecto.encargado_actual = visita_bd.empleado
-            if proyecto.frecuencia_dias:
-                proyecto.proxima_visita = timezone.localdate(cerrada_en) + timedelta(
-                    days=proyecto.frecuencia_dias
-                )
-            proyecto.save(
-                update_fields=["encargado_actual", "proxima_visita", "actualizado"]
-            )
     return visita_bd
 
 
 def registrar_visita_manual(
     *,
-    proyecto,
+    sitio,
     empleado,
     administrador,
     motivo,
     realizada_en,
-    puntos,
+    items,
     datos,
     productos_aplicados,
     fotos,
@@ -689,17 +781,20 @@ def registrar_visita_manual(
 ):
     """Registra una visita cargada a mano por un administrador y la devuelve.
 
-    Crea una revisión por cada punto de `puntos`, todas con la planilla `datos`
-    (ámbito `punto`); las fotos y los productos quedan en la revisión del primer
-    punto por `orden`. Cierra la visita con `cierre=administrador` y `cerrada_en`
-    igual a `realizada_en`; `datos_visita` es la planilla de ámbito `visita`. Crea
-    la visita, o completa `pendiente` (sin revisiones previas), con
-    `origen=manual`. Una carga con más de `ATRASO_MAXIMO_HORAS` de atraso exige
+    `items` es una lista de `(punto, servicio)`: crea una revisión por cada uno, con
+    ese servicio. `datos` y `datos_visita` son las planillas por servicio,
+    `{slug: {clave: valor}}`, de ámbito `punto` (la misma para todas las revisiones
+    del servicio) y `visita`. Las fotos y los productos quedan en la revisión del
+    primer punto por `orden`. Cierra la visita con `cierre=administrador` y
+    `cerrada_en` igual a `realizada_en`. Crea la visita, con un ítem por cada
+    `(punto, servicio)`, o completa `pendiente` (sin revisiones previas), con
+    `origen=manual`: una revisión de un punto sin ítem en la pendiente queda fuera de
+    turno. Una carga con más de `ATRASO_MAXIMO_HORAS` de atraso exige
     `confirmar_atraso` y deja la confirmación en el historial; una hora más de
-    `TOLERANCIA_FUTURO` posterior a la actual se rechaza, como una fecha anterior a
-    la creación del proyecto (al minuto, la resolución del formulario) y un
-    proyecto cuyo sitio o cliente están de baja. Si la pendiente era de otro
-    empleado, la reasignación queda en el historial. Todo ocurre en una
+    `TOLERANCIA_FUTURO` posterior a la actual se rechaza, como una fecha anterior al
+    alta del sitio (al minuto, la resolución del formulario) y un sitio o cliente de
+    baja. Si la pendiente era de otro empleado, la reasignación queda en el
+    historial. Actualiza el vencimiento de cada punto. Todo ocurre en una
     transacción; si algo falla no queda nada, tampoco los archivos. Levanta
     `ValidationError` con errores por campo. No debe llamarse dentro de otro
     `atomic`.
@@ -717,13 +812,11 @@ def registrar_visita_manual(
         errores = {}
         if not (motivo or "").strip():
             errores["motivo"] = ["El motivo de la carga manual es obligatorio."]
-        if proyecto.estado != Proyecto.Estado.ACTIVO:
-            errores["proyecto"] = ["El proyecto no está activo."]
-        elif not (proyecto.sitio.activo and proyecto.sitio.cliente.activo):
-            errores["proyecto"] = ["El sitio o el cliente del proyecto están de baja."]
-        if realizada_en < proyecto.creado.replace(second=0, microsecond=0):
+        if not (sitio.activo and sitio.cliente.activo):
+            errores["sitio"] = ["El sitio o el cliente están de baja."]
+        if realizada_en < sitio.creado.replace(second=0, microsecond=0):
             errores["realizada_en"] = [
-                "La fecha no puede ser anterior a la creación del proyecto."
+                "La fecha no puede ser anterior al alta del sitio."
             ]
         if not (empleado.is_active and empleado.es_empleado):
             errores["empleado"] = ["Debe ser un empleado activo."]
@@ -734,30 +827,28 @@ def registrar_visita_manual(
                 f"La visita tiene más de {horas} horas de atraso: "
                 "confirme la carga para continuar."
             ]
-        puntos = sorted(puntos, key=lambda p: (p.orden, p.pk))
-        if not puntos:
-            errores["puntos"] = ["Elija al menos un punto de control."]
-        elif any(not p.activo or p.sitio_id != proyecto.sitio_id for p in puntos):
-            errores["puntos"] = [
-                "Los puntos deben ser activos y del sitio del proyecto."
-            ]
-        esquema_punto = proyecto.tipo_servicio.esquema_planilla("punto")
-        errores_evidencia, aplicados = _validar_evidencia(
-            esquema_punto, datos, productos_aplicados
-        )
-        errores.update(errores_evidencia)
+        items = sorted(items, key=lambda i: (i[0].orden, i[0].pk))
+        errores.update(_errores_de_items(sitio.pk, items))
+        servicios = {}
+        for _, servicio in items:
+            if servicio is not None:
+                servicios[servicio.slug] = _servicio_con_campos(servicio.pk)
+        datos = datos or {}
+        esquemas_punto = {s: v.esquema_planilla("punto") for s, v in servicios.items()}
+        errores_datos = _errores_planilla_visita(esquemas_punto, datos)
+        if errores_datos:
+            errores["datos"] = errores_datos
+        errores_productos, aplicados = _validar_productos(productos_aplicados)
+        errores.update(errores_productos)
         if len(fotos) > MAX_FOTOS:
             errores["fotos"] = [f"Se permiten hasta {MAX_FOTOS} fotos por revisión."]
         visita = None
         if pendiente is not None:
-            # Orden Proyecto -> Visita, como en `abrir_visita` y `cerrar_visita`.
-            Proyecto.objects.select_for_update(of=("self",)).get(pk=proyecto.pk)
+            # Orden Sitio -> Visita, como en `abrir_visita` y `cerrar_visita`.
+            Sitio.objects.select_for_update(of=("self",)).get(pk=sitio.pk)
             visita = Visita.objects.select_for_update().get(pk=pendiente.pk)
-            if (
-                visita.proyecto_id != proyecto.pk
-                or visita.estado != Visita.Estado.PENDIENTE
-            ):
-                errores["pendiente"] = ["La visita no es una pendiente del proyecto."]
+            if visita.sitio_id != sitio.pk or visita.estado != Visita.Estado.PENDIENTE:
+                errores["pendiente"] = ["La visita no es una pendiente del sitio."]
             elif visita.revisiones.exists():
                 errores["pendiente"] = [
                     "La pendiente ya tiene revisiones: no se completa a mano."
@@ -766,7 +857,7 @@ def registrar_visita_manual(
             raise ValidationError(errores)
 
         if visita is None:
-            visita = Visita(proyecto=proyecto)
+            visita = Visita(sitio=sitio)
         if visita.empleado_id not in (None, empleado.pk):
             visita._change_reason = (
                 f"Reasignada en carga manual por {administrador.get_username()}"
@@ -779,17 +870,25 @@ def registrar_visita_manual(
         visita.estado = Visita.Estado.ABIERTA
         visita.abierta_en = realizada_en
         visita.save()
+        if pendiente is None:
+            ItemTurno.objects.bulk_create(
+                ItemTurno(visita=visita, punto=punto, servicio=servicio)
+                for punto, servicio in items
+            )
+        con_item = set(visita.items.values_list("punto_id", flat=True))
 
         ahora = timezone.now()
-        for orden, punto in enumerate(puntos, start=1):
+        for orden, (punto, servicio) in enumerate(items, start=1):
             revision = Revision.objects.create(
                 visita=visita,
                 punto=punto,
+                servicio=servicio,
+                fuera_de_turno=punto.pk not in con_item,
                 orden=orden,
                 realizada_en=realizada_en,
                 recibida_en=ahora,
-                datos=datos,
-                esquema_planilla=esquema_punto,
+                datos=datos.get(servicio.slug, {}),
+                esquema_planilla=esquemas_punto[servicio.slug],
             )
             if orden == 1:
                 _guardar_fotos_y_productos(
@@ -805,6 +904,8 @@ def registrar_visita_manual(
             incidencia_detalle=incidencia_detalle,
             cerrada_en=realizada_en,
         )
+        for punto, _ in items:
+            actualizar_vencimiento(punto)
         if atrasada:
             update_change_reason(
                 resultado,

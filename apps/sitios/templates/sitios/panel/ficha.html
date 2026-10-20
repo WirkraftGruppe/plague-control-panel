@@ -45,16 +45,6 @@
   {% include "sitios/panel/_pestana_puntos.html" %}
 {% endif %}
 
-<section>
-  <h2>Proyectos</h2>
-  <ul>
-    {% for proyecto in proyectos %}
-    <li>{% url 'panel:proyectos:ficha' proyecto.pk as u %}{% if u %}<a href="{{ u }}">{{ proyecto.titulo }}</a>{% else %}{{ proyecto.titulo }}{% endif %} · {{ proyecto.tipo_servicio }} · {{ proyecto.get_estado_display }}</li>
-    {% empty %}
-    <li>Este sitio no tiene proyectos.</li>
-    {% endfor %}
-  </ul>
-</section>
 {% endwith %}
 {% endblock %}
 {% block scripts %}

@@ -7,14 +7,12 @@
     proxima: "#ffc600",
     al_dia: "#2e9e5b",
     sin_programar: "#7f8890",
-    sin_revisar: "#7f8890",
   };
   var ETIQUETAS = {
     vencida: "Vencida",
     proxima: "Próxima a vencer",
     al_dia: "Al día",
     sin_programar: "Sin programar",
-    sin_revisar: "Sin revisar",
   };
 
   var contenedor = document.getElementById("mapa");
@@ -33,9 +31,9 @@
 
   function fecha(iso) {
     if (!iso) {
-      return "sin registro";
+      return "sin programar";
     }
-    var d = new Date(iso);
+    var d = new Date(iso + "T00:00:00");
     return d.toLocaleDateString("es-AR");
   }
 
@@ -51,24 +49,19 @@
     caja.className = "mapa-popup";
     caja.appendChild(elemento("h3", sitio.nombre));
     caja.appendChild(elemento("div", sitio.cliente));
+    caja.appendChild(elemento("div", ETIQUETAS[sitio.estado]));
     caja.appendChild(
-      elemento("div", "Última visita: " + fecha(sitio.ultima_visita))
+      elemento("div", "Próximo vencimiento: " + fecha(sitio.vencimiento))
     );
-    var lista = document.createElement("ul");
-    sitio.proyectos.forEach(function (p) {
-      lista.appendChild(
-        elemento(
-          "li",
-          p.titulo + " (" + p.servicio + ") · " + ETIQUETAS[p.estado] +
-            " · encargado: " + p.encargado
-        )
-      );
-    });
-    caja.appendChild(lista);
     if (sitio.url_ficha) {
       var enlace = elemento("a", "Ver ficha del sitio");
       enlace.href = sitio.url_ficha;
       caja.appendChild(enlace);
+    }
+    if (sitio.url_nuevo_turno) {
+      var turno = elemento("a", "Nuevo turno");
+      turno.href = sitio.url_nuevo_turno;
+      caja.appendChild(turno);
     }
     return caja;
   }
@@ -90,7 +83,7 @@
         capa.clearLayers();
         var puntos = [];
         datos.sitios.forEach(function (sitio) {
-          var color = COLORES[sitio.estado] || COLORES.sin_revisar;
+          var color = COLORES[sitio.estado] || COLORES.sin_programar;
           L.circleMarker([sitio.lat, sitio.lng], {
             radius: 9,
             color: "#1b1f23",

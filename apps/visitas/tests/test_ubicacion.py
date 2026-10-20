@@ -35,8 +35,7 @@ class UbicacionTests(SinArchivosMixin, TestCase):
     def setUp(self):
         self.visita = crear_visita()
         self.empleado = self.visita.empleado
-        self.proyecto = self.visita.proyecto
-        self.sitio = self.proyecto.sitio
+        self.sitio = self.visita.sitio
         self.punto = punto_de(self.visita)
         self.admin = User.objects.create_user(
             username="adm-ubic", password="x", rol=User.Rol.ADMINISTRADOR
@@ -48,7 +47,7 @@ class UbicacionTests(SinArchivosMixin, TestCase):
 
     def _revisar(self, usuario=None, **extra):
         usuario = usuario or self.empleado
-        visita, _ = abrir(empleado=usuario, proyecto=self.proyecto)
+        visita, _ = abrir(empleado=usuario, sitio=self.sitio)
         argumentos = {
             "visita": visita,
             "empleado": usuario,
@@ -96,18 +95,18 @@ class UbicacionTests(SinArchivosMixin, TestCase):
 
     def test_apertura_guarda_distancia(self):
         self._con_coordenadas(self.punto)
-        visita, _ = abrir(empleado=self.empleado, proyecto=self.proyecto, **LEJOS)
+        visita, _ = abrir(empleado=self.empleado, sitio=self.sitio, **LEJOS)
         visita.refresh_from_db()
         self.assertEqual(visita.pk, self.visita.pk)
         self.assertTrue(visita.incidencia_ubicacion)
         self.assertGreater(visita.distancia_m, 300)
-        otro, _ = abrir(empleado=self.admin, proyecto=self.proyecto, **CERCA)
+        otro, _ = abrir(empleado=self.admin, sitio=self.sitio, **CERCA)
         self.assertFalse(otro.incidencia_ubicacion)
         self.assertLess(otro.distancia_m, 300)
         nuevo = User.objects.create_user(
             username="e2", password="x", rol=User.Rol.EMPLEADO
         )
-        sin, _ = abrir(empleado=nuevo, proyecto=self.proyecto)
+        sin, _ = abrir(empleado=nuevo, sitio=self.sitio)
         self.assertIsNone(sin.distancia_m)
 
     def test_administrador_fija_coordenadas_del_punto(self):

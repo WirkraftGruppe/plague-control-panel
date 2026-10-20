@@ -14,11 +14,10 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from apps.accounts.models import User
-from apps.proyectos.models import Proyecto
 from apps.sitios import services as servicios_sitio
 from apps.visitas.models import Revision, Visita
 from apps.visitas.services import cerrar_visita
-from apps.visitas.tests.test_models import crear_revision, crear_visita
+from apps.visitas.tests.test_models import crear_revision, crear_visita, punto_de
 
 
 def abierta_hace(horas, **extra):
@@ -52,9 +51,6 @@ class CerrarAbiertasTests(TestCase):
         # La hora de cierre es la de la última revisión, no la del comando.
         self.assertEqual(vieja.cerrada_en, ultima.realizada_en)
         self.assertEqual(reciente.estado, Visita.Estado.ABIERTA)
-        proyecto = vieja.proyecto
-        proyecto.refresh_from_db()
-        self.assertEqual(proyecto.encargado_actual, vieja.empleado)
         self.assertIn("1", salida)
 
     @override_settings(VISITA_ABIERTA_MAXIMO_HORAS=1)
@@ -79,9 +75,7 @@ class CerrarAbiertasTests(TestCase):
         self.assertEqual(propia.estado, Visita.Estado.CANCELADA)
         self.assertIsNone(propia.cerrada_en)
         for visita in (asignada, propia):
-            proyecto = visita.proyecto
-            proyecto.refresh_from_db()
-            self.assertIsNone(proyecto.proxima_visita)
+            self.assertIsNone(punto_de(visita).proximo_vencimiento)
 
     def test_operational_error_no_corta_la_corrida(self):
         trabada = abierta_hace(30)
@@ -118,7 +112,7 @@ class RevisionDemoTests(TestCase):
 
     def preparar(self):
         visita = crear_visita(origen=Visita.Origen.APP, estado=Visita.Estado.CANCELADA)
-        punto = visita.proyecto.sitio.puntos.get(nombre="General")
+        punto = visita.sitio.puntos.get(nombre="General")
         servicios_sitio.fijar_ubicacion(punto, Decimal("-36.1"), Decimal("-57.8"))
         return punto, visita.empleado
 
@@ -157,25 +151,6 @@ class RevisionDemoTests(TestCase):
         revision = Revision.objects.get()
         self.assertTrue(revision.incidencia_ubicacion)
         self.assertGreater(revision.distancia_m, 500)
-
-    def test_opcion_proyecto(self):
-        punto, _ = self.preparar()
-        primero = Proyecto.objects.get()
-        segundo = Proyecto.objects.create(
-            sitio=punto.sitio,
-            tipo_servicio=primero.tipo_servicio,
-            titulo="Segundo",
-            encargado_inicial=primero.encargado_inicial,
-            encargado_actual=primero.encargado_actual,
-        )
-        self.ejecutar("General", "--proyecto", str(segundo.pk))
-        self.assertEqual(Revision.objects.get().visita.proyecto, segundo)
-        ajeno = crear_visita().proyecto
-        for valor in (str(ajeno.pk), "999999"):
-            with self.subTest(proyecto=valor):
-                with self.assertRaises(CommandError):
-                    self.ejecutar("General", "--proyecto", valor)
-        self.assertEqual(Revision.objects.count(), 1)
 
     def test_punto_inexistente(self):
         with self.assertRaises(CommandError):

@@ -1,18 +1,21 @@
 {% extends "panel/base.html" %}
 {% block panel_contenido %}
-  <h1>Registrar visita manual</h1>
-  <p>Proyecto: {{ proyecto.titulo }} ({{ proyecto.sitio.nombre }})</p>
+  <h1>Cargar visita</h1>
+  <p>Sitio: {{ sitio.nombre }} ({{ sitio.cliente.razon_social }})</p>
   <form class="formulario" method="post" enctype="multipart/form-data">
     {% csrf_token %}
     {% if form.non_field_errors %}<div class="errores">{{ form.non_field_errors }}</div>{% endif %}
     {% for campo in form.visible_fields %}
+      {% if not campo.field.agrupado %}
       <div class="campo{% if campo.errors %} campo-error{% endif %}">
         {{ campo.label_tag }}
         {{ campo }}
         {% if campo.help_text %}<small class="ayuda">{{ campo.help_text }}</small>{% endif %}
         {% for error in campo.errors %}<small class="error">{{ error }}</small>{% endfor %}
       </div>
+      {% endif %}
     {% endfor %}
+    {% include "visitas/panel/_puntos_servicio.html" %}
     <h2>Productos aplicados</h2>
     {{ productos.management_form }}
     {% if productos.non_form_errors %}<div class="errores">{{ productos.non_form_errors }}</div>{% endif %}
@@ -31,7 +34,7 @@
     {% endfor %}
     <div class="acciones">
       <button class="boton boton-primario" type="submit">Registrar visita</button>
-      <a class="boton boton-secundario" href="{% url 'panel:proyectos:ficha' proyecto.pk %}">Cancelar</a>
+      <a class="boton boton-secundario" href="{% url 'panel:sitios:ficha' sitio.pk %}">Cancelar</a>
     </div>
   </form>
 {% endblock %}

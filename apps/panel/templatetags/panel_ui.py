@@ -5,12 +5,11 @@ from django import template
 register = template.Library()
 
 TONOS = {
-    # Semáforo de proyectos
+    # Semáforo por vencimiento
     "vencida": "danger",
     "proxima": "warn",
     "al_dia": "ok",
     "sin_programar": "neutral",
-    "sin_revisar": "neutral",
     # Estados de visita
     "realizada": "ok",
     "pendiente": "warn",
