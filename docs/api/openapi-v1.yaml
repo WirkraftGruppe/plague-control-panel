@@ -170,7 +170,9 @@ paths:
   /api/v1/me/visitas/:
     get:
       operationId: me_visitas_list
-      description: Lista paginada; las abiertas van primero y cada una trae su `estado`.
+      description: |-
+        Lista paginada; las abiertas van primero y cada una trae su `estado` y
+        los `items` (punto y servicio) del turno.
       summary: Mis visitas pendientes y abiertas
       parameters:
       - name: page
@@ -200,8 +202,7 @@ paths:
     get:
       operationId: planos_imagen_retrieve
       description: 'Administradores, o empleados con una visita propia pendiente o
-        abierta en un proyecto del sitio. Sin acceso, plano inactivo o inexistente:
-        el mismo 404.'
+        abierta en el sitio. Sin acceso, plano inactivo o inexistente: el mismo 404.'
       summary: Descargar la imagen de un plano
       parameters:
       - in: path
@@ -288,8 +289,11 @@ paths:
   /api/v1/qr/{codigo}/resolver/:
     post:
       operationId: qr_resolver_create
-      description: Empleados y administradores. Un QR inexistente, de un punto o sitio
-        inactivo o de un cliente inactivo responde el mismo 404.
+      description: 'Empleados y administradores. Un QR inexistente, de un punto o
+        sitio inactivo o de un cliente inactivo responde el mismo 404. El punto trae
+        su `estado` y `proximo_vencimiento`, `en_turno` (tiene un ítem en un turno
+        propio pendiente o abierto) y el `servicio` con sus esquemas de planilla:
+        el del ítem del turno o, fuera de turno, el del punto (`null` si no tiene).'
       summary: Resolver un código QR
       parameters:
       - in: path
@@ -315,10 +319,10 @@ paths:
       description: Multipart. `qr_codigo` es el del punto escaneado. `datos` y `productos_aplicados`
         son texto JSON, una lista donde cada ítem lleva `producto`, `lote`, `dosis`,
         `unidad_dosis`, `cantidad` y `unidad` (la unidad de la cantidad, válida para
-        el producto); `fotos` se repite de 1 a 10 veces (hasta 8 MB cada una). Un
-        `cliente_uuid` ya registrado responde 409; `revision` y `visita` solo vienen
-        si son del mismo empleado. Un administrador que escanea un punto sin coordenadas,
-        con precisión de a lo sumo 50 m, las fija.
+        el producto); `fotos` se repite de 0 a 2 veces (hasta 8 MB cada una). Un `cliente_uuid`
+        ya registrado responde 409; `revision` y `visita` solo vienen si son del mismo
+        empleado. Un administrador que escanea un punto sin coordenadas, con precisión
+        de a lo sumo 50 m, las fija.
       summary: Registrar una revisión
       tags:
       - revisiones
@@ -339,8 +343,8 @@ paths:
           description: ''
         '400':
           description: 'Validación: QR que no es de un punto del sitio, visita no
-            abierta, coordenadas o foto faltantes, planilla inválida o revisión con
-            más horas de atraso que el máximo (168 por defecto).'
+            abierta, coordenadas faltantes, punto sin servicio, planilla inválida
+            o revisión con más horas de atraso que el máximo (168 por defecto).'
         '404':
           description: La visita no existe o es de otro usuario.
         '409':
@@ -428,7 +432,7 @@ paths:
       description: '`datos` es la planilla de ámbito visita; todo es opcional. Cerrar
         de nuevo una visita que ya cerró el mismo usuario devuelve 200 con la visita;
         si la cerró el sistema o un administrador, 409. Cerrar la visita de un administrador
-        no modifica el proyecto.'
+        no cuenta como servicio.'
       summary: Cerrar una visita
       parameters:
       - in: path
@@ -467,12 +471,12 @@ paths:
   /api/v1/visitas/abrir/:
     post:
       operationId: visitas_abrir_create
-      description: 'Abre la pendiente asignada o crea una visita nueva. `qr_codigo`
-        es el de un punto activo del sitio del proyecto. Si el empleado ya tiene una
-        abierta en el proyecto la devuelve con 200. `latitud`, `longitud` y `precision_m`
-        son opcionales: con coordenadas se guarda la distancia al punto y la incidencia
-        de ubicación, sin rechazar nunca por distancia. La visita de un administrador
-        no toma pendientes.'
+      description: 'Abre el turno pendiente más antiguo del empleado en el sitio del
+        QR o crea una visita sin ítems. `qr_codigo` es el de un punto activo. Si el
+        empleado ya tiene una abierta en el sitio la devuelve con 200. `latitud`,
+        `longitud` y `precision_m` son opcionales: con coordenadas se guarda la distancia
+        al punto y la incidencia de ubicación, sin rechazar nunca por distancia. La
+        visita de un administrador no toma pendientes.'
       summary: Abrir una visita
       tags:
       - visitas
@@ -504,17 +508,15 @@ paths:
                 $ref: '#/components/schemas/VisitaActiva'
           description: ''
         '400':
-          description: Proyecto inexistente o inactivo, o QR ajeno al sitio.
+          description: QR inexistente, de un punto o sitio inactivo.
 components:
   schemas:
     AbrirVisitaRequest:
       type: object
       description: |-
-        Entrada de `POST visitas/abrir/`: el proyecto, el QR escaneado en el sitio y,
-        opcionales, las coordenadas del teléfono para verificar la ubicación.
+        Entrada de `POST visitas/abrir/`: el QR escaneado en el sitio y, opcionales,
+        las coordenadas del teléfono para verificar la ubicación.
       properties:
-        proyecto:
-          type: integer
         qr_codigo:
           type: string
           format: uuid
@@ -534,7 +536,6 @@ components:
           pattern: ^-?\d{0,6}(?:\.\d{0,1})?$
           nullable: true
       required:
-      - proyecto
       - qr_codigo
     AltaPuntoRequest:
       type: object
@@ -600,6 +601,33 @@ components:
       - longitud
       - nombre
       - precision_m
+    CampoEsquema:
+      type: object
+      description: Campo de la planilla de un servicio, tal como lo arma `esquema_planilla`.
+      properties:
+        clave:
+          type: string
+        etiqueta:
+          type: string
+        tipo:
+          type: string
+        opciones:
+          type: array
+          items: {}
+        obligatorio:
+          type: boolean
+        ayuda:
+          type: string
+        orden:
+          type: integer
+      required:
+      - ayuda
+      - clave
+      - etiqueta
+      - obligatorio
+      - opciones
+      - orden
+      - tipo
     CerrarVisitaRequest:
       type: object
       description: 'Entrada de `POST visitas/<pk>/cerrar/`: planilla de la visita
@@ -664,8 +692,7 @@ components:
           items:
             type: string
             format: binary
-          maxItems: 10
-          minItems: 1
+          maxItems: 2
         observaciones:
           type: string
           default: ''
@@ -679,7 +706,6 @@ components:
           maxLength: 2000
       required:
       - cliente_uuid
-      - fotos
       - latitud
       - longitud
       - qr_codigo
@@ -697,6 +723,20 @@ components:
         * `abierta` - Abierta
         * `realizada` - Realizada
         * `cancelada` - Cancelada
+    ItemTurno:
+      type: object
+      description: Punto del turno con su servicio; `revisado` si ya tiene una revisión.
+      properties:
+        punto:
+          $ref: '#/components/schemas/PuntoItem'
+        servicio:
+          $ref: '#/components/schemas/ServicioResumen'
+        revisado:
+          type: boolean
+      required:
+      - punto
+      - revisado
+      - servicio
     MiPunto:
       type: object
       description: Punto activo de un sitio donde el empleado tiene trabajo, con su
@@ -926,51 +966,6 @@ components:
       - producto
       - unidad
       - unidad_dosis
-    ProyectoQR:
-      type: object
-      description: Proyecto activo del sitio con las planillas que debe completar
-        el empleado.
-      properties:
-        id:
-          type: integer
-        titulo:
-          type: string
-        tipo_servicio:
-          $ref: '#/components/schemas/TipoServicioQR'
-        esquema_punto:
-          type: array
-          items:
-            type: object
-            additionalProperties: {}
-        esquema_visita:
-          type: array
-          items:
-            type: object
-            additionalProperties: {}
-        visita_pendiente_propia:
-          type: integer
-          nullable: true
-        visita_abierta_propia:
-          type: integer
-          nullable: true
-      required:
-      - esquema_punto
-      - esquema_visita
-      - id
-      - tipo_servicio
-      - titulo
-      - visita_abierta_propia
-      - visita_pendiente_propia
-    ProyectoResumen:
-      type: object
-      properties:
-        id:
-          type: integer
-        titulo:
-          type: string
-      required:
-      - id
-      - titulo
     PuntoCampo:
       type: object
       description: Punto creado o ubicado en campo; el QR lo ve solo el administrador.
@@ -1006,6 +1001,19 @@ components:
       - sector
       - sitio
       - tiene_foto
+    PuntoItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        nombre:
+          type: string
+        sector:
+          type: string
+      required:
+      - id
+      - nombre
+      - sector
     PuntoPlano:
       type: object
       description: Marcador de un punto sobre el plano, con su estado de revisión.
@@ -1041,11 +1049,27 @@ components:
           allOf:
           - $ref: '#/components/schemas/Plano'
           nullable: true
+        estado:
+          type: string
+        proximo_vencimiento:
+          type: string
+          format: date
+          nullable: true
+        servicio:
+          allOf:
+          - $ref: '#/components/schemas/ServicioQR'
+          nullable: true
+        en_turno:
+          type: boolean
       required:
+      - en_turno
+      - estado
       - id
       - nombre
       - plano
+      - proximo_vencimiento
       - sector
+      - servicio
     PuntoResumen:
       type: object
       properties:
@@ -1074,15 +1098,18 @@ components:
           $ref: '#/components/schemas/SitioQR'
         cliente:
           $ref: '#/components/schemas/ClienteQR'
-        proyectos:
-          type: array
-          items:
-            $ref: '#/components/schemas/ProyectoQR'
+        visita_pendiente_propia:
+          type: integer
+          nullable: true
+        visita_abierta_propia:
+          type: integer
+          nullable: true
       required:
       - cliente
-      - proyectos
       - punto
       - sitio
+      - visita_abierta_propia
+      - visita_pendiente_propia
     Revision:
       type: object
       description: 'Revisión sin coordenadas ni precisión: no se devuelve la ubicación.'
@@ -1096,6 +1123,13 @@ components:
         punto:
           allOf:
           - $ref: '#/components/schemas/PuntoResumen'
+          readOnly: true
+        servicio:
+          allOf:
+          - $ref: '#/components/schemas/ServicioResumen'
+          readOnly: true
+        fuera_de_turno:
+          type: boolean
           readOnly: true
         orden:
           type: integer
@@ -1130,6 +1164,7 @@ components:
       required:
       - datos
       - fotos
+      - fuera_de_turno
       - id
       - incidencia
       - incidencia_detalle
@@ -1138,7 +1173,43 @@ components:
       - productos
       - punto
       - realizada_en
+      - servicio
       - visita
+    ServicioQR:
+      type: object
+      description: Servicio que se hace en el punto, con las planillas de punto y
+        de visita.
+      properties:
+        id:
+          type: integer
+        nombre:
+          type: string
+        slug:
+          type: string
+        esquema_punto:
+          type: array
+          items:
+            $ref: '#/components/schemas/CampoEsquema'
+        esquema_visita:
+          type: array
+          items:
+            $ref: '#/components/schemas/CampoEsquema'
+      required:
+      - esquema_punto
+      - esquema_visita
+      - id
+      - nombre
+      - slug
+    ServicioResumen:
+      type: object
+      properties:
+        id:
+          type: integer
+        nombre:
+          type: string
+      required:
+      - id
+      - nombre
     SitioCampo:
       type: object
       description: Sitio creado en campo, con su punto General.
@@ -1200,6 +1271,8 @@ components:
       type: object
       description: Sitio sin coordenadas, contactos ni notas.
       properties:
+        id:
+          type: integer
         nombre:
           type: string
         direccion:
@@ -1208,17 +1281,8 @@ components:
           type: string
       required:
       - direccion
-      - localidad
-      - nombre
-    TipoServicioQR:
-      type: object
-      properties:
-        id:
-          type: integer
-        nombre:
-          type: string
-      required:
       - id
+      - localidad
       - nombre
     TokenNormalizadoRequest:
       type: object
@@ -1312,10 +1376,6 @@ components:
           allOf:
           - $ref: '#/components/schemas/EstadoEnum'
           readOnly: true
-        proyecto:
-          allOf:
-          - $ref: '#/components/schemas/ProyectoResumen'
-          readOnly: true
         sitio:
           allOf:
           - $ref: '#/components/schemas/SitioResumen'
@@ -1330,12 +1390,17 @@ components:
           format: date-time
           readOnly: true
           nullable: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemTurno'
+          readOnly: true
       required:
       - abierta_en
       - estado
       - id
+      - items
       - programada_para
-      - proyecto
       - sitio
     VisitaRealizada:
       type: object
@@ -1344,10 +1409,6 @@ components:
       properties:
         id:
           type: integer
-          readOnly: true
-        proyecto:
-          allOf:
-          - $ref: '#/components/schemas/ProyectoResumen'
           readOnly: true
         sitio:
           allOf:
@@ -1381,7 +1442,6 @@ components:
       - incidencia
       - incidencia_detalle
       - observaciones
-      - proyecto
       - realizada_en
       - revisiones
       - sitio

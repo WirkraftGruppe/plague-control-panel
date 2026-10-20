@@ -593,7 +593,12 @@ class MisVisitasTests(BaseApiTests):
         item = r.data["results"][1]
         self.assertEqual(
             item["sitio"],
-            {"nombre": "Planta 1", "direccion": "Calle 1", "localidad": "Castelli"},
+            {
+                "id": self.sitio.id,
+                "nombre": "Planta 1",
+                "direccion": "Calle 1",
+                "localidad": "Castelli",
+            },
         )
         self.assertEqual(item["programada_para"], "2026-09-01")
         self.assertNotIn("latitud", item)

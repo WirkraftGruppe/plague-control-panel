@@ -43,6 +43,7 @@ MENSAJE_DUPLICADA = "La revisión ya fue registrada."
 MAX_BYTES_PEDIDO = MAX_FOTOS * MAX_BYTES_FOTO + 1024 * 1024
 PRECARGA_REVISIONES = (
     "revisiones__punto",
+    "revisiones__servicio",
     "revisiones__fotos",
     "revisiones__productos",
 )
@@ -73,12 +74,14 @@ class MisVisitasView(generics.ListAPIView):
                 estado__in=[Visita.Estado.ABIERTA, Visita.Estado.PENDIENTE],
             )
             .select_related("sitio")
+            .prefetch_related("items__punto", "items__servicio", "revisiones")
             .order_by("estado", F("programada_para").asc(nulls_last=True), "id")
         )
 
     @extend_schema(summary="Mis visitas pendientes y abiertas")
     def get(self, request, *args, **kwargs):
-        """Lista paginada; las abiertas van primero y cada una trae su `estado`."""
+        """Lista paginada; las abiertas van primero y cada una trae su `estado` y
+        los `items` (punto y servicio) del turno."""
         return super().get(request, *args, **kwargs)
 
 

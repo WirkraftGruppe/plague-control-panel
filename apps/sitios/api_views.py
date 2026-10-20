@@ -21,11 +21,12 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from apps.accounts.permisos import EsAdministrador, EsEmpleado
-from apps.visitas.models import Visita
+from apps.servicios.models import TipoServicio
+from apps.visitas.models import ItemTurno, Visita
 from apps.visitas.serializers import MAX_BYTES_FOTO
 
 from . import services
-from .estado import estados_por_vencimiento
+from .estado import estado_por_vencimiento, estados_por_vencimiento
 from .models import Plano, PuntoControl, Sitio
 from .serializers import (
     AltaPuntoSerializer,
@@ -73,6 +74,45 @@ def _datos_plano(punto):
     }
 
 
+def _servicio_del_punto(punto, empleado):
+    """``(servicio, en_turno)`` del punto para el empleado.
+
+    El servicio es el del ítem del turno propio (abierto antes que pendiente, y el
+    más antiguo primero) en el sitio; sin ítem, el del punto, o ``None``.
+    """
+    item = (
+        ItemTurno.objects.filter(
+            punto=punto,
+            visita__empleado=empleado,
+            visita__estado__in=ESTADOS_CON_TRABAJO,
+        )
+        .select_related("servicio")
+        .prefetch_related("servicio__campos")
+        .order_by(
+            "visita__estado", F("visita__programada_para").asc(nulls_last=True), "id"
+        )
+        .first()
+    )
+    if item is not None:
+        return item.servicio, True
+    if punto.servicio_id is None:
+        return None, False
+    servicio = TipoServicio.objects.prefetch_related("campos").get(pk=punto.servicio_id)
+    return servicio, False
+
+
+def _datos_servicio(servicio):
+    if servicio is None:
+        return None
+    return {
+        "id": servicio.id,
+        "nombre": servicio.nombre,
+        "slug": servicio.slug,
+        "esquema_punto": servicio.esquema_planilla("punto"),
+        "esquema_visita": servicio.esquema_planilla("visita"),
+    }
+
+
 class ResolverQRView(APIView):
     """Dado el UUID de un QR, devuelve el punto, su plano, el sitio y mis visitas."""
 
@@ -86,7 +126,11 @@ class ResolverQRView(APIView):
         summary="Resolver un código QR",
         description=(
             "Empleados y administradores. Un QR inexistente, de un punto o sitio "
-            "inactivo o de un cliente inactivo responde el mismo 404."
+            "inactivo o de un cliente inactivo responde el mismo 404. El punto trae "
+            "su `estado` y `proximo_vencimiento`, `en_turno` (tiene un ítem en un "
+            "turno propio pendiente o abierto) y el `servicio` con sus esquemas de "
+            "planilla: el del ítem del turno o, fuera de turno, el del punto "
+            "(`null` si no tiene)."
         ),
     )
     def post(self, request, codigo):
@@ -119,12 +163,19 @@ class ResolverQRView(APIView):
             else:
                 pendiente = pendiente or visita_id
 
+        servicio, en_turno = _servicio_del_punto(punto, request.user)
         datos = {
             "punto": {
                 "id": punto.id,
                 "nombre": punto.nombre,
                 "sector": punto.sector,
                 "plano": _datos_plano(punto),
+                "estado": estado_por_vencimiento(
+                    punto.proximo_vencimiento, timezone.localdate()
+                ),
+                "proximo_vencimiento": punto.proximo_vencimiento,
+                "servicio": _datos_servicio(servicio),
+                "en_turno": en_turno,
             },
             "sitio": sitio,
             "cliente": sitio.cliente,

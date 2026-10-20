@@ -4,6 +4,7 @@ import json
 from decimal import Decimal
 
 from django.urls import reverse
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from .models import ProductoAplicado, Revision, Visita
@@ -137,20 +138,49 @@ class CrearRevisionSerializer(serializers.Serializer):
 class SitioResumenSerializer(serializers.Serializer):
     """Sitio sin coordenadas, contactos ni notas."""
 
+    id = serializers.IntegerField()
     nombre = serializers.CharField()
     direccion = serializers.CharField()
     localidad = serializers.CharField()
+
+
+class ServicioResumenSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    nombre = serializers.CharField()
+
+
+class PuntoItemSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    nombre = serializers.CharField()
+    sector = serializers.CharField()
+
+
+class ItemTurnoSerializer(serializers.Serializer):
+    """Punto del turno con su servicio; `revisado` si ya tiene una revisión."""
+
+    punto = PuntoItemSerializer()
+    servicio = ServicioResumenSerializer()
+    revisado = serializers.BooleanField()
 
 
 class VisitaActivaSerializer(serializers.ModelSerializer):
     """Visita pendiente o abierta, sin coordenadas: lista propia y apertura."""
 
     sitio = SitioResumenSerializer(read_only=True)
+    items = serializers.SerializerMethodField()
 
     class Meta:
         model = Visita
-        fields = ["id", "estado", "sitio", "programada_para", "abierta_en"]
+        fields = ["id", "estado", "sitio", "programada_para", "abierta_en", "items"]
         read_only_fields = fields
+
+    @extend_schema_field(ItemTurnoSerializer(many=True))
+    def get_items(self, visita):
+        revisados = {r.punto_id for r in visita.revisiones.all()}
+        items = list(visita.items.all())
+        for item in items:
+            item.revisado = item.punto_id in revisados
+        return ItemTurnoSerializer(items, many=True).data
 
 
 class ProductoAplicadoSerializer(serializers.ModelSerializer):
@@ -177,6 +207,7 @@ class RevisionSerializer(serializers.ModelSerializer):
     """Revisión sin coordenadas ni precisión: no se devuelve la ubicación."""
 
     punto = PuntoResumenSerializer(read_only=True)
+    servicio = ServicioResumenSerializer(read_only=True)
     productos = ProductoAplicadoSerializer(many=True, read_only=True)
     fotos = serializers.SerializerMethodField()
 
@@ -186,6 +217,8 @@ class RevisionSerializer(serializers.ModelSerializer):
             "id",
             "visita",
             "punto",
+            "servicio",
+            "fuera_de_turno",
             "orden",
             "realizada_en",
             "datos",
