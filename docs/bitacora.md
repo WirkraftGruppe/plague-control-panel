@@ -1,19 +1,25 @@
 # Bitácora de MAControl
 
 ## Estado actual
-Plan activo: flujo-sitio
+Plan activo: (ninguno)
 
 Planes activos (los hooks derivan el plan de la rama; la línea `Plan activo:` de arriba es el respaldo para la raíz):
 
 | plan | rama | ola actual | pendiente inmediato | sesión |
 |---|---|---|---|---|
-| flujo-sitio | plan/flujo-sitio | 4 (cierre) | decisión del usuario sobre el merge; plan aparte para renombrar la skill `convenciones-proyecto` (P-flujo-sitio-10) | sesión 2026-10-20 |
+| (ninguno) | main | — | planificar `ajustes-flujo` (P-flujo-sitio-1, -11 y los demás de `flujo-sitio`) | sesión 2026-10-20 |
 
-Siguiente (orden decidido el 2026-10-19): `flujo-sitio` → `diseno-panel` → `multiempresa` → despliegue. El despliegue en Railway espera a que los tres planes estén en `main`, para no tener que migrar datos reales. Problemas abiertos: ver `pendientes.py`. Regla de cuándo preguntar: CLAUDE.md § Reglas globales, regla 8.
+Siguiente (orden decidido el 2026-10-20): `ajustes-flujo` → `diseno-panel` → `multiempresa` → despliegue. El despliegue en Railway espera a que los tres planes estén en `main`, para no tener que migrar datos reales. Problemas abiertos: ver `pendientes.py`. Regla de cuándo preguntar: CLAUDE.md § Reglas globales, regla 8.
 
 Problemas abiertos: ver `py -3 .claude/hooks/pendientes.py` (cada plan los declara en `## Pendientes que deja este plan`; los anteriores están en `docs/planes/2026-10-03-pendientes-heredados.md`).
 
 ## Entradas (la más reciente arriba)
+
+### 2026-10-20 — `flujo-sitio` fusionado en `main`
+Hecho:
+- El usuario aprobó el merge (cf27f54) con el FALLA de P-flujo-sitio-10 a la vista: el `grep-0` de T10 encuentra `name: convenciones-proyecto`, donde "proyecto" es el repositorio; la skill no se renombra y el problema se cierra como aceptado sin cambios. Aceptó las decisiones revisables.
+- Merge `--no-ff` en `main` (fa42249); 23 decisiones copiadas a `docs/decisiones.md`. Push de `main` a `origin`.
+Pendiente: plan `ajustes-flujo` (P-flujo-sitio-1, 500 del ingreso en envases desde el panel; P-flujo-sitio-11, servicio del resolver distinto del de la revisión; P-flujo-sitio-12 a -15 y los menores); después `diseno-panel`, `multiempresa` y despliegue. Antes de desplegar, `showmigrations` contra producción (P-flujo-sitio-15).
 
 ### 2026-10-20 — Plan `flujo-sitio` ejecutado (T1 a T11), sin fusionar
 Hecho:
