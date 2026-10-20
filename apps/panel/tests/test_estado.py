@@ -10,10 +10,7 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.clientes.models import Cliente
-from apps.proyectos.models import Proyecto
-from apps.servicios.models import TipoServicio
 from apps.sitios.models import Plano, PuntoControl, Sitio
-from apps.visitas.models import Revision, Visita
 
 
 class EstadoSitioTests(TestCase):
@@ -24,16 +21,7 @@ class EstadoSitioTests(TestCase):
         )
         cls.empleado = User.objects.create_user("emp", password="clave-segura-123")
         cliente = Cliente.objects.create(razon_social="Cliente SA")
-        servicio = TipoServicio.objects.create(nombre="Desinsectación", slug="d")
         cls.sitio = Sitio.objects.create(cliente=cliente, nombre="Planta")
-        cls.proyecto = Proyecto.objects.create(
-            sitio=cls.sitio,
-            tipo_servicio=servicio,
-            titulo="Control",
-            frecuencia_dias=30,
-            encargado_inicial=cls.empleado,
-            encargado_actual=cls.empleado,
-        )
         cls.plano = Plano.objects.create(
             sitio=cls.sitio, nombre="Planta baja", imagen="planos/p.png"
         )
@@ -42,19 +30,10 @@ class EstadoSitioTests(TestCase):
     def punto(self, nombre, **campos):
         return PuntoControl.objects.create(sitio=self.sitio, nombre=nombre, **campos)
 
-    def revisar(self, punto, dias_atras):
-        momento = timezone.now() - timedelta(days=dias_atras)
-        visita = Visita.objects.create(
-            proyecto=self.proyecto,
-            empleado=self.empleado,
-            origen=Visita.Origen.APP,
-            estado=Visita.Estado.REALIZADA,
-            abierta_en=momento,
-            cerrada_en=momento,
-        )
-        Revision.objects.create(
-            visita=visita, punto=punto, realizada_en=momento, recibida_en=momento
-        )
+    def programar(self, punto, dias):
+        """Deja el próximo vencimiento del punto dentro de `dias` días."""
+        punto.proximo_vencimiento = timezone.localdate() + timedelta(days=dias)
+        punto.save()
 
     def items(self):
         self.client.force_login(self.admin)
@@ -72,7 +51,7 @@ class EstadoSitioTests(TestCase):
             )
         }
 
-    def test_parcial_refleja_revision_reciente(self):
+    def test_parcial_refleja_el_vencimiento(self):
         general = self.sitio.puntos.get(nombre="General")
         ubicado = self.punto(
             "Ubicado", plano=self.plano, x=Decimal("0.2500"), y=Decimal("0.5000")
@@ -82,30 +61,31 @@ class EstadoSitioTests(TestCase):
 
         items = self.items()
         self.assertEqual(set(items), {general.pk, ubicado.pk, libre.pk})
-        self.assertEqual(items[ubicado.pk]["estado"], "sin_revisar")
+        self.assertEqual(items[ubicado.pk]["estado"], "sin_programar")
         self.assertEqual(items[ubicado.pk]["x"], "0.2500")
         self.assertEqual(items[ubicado.pk]["y"], "0.5000")
         self.assertEqual(items[ubicado.pk]["plano"], str(self.plano.pk))
         self.assertEqual(items[libre.pk]["x"], "")
         self.assertEqual(items[libre.pk]["plano"], "")
 
-        self.revisar(ubicado, 1)
+        self.programar(ubicado, 20)
         self.assertEqual(self.items()[ubicado.pk]["estado"], "al_dia")
-        self.assertEqual(self.items()[libre.pk]["estado"], "sin_revisar")
+        self.programar(libre, -1)
+        self.assertEqual(self.items()[libre.pk]["estado"], "vencida")
 
     def test_consultas_constantes(self):
         self.client.force_login(self.admin)
 
         def medir():
-            with self.assertNumQueries(6):
-                # sesión, usuario, sitio, puntos, proyectos activos y revisiones
+            with self.assertNumQueries(4):
+                # sesión, usuario, sitio y puntos
                 self.client.get(self.url)
 
         for n in range(2):
-            self.revisar(self.punto(f"P{n}"), n)
+            self.programar(self.punto(f"P{n}"), n)
         medir()
         for n in range(2, 8):
-            self.revisar(self.punto(f"P{n}"), n)
+            self.programar(self.punto(f"P{n}"), n)
         medir()
 
     def test_empleado_recibe_403(self):

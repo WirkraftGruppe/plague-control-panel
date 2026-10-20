@@ -6,7 +6,6 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.clientes.models import Cliente
-from apps.proyectos.models import Proyecto
 from apps.servicios.models import CampoPlanilla, TipoServicio
 from apps.sitios.models import Sitio
 from apps.visitas.models import Revision, Visita
@@ -104,18 +103,11 @@ class PlanillaPanelTests(TestCase):
 
         cliente = Cliente.objects.create(razon_social="ACME")
         sitio = Sitio.objects.create(cliente=cliente, nombre="Planta")
-        proyecto = Proyecto.objects.create(
-            sitio=sitio,
-            tipo_servicio=self.tipo,
-            titulo="P",
-            encargado_inicial=self.empleado,
-            encargado_actual=self.empleado,
-        )
         Visita.objects.create(
-            proyecto=proyecto,
+            sitio=sitio,
             empleado=self.empleado,
             origen=Visita.Origen.APP,
-            datos={"cebos": 3},
+            datos={self.tipo.slug: {"cebos": 3}},
         )
         formulario = self.client.get(url).context["form"]
         self.assertTrue(formulario.fields["clave"].disabled)
@@ -133,21 +125,15 @@ class PlanillaPanelTests(TestCase):
         sitio = Sitio.objects.create(
             cliente=Cliente.objects.create(razon_social="ACME"), nombre="P"
         )
-        proyecto = Proyecto.objects.create(
-            sitio=sitio,
-            tipo_servicio=self.tipo,
-            titulo="P",
-            encargado_inicial=self.empleado,
-            encargado_actual=self.empleado,
-        )
         visita = Visita.objects.create(
-            proyecto=proyecto, empleado=self.empleado, origen=Visita.Origen.APP
+            sitio=sitio, empleado=self.empleado, origen=Visita.Origen.APP
         )
         formulario = self.client.get(url).context["form"]
         self.assertFalse(formulario.fields["clave"].disabled)
         Revision.objects.create(
             visita=visita,
             punto=sitio.puntos.get(orden=0),
+            servicio=self.tipo,
             orden=1,
             realizada_en=timezone.now(),
             recibida_en=timezone.now(),
@@ -165,18 +151,11 @@ class PlanillaPanelTests(TestCase):
 
         cliente = Cliente.objects.create(razon_social="ACME")
         sitio = Sitio.objects.create(cliente=cliente, nombre="Planta")
-        proyecto = Proyecto.objects.create(
-            sitio=sitio,
-            tipo_servicio=self.tipo,
-            titulo="P",
-            encargado_inicial=self.empleado,
-            encargado_actual=self.empleado,
-        )
         Visita.objects.create(
-            proyecto=proyecto,
+            sitio=sitio,
             empleado=self.empleado,
             origen=Visita.Origen.APP,
-            datos={"cebos": 3},
+            datos={self.tipo.slug: {"cebos": 3}},
         )
         formulario = self.client.get(url).context["form"]
         self.assertTrue(formulario.fields["ambito"].disabled)

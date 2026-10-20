@@ -235,7 +235,9 @@ class FichaVisitaTests(BaseTests):
     def test_muestra_planilla_del_esquema_copiado(self):
         slug = self.visita.tipo.slug
         self.visita.esquema_planilla = {
-            slug: [{"clave": "cebos", "etiqueta": "Cantidad de cebos", "tipo": "numero"}]
+            slug: [
+                {"clave": "cebos", "etiqueta": "Cantidad de cebos", "tipo": "numero"}
+            ]
         }
         self.visita.datos = {slug: {"cebos": 7}}
         self.visita.save()
@@ -555,9 +557,7 @@ class CargarVisitaTests(BaseTests):
         self.assertIn("puntos", ctx.exception.message_dict)
 
     def test_una_revision_por_punto_elegido(self):
-        sala = PuntoControl.objects.create(
-            sitio=self.sitio, nombre="Sala", orden=1
-        )
+        sala = PuntoControl.objects.create(sitio=self.sitio, nombre="Sala", orden=1)
         self.client.post(self.url, self._datos(puntos=[self.punto.pk, sala.pk]))
         visita = Visita.objects.exclude(pk=self.visita.pk).get()
         self.assertEqual([r.punto for r in visita.revisiones.all()], [self.punto, sala])
@@ -572,9 +572,7 @@ class CargarVisitaTests(BaseTests):
         self.assertFalse(MovimientoStock.objects.exists())
 
     def test_manual_elige_puntos_revisados(self):
-        sala = PuntoControl.objects.create(
-            sitio=self.sitio, nombre="Sala", orden=1
-        )
+        sala = PuntoControl.objects.create(sitio=self.sitio, nombre="Sala", orden=1)
         inactivo = PuntoControl.objects.create(
             sitio=self.sitio, nombre="Baja", orden=2, activo=False
         )
@@ -732,4 +730,3 @@ class CargarVisitaTests(BaseTests):
         self.assertIn("fotos", respuesta.context["form"].errors)
         self.assertEqual(Visita.objects.count(), 1)
         self.assertEqual(self._archivos(), antes)
-

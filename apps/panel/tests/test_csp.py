@@ -9,7 +9,7 @@ def _pagina_con_base(request):
     return render(request, "base.html")
 
 
-# Esta ruta de prueba renderiza base.html sin depender de ninguna vista del proyecto.
+# Esta ruta de prueba renderiza base.html sin depender de ninguna vista de las apps.
 urlpatterns = [path("base/", _pagina_con_base)]
 
 

@@ -16,7 +16,6 @@ from PIL import Image
 from apps.accounts.models import User
 from apps.clientes.models import Cliente
 from apps.productos.models import Producto
-from apps.proyectos.models import Proyecto
 from apps.servicios.models import TipoServicio
 from apps.sitios.models import Plano, PuntoControl, Sitio
 from apps.visitas.models import Foto, Visita
@@ -57,14 +56,8 @@ class RecorridoTests(TestCase):
             latitud=Decimal("-34.603700"),
             longitud=Decimal("-58.381600"),
         )
-        tipo = TipoServicio.objects.create(nombre="Desinsectación", slug="des-rec")
-        cls.proyecto = Proyecto.objects.create(
-            sitio=cls.sitio,
-            tipo_servicio=tipo,
-            titulo="Desinsectación mensual",
-            encargado_inicial=cls.empleado,
-            encargado_actual=cls.empleado,
-        )
+        cls.tipo = TipoServicio.objects.create(nombre="Desinsectación", slug="des-rec")
+        cls.sitio.puntos.filter(orden=0).update(servicio=cls.tipo, frecuencia_dias=30)
         cls.producto = Producto.objects.create(nombre_comercial="Gel cucarachicida")
 
     def setUp(self):
@@ -78,36 +71,39 @@ class RecorridoTests(TestCase):
         return respuesta
 
     def test_administrador_recorre_el_panel(self):
-        # Tablero y mapa.
-        self._get_200(reverse("panel:inicio"))
+        # El inicio lleva al listado de sitios; el mapa enlaza a la ficha y al turno.
+        self.assertRedirects(
+            self.client.get(reverse("panel:inicio")),
+            reverse("panel:sitios:listado"),
+        )
         self._get_200(reverse("panel:mapa"))
         datos = self._get_200(reverse("panel:mapa_datos")).json()
         url_sitio = reverse("panel:sitios:ficha", args=[self.sitio.pk])
         sitio = next(s for s in datos["sitios"] if s["id"] == self.sitio.pk)
         self.assertEqual(sitio["url_ficha"], url_sitio)
 
-        # Ficha de sitio y ficha de proyecto, que ofrece asignar y cargar a mano.
-        self._get_200(url_sitio)
-        url_proyecto = reverse("panel:proyectos:ficha", args=[self.proyecto.pk])
-        url_asignar = reverse("panel:visitas:asignar", args=[self.proyecto.pk])
-        url_manual = reverse("panel:visitas:manual", args=[self.proyecto.pk])
-        ficha_proyecto = self._get_200(url_proyecto)
-        self.assertContains(ficha_proyecto, url_asignar)
-        self.assertContains(ficha_proyecto, url_manual)
+        self.assertEqual(
+            sitio["url_nuevo_turno"],
+            reverse("panel:visitas:nuevo_turno", args=[self.sitio.pk]),
+        )
 
-        # Asignar una visita pendiente al empleado.
+        # Ficha del sitio y turno nuevo para el empleado con el punto General.
+        self._get_200(url_sitio)
+        general = self.sitio.puntos.get(orden=0)
+        url_asignar = reverse("panel:visitas:nuevo_turno", args=[self.sitio.pk])
+        url_manual = reverse("panel:visitas:cargar", args=[self.sitio.pk])
         self._get_200(url_asignar)
         respuesta = self.client.post(
             url_asignar,
             {
                 "empleado": self.empleado.pk,
                 "programada_para": timezone.localdate() + timedelta(days=1),
+                "puntos": [general.pk],
+                f"servicio_{general.pk}": self.tipo.pk,
             },
         )
-        self.assertRedirects(respuesta, url_proyecto)
-        pendiente = Visita.objects.get(
-            proyecto=self.proyecto, estado=Visita.Estado.PENDIENTE
-        )
+        self.assertRedirects(respuesta, url_sitio)
+        pendiente = Visita.objects.get(sitio=self.sitio, estado=Visita.Estado.PENDIENTE)
 
         # Completar esa pendiente con la carga manual.
         self._get_200(url_manual)
@@ -115,7 +111,8 @@ class RecorridoTests(TestCase):
             url_manual,
             {
                 "empleado": self.empleado.pk,
-                "puntos": [self.sitio.puntos.get(orden=0).pk],
+                "puntos": [general.pk],
+                f"servicio_{general.pk}": self.tipo.pk,
                 "pendiente": pendiente.pk,
                 "motivo": "El empleado no tenía conexión",
                 "realizada_en": timezone.localtime().strftime("%Y-%m-%dT%H:%M"),
@@ -145,11 +142,15 @@ class RecorridoTests(TestCase):
         self._get_200(url_visita)
         foto = Foto.objects.get(revision__visita=pendiente)
         self._get_200(reverse("panel:visitas:foto", args=[foto.codigo]))
-        # La ficha del proyecto muestra la revisión del punto con su foto.
-        ficha = self._get_200(url_proyecto)
-        self.assertContains(ficha, self.sitio.puntos.get(orden=0).nombre)
+        # La ficha de la visita muestra la revisión del punto con su foto.
+        ficha = self._get_200(url_visita)
+        self.assertContains(ficha, general.nombre)
         self.assertContains(ficha, reverse("panel:visitas:foto", args=[foto.codigo]))
-        # El estado del sitio refleja el punto revisado.
+        # La carga fijó el vencimiento del punto y el estado del sitio lo refleja.
+        general.refresh_from_db()
+        self.assertEqual(
+            general.proximo_vencimiento, timezone.localdate() + timedelta(days=30)
+        )
         estado = self._get_200(reverse("panel:estado_sitio", args=[self.sitio.pk]))
         self.assertContains(estado, 'id="estado-puntos"')
 
@@ -212,14 +213,16 @@ class RecorridoTests(TestCase):
         self.assertContains(estado, f'data-punto="{punto.pk}"')
         self.assertContains(estado, 'data-x="0.5000"')
 
-        # Visita manual por dos puntos: una revisión por punto.
+        # Carga de visita por dos puntos: una revisión por punto.
         general = sitio.puntos.get(orden=0)
-        url_manual = reverse("panel:visitas:manual", args=[self.proyecto.pk])
+        url_manual = reverse("panel:visitas:cargar", args=[sitio.pk])
         respuesta = self.client.post(
             url_manual,
             {
                 "empleado": self.empleado.pk,
                 "puntos": [general.pk, punto.pk],
+                f"servicio_{general.pk}": self.tipo.pk,
+                f"servicio_{punto.pk}": self.tipo.pk,
                 "motivo": "Carga de prueba por puntos",
                 "realizada_en": timezone.localtime().strftime("%Y-%m-%dT%H:%M"),
                 "productos-TOTAL_FORMS": 0,
@@ -231,13 +234,13 @@ class RecorridoTests(TestCase):
                 ],
             },
         )
-        visita = Visita.objects.get(proyecto=self.proyecto)
+        visita = Visita.objects.get(sitio=self.sitio)
         self.assertRedirects(
             respuesta, reverse("panel:visitas:ficha", args=[visita.pk])
         )
         self.assertEqual(visita.revisiones.count(), 2)
 
-        # La ficha del proyecto lista las revisiones de ambos puntos.
-        ficha = self._get_200(reverse("panel:proyectos:ficha", args=[self.proyecto.pk]))
+        # La ficha de la visita lista las revisiones de ambos puntos.
+        ficha = self._get_200(reverse("panel:visitas:ficha", args=[visita.pk]))
         self.assertContains(ficha, "Cocina")
         self.assertContains(ficha, general.nombre)

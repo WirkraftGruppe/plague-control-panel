@@ -11,7 +11,7 @@ from apps.sitios.qr import contenido_qr
 
 
 class RutasTests(TestCase):
-    """Las rutas raíz del proyecto: login del panel, QR y API, sin sitio público."""
+    """Las rutas raíz: login del panel, QR y API, sin sitio público."""
 
     def test_raiz_redirige_al_login(self):
         respuesta = self.client.get("/")

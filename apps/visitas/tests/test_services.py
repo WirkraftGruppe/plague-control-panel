@@ -503,7 +503,9 @@ class CerrarVisitaTests(SinArchivosMixin, TestCase):
         campo.etiqueta = "Otra"
         campo.save()
         visita.refresh_from_db()
-        self.assertEqual(visita.esquema_planilla[visita.tipo.slug][0]["etiqueta"], "Resumen")
+        self.assertEqual(
+            visita.esquema_planilla[visita.tipo.slug][0]["etiqueta"], "Resumen"
+        )
 
     def test_rechaza_visita_no_abierta(self):
         visita = crear_visita(

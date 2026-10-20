@@ -9,7 +9,6 @@ APPS = [
     "sitios",
     "clientes",
     "servicios",
-    "proyectos",
     "productos",
     "visitas",
     "informes",
