@@ -3,22 +3,10 @@
   <p><a class="boton boton-primario" href="{% url 'panel:sitios:punto_alta' object.pk %}">Nuevo punto</a></p>
   <table class="tabla">
     <thead>
-      <tr><th>Punto</th><th>Sector</th><th>Estado</th><th>QR impreso</th><th>Acciones</th></tr>
+      <tr><th>Punto</th><th>Sector</th><th>Servicio</th><th>Frecuencia (días)</th><th>Próximo vencimiento</th><th>Estado</th><th>QR impreso</th><th>Acciones</th></tr>
     </thead>
     <tbody>
-      {% for punto in puntos %}
-      <tr>
-        <td>{{ punto.nombre }}{% if not punto.activo %} <span class="etiqueta-estado etiqueta-neutral">Inactivo</span>{% endif %}{% if punto.ubicacion_fijada_en %} <span class="etiqueta-estado etiqueta-neutral" title="{{ punto.ubicacion_fijada_en|date:'d/m/Y H:i' }}">Punto fijado por escaneo</span>{% endif %}</td>
-        <td>{{ punto.sector|default:"—" }}</td>
-        <td>{% if punto.activo %}<span class="etiqueta-estado etiqueta-{{ punto.estado_clase }}">{{ punto.estado_etiqueta }}</span>{% else %}—{% endif %}</td>
-        <td>{{ punto.qr_impreso_el|date:"d/m/Y"|default:"No impreso" }}</td>
-        <td class="acciones-punto">
-          <a href="{% url 'panel:sitios:punto_editar' punto.pk %}">Editar</a>
-          <a href="{% url 'panel:sitios:punto_qr_png' punto.pk %}">Descargar QR</a>
-          <a href="{% url 'panel:sitios:punto_regenerar_qr' punto.pk %}">Regenerar QR</a>
-          {% if punto.activo %}<a href="{% url 'panel:sitios:punto_desactivar' punto.pk %}">Desactivar</a>{% endif %}
-        </td>
-      </tr>
+      {% for punto in puntos %}{% include "sitios/panel/_fila_punto.html" %}
       {% endfor %}
     </tbody>
   </table>

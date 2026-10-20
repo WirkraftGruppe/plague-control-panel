@@ -28,6 +28,11 @@ urlpatterns = [
         name="punto_regenerar_qr",
     ),
     path(
+        "puntos/<int:pk>/programacion/",
+        vistas.PuntoProgramacion.as_view(),
+        name="punto_programacion",
+    ),
+    path(
         "puntos/<int:pk>/posicion/",
         vistas.PuntoPosicion.as_view(),
         name="punto_posicion",
