@@ -13,7 +13,7 @@ foreach ($s in "django-conventions","django-expert","django-patterns","django-re
   robocopy "$src\.agents\skills\$s" "$dst\.agents\skills\$s" /E
 }
 ```
-No copiar `settings.local.json` (es local de cada proyecto) ni las skills de móvil todavía (`react-native-*`, `mobile-*`, `vercel-*`): entran con la etapa de la app.
+No copiar `settings.local.json` (es local de cada copia del repositorio) ni las skills de móvil todavía (`react-native-*`, `mobile-*`, `vercel-*`): entran con la etapa de la app.
 
 3. Entorno:
 ```powershell
@@ -30,4 +30,4 @@ git commit -m "docs: base del repositorio (esquema de agentes, modelo, diseño, 
 
 5. Abrir Claude Code en la carpeta, entrar en modo plan y pegar el prompt de `docs/prompts/00-arranque.md`. El plan que resulte se congela con `docs(plan): esqueleto` y se ejecuta con el flujo de `CLAUDE.md`.
 
-6. Después del esqueleto, los planes siguientes en orden sugerido: modelos de dominio (clientes, sitios, servicios, proyectos, productos) → visitas y servicio de actualización del proyecto → API (auth JWT, resolver QR, crear visita, historial) → panel (mapa, proyectos, asignación, carga manual) → informes (certificado, etiqueta QR, historial PDF) → sitio público.
+6. Después del esqueleto, los planes siguientes en orden sugerido: modelos de dominio (clientes, sitios, servicios, productos) → visitas y servicio de vencimiento por punto → API (auth JWT, resolver QR, abrir visita, historial) → panel (mapa, sitios, turnos, carga manual) → informes (certificado, etiqueta QR, historial PDF) → sitio público.
