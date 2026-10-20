@@ -338,10 +338,10 @@ commit_base: fefbf2d
 | T4 | hecha |
 | T5 | hecha |
 | T6 | hecha |
-| T7 | en curso |
-| T8 | en curso |
-| T9 | pendiente |
-| T10 | pendiente |
+| T7 | hecha |
+| T8 | hecha |
+| T9 | hecha |
+| T10 | en curso |
 | T11 | pendiente |
 
 ### Corridas
@@ -355,6 +355,9 @@ commit_base: fefbf2d
 | 2026-10-20 | T5 (verificador) | d255b2f | PASA 36/36 | suite 697 tests en 382 s; nombre de `test_rutas_del_tablero_y_de_proyectos_dan_404` armado con `setattr` (ver P-flujo-sitio-3) |
 | 2026-10-20 | T5 (verificador-b) | d255b2f | PASA 35/35 | coincide con verificador; `abrir_visita` sin sitio del cliente y plano por visita del sitio, con archivo:línea |
 | 2026-10-20 | T6 (principal) | 382b863 | PASA 2/2 | T5 integrado; `apps/proyectos` (solo `__pycache__`) borrado; `db.sqlite3` → `db.sqlite3.antes-flujo-sitio`, `migrate` + `cargar_demo` OK |
+| 2026-10-20 | T7 (verificador) | d954ee2 | PASA 13/13 | suite 705 tests en 390 s; commit `T7:` hecho por el principal con los archivos del implementador; contraprueba: 8 tests nuevos OK |
+| 2026-10-20 | T8 (verificador) | 8241879 | PASA 17/17 | suite 709 tests en 391 s; sin `apps/panel/`, sin `<script>` ni `style=` en línea; contraprueba: 9 tests OK |
+| 2026-10-20 | T9 (principal) | d7d9e5b | PASA 2/2 | T7 y T8 integrados; el primer intento de T7 lo rechazó un archivo sin seguimiento en la raíz (respaldo de la base, movido fuera del repo) |
 
 ## Pendientes que deja este plan
 
@@ -366,9 +369,14 @@ commit_base: fefbf2d
 - P-flujo-sitio-4 [observación] Redacción del plan: T5 "No puede tocar `apps/productos/`" choca con rehacer las migraciones de todas las apps (decisión del usuario); T5 tocó solo `apps/productos/migrations/` (verificador T5).
 - P-flujo-sitio-5 [menor] `incidencia_asignacion` se marca si hay cualquier turno pendiente de otro empleado en el sitio; con varios operarios en un sitio puede ser ruido; quizá solo si el turno ajeno incluye ese punto (implementador T5).
 - P-flujo-sitio-6 [menor] Un punto dado de alta en campo por la API no tiene servicio: su primera revisión fuera de turno da 400 hasta que el administrador le asigne uno; el contrato y la app deben explicarlo (implementador T5).
+- P-flujo-sitio-7 [menor] `apps/visitas/static/visitas/nuevo_turno.js` (atajos "Todos", "Solo vencidos", "Ninguno" y la sincronización plano ↔ lista) no tiene test de JS ni se probó en un navegador; los tests cubren solo el HTML y los `data-*` (implementador T8).
+- P-flujo-sitio-8 [observación] El plano coloreado por estado de la ficha del sitio está en la pestaña "Planos"; la pestaña por defecto muestra la tabla de puntos con su etiqueta de estado (implementador T8).
+- P-flujo-sitio-9 [observación] Los marcadores del plano en "Nuevo turno" responden solo a clic (`keyboard: false`); la vía accesible es la lista con casillas (implementador T8).
 
 ### Decisiones
 
+- 2026-10-20 — El resolver de QR elige, entre varios turnos propios con ese punto, el abierto antes que el pendiente y después el de `programada_para` más antigua; `SitioResumenSerializer` suma `id` en todas las respuestas — decidida por Claude (implementador T7), revisable — reemplaza a: (nada)
+- 2026-10-20 — En el menú, "Catálogo" es un encabezado no clicable con "Servicios" y "Productos"; el contador de incidencias devuelve 0 sin consultar la base si no hay un administrador autenticado — decidida por Claude (implementador T8), revisable — reemplaza a: (nada)
 - 2026-10-20 — El 400 "El punto no tiene servicio asignado." va bajo la clave `qr_codigo` — es el campo que identifica al punto — decidida por Claude (implementador T5), revisable — reemplaza a: (nada)
 - 2026-10-20 — Una carga manual nueva crea un `ItemTurno` por cada (punto, servicio); al completar una pendiente, los puntos sin ítem quedan `fuera_de_turno` — decidida por Claude (implementador T5), revisable — reemplaza a: (nada)
 - 2026-10-20 — `crear_turno(*, sitio, empleado, programada_para, items=[(punto, servicio)], asignada_por)`; rutas `panel:visitas:nuevo_turno` y `panel:visitas:cargar`; `Visita.datos = {slug: {clave: valor}}` con errores `"slug: clave: mensaje"` bajo `datos` — decidida por Claude (implementador T5), revisable — reemplaza a: (nada)
