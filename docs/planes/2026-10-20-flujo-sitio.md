@@ -336,10 +336,10 @@ commit_base: fefbf2d
 | T2 | hecha |
 | T3 | hecha |
 | T4 | hecha |
-| T5 | en curso |
-| T6 | pendiente |
-| T7 | pendiente |
-| T8 | pendiente |
+| T5 | hecha |
+| T6 | hecha |
+| T7 | en curso |
+| T8 | en curso |
 | T9 | pendiente |
 | T10 | pendiente |
 | T11 | pendiente |
@@ -352,6 +352,9 @@ commit_base: fefbf2d
 | 2026-10-20 | T2 (verificador) | f6608bb | PASA 8/8 | contraprueba: `TestTimeoutSuite` 5 passed |
 | 2026-10-20 | T3 (verificador) | 4648291 | PASA 17/17 | suite 711 tests en 401 s; contraprueba: `test_estado_vencimiento` 6 OK |
 | 2026-10-20 | T4 (principal) | fb3337d | PASA 3/3 | T1, T2 y T3 integrados con `worktree-integrar.sh` (exit 0) |
+| 2026-10-20 | T5 (verificador) | d255b2f | PASA 36/36 | suite 697 tests en 382 s; nombre de `test_rutas_del_tablero_y_de_proyectos_dan_404` armado con `setattr` (ver P-flujo-sitio-3) |
+| 2026-10-20 | T5 (verificador-b) | d255b2f | PASA 35/35 | coincide con verificador; `abrir_visita` sin sitio del cliente y plano por visita del sitio, con archivo:línea |
+| 2026-10-20 | T6 (principal) | 382b863 | PASA 2/2 | T5 integrado; `apps/proyectos` (solo `__pycache__`) borrado; `db.sqlite3` → `db.sqlite3.antes-flujo-sitio`, `migrate` + `cargar_demo` OK |
 
 ## Pendientes que deja este plan
 
@@ -359,8 +362,16 @@ commit_base: fefbf2d
 
 - P-flujo-sitio-1 [importante] `MovimientoAltaView` (`apps/productos/panel_views.py:80`) no pasa `producto` a `MovimientoForm`: un ingreso "en envases" desbordado desde el panel llega a `registrar_ingreso`, que lanza `ValidationError` sin capturar, y da 500. Corrección: `get_form_kwargs` con `producto=self.producto` y un test. Va a un plan aparte (decisión 2026-10-04; usuario, 2026-10-20) (implementador T1).
 - P-flujo-sitio-2 [menor] `ProgramacionForm` (`apps/sitios/panel_forms.py`) ofrece solo servicios activos: si un punto tiene un servicio desactivado, el select de la fila no lo muestra y cualquier cambio en la fila lo pisa con otro valor o vacío (implementador T3).
+- P-flujo-sitio-3 [menor] Defecto del contrato: el `[test]` `test_rutas_del_tablero_y_de_proyectos_dan_404` lleva "proyecto" en el nombre y el `[grep-0]` de T5 prohíbe esa palabra en `apps/`; `apps/panel/tests/test_inicio.py:16,60-66` arma el nombre con `"proy" + "ecto"` y `setattr`. Además `/panel/tablero/` nunca fue ruta (el tablero vivía en `/panel/`); que `/panel/` ya no es el tablero lo prueba `test_panel_redirige_a_sitios` (verificador T5).
+- P-flujo-sitio-4 [observación] Redacción del plan: T5 "No puede tocar `apps/productos/`" choca con rehacer las migraciones de todas las apps (decisión del usuario); T5 tocó solo `apps/productos/migrations/` (verificador T5).
+- P-flujo-sitio-5 [menor] `incidencia_asignacion` se marca si hay cualquier turno pendiente de otro empleado en el sitio; con varios operarios en un sitio puede ser ruido; quizá solo si el turno ajeno incluye ese punto (implementador T5).
+- P-flujo-sitio-6 [menor] Un punto dado de alta en campo por la API no tiene servicio: su primera revisión fuera de turno da 400 hasta que el administrador le asigne uno; el contrato y la app deben explicarlo (implementador T5).
 
 ### Decisiones
+
+- 2026-10-20 — El 400 "El punto no tiene servicio asignado." va bajo la clave `qr_codigo` — es el campo que identifica al punto — decidida por Claude (implementador T5), revisable — reemplaza a: (nada)
+- 2026-10-20 — Una carga manual nueva crea un `ItemTurno` por cada (punto, servicio); al completar una pendiente, los puntos sin ítem quedan `fuera_de_turno` — decidida por Claude (implementador T5), revisable — reemplaza a: (nada)
+- 2026-10-20 — `crear_turno(*, sitio, empleado, programada_para, items=[(punto, servicio)], asignada_por)`; rutas `panel:visitas:nuevo_turno` y `panel:visitas:cargar`; `Visita.datos = {slug: {clave: valor}}` con errores `"slug: clave: mensaje"` bajo `datos` — decidida por Claude (implementador T5), revisable — reemplaza a: (nada)
 
 ### Cierra
 
