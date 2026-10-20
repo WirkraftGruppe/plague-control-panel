@@ -119,7 +119,6 @@ INSTALLED_APPS = [
     "apps.clientes",
     "apps.sitios",
     "apps.servicios",
-    "apps.proyectos",
     "apps.visitas",
     "apps.productos",
     "apps.informes",
