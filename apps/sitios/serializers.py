@@ -40,11 +40,37 @@ class PlanoSerializer(serializers.Serializer):
     puntos = PuntoPlanoSerializer(many=True)
 
 
+class CampoEsquemaSerializer(serializers.Serializer):
+    """Campo de la planilla de un servicio, tal como lo arma `esquema_planilla`."""
+
+    clave = serializers.CharField()
+    etiqueta = serializers.CharField()
+    tipo = serializers.CharField()
+    opciones = serializers.ListField()
+    obligatorio = serializers.BooleanField()
+    ayuda = serializers.CharField()
+    orden = serializers.IntegerField()
+
+
+class ServicioQRSerializer(serializers.Serializer):
+    """Servicio que se hace en el punto, con las planillas de punto y de visita."""
+
+    id = serializers.IntegerField()
+    nombre = serializers.CharField()
+    slug = serializers.CharField()
+    esquema_punto = CampoEsquemaSerializer(many=True)
+    esquema_visita = CampoEsquemaSerializer(many=True)
+
+
 class PuntoQRSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     nombre = serializers.CharField()
     sector = serializers.CharField()
     plano = PlanoSerializer(allow_null=True)
+    estado = serializers.CharField()
+    proximo_vencimiento = serializers.DateField(allow_null=True)
+    servicio = ServicioQRSerializer(allow_null=True)
+    en_turno = serializers.BooleanField()
 
 
 class ResolverQRSerializer(serializers.Serializer):

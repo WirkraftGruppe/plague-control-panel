@@ -98,7 +98,16 @@ class ResolverQRTests(TestCase):
         self.assertIsNone(r.json()["visita_abierta_propia"])
         self.assertEqual(
             r.json()["punto"],
-            {"id": self.punto.id, "nombre": "General", "sector": "", "plano": None},
+            {
+                "id": self.punto.id,
+                "nombre": "General",
+                "sector": "",
+                "plano": None,
+                "estado": "sin_programar",
+                "proximo_vencimiento": None,
+                "servicio": None,
+                "en_turno": False,
+            },
         )
 
     def test_devuelve_punto_plano_y_visita_abierta(self):
