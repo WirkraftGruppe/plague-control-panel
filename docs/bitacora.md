@@ -1,19 +1,26 @@
 # Bitácora de MAControl
 
 ## Estado actual
-Plan activo: catalogo-stock
+Plan activo: (ninguno)
 
 Planes activos (los hooks derivan el plan de la rama; la línea `Plan activo:` de arriba es el respaldo para la raíz):
 
 | plan | rama | ola actual | pendiente inmediato | sesión |
 |---|---|---|---|---|
-| catalogo-stock | plan/catalogo-stock | 3 (cerrada) | el usuario decide el merge a `main` y si P-catalogo-stock-1 se corrige antes; después push a `origin` y Railway | sesión 2026-10-19 (tarde) |
+| (ninguno) | main | — | push a `origin` y proyecto en Railway; P-catalogo-stock-1 lo cierra el plan `flujo-sitio` | sesión 2026-10-20 |
 
 Siguiente: ver `pendientes.py` (catalogo-stock suma P-catalogo-stock-1 a -9 y cierra P-nombre-empresa-prod-3). Regla de cuándo preguntar: CLAUDE.md § Reglas globales, regla 8.
 
 Problemas abiertos: ver `py -3 .claude/hooks/pendientes.py` (cada plan los declara en `## Pendientes que deja este plan`; los anteriores están en `docs/planes/2026-10-03-pendientes-heredados.md`).
 
 ## Entradas (la más reciente arriba)
+
+### 2026-10-20 — `catalogo-stock` fusionado en `main`
+Hecho:
+- El usuario aprobó el merge tal como estaba (fdbc1e5) y aceptó las decisiones revisables del plan; merge `--no-ff` en `main` (a0b0dcf) y 13 decisiones copiadas a `docs/decisiones.md`.
+- P-catalogo-stock-1 (500 por desborde de `cantidad_base`) queda abierto: lo cierra `flujo-sitio`. Nuevo P-catalogo-stock-10: la suite completa supera los 300 s por criterio del hook de cierre (falso FALLA en T4).
+- Se terminó un bucle de espera (`until grep … sleep 3`) que quedó vivo desde el 2026-10-19 20:29 sobre la salida de una integración; no escribía nada. `git status` limpio, sin worktrees.
+Pendiente: push a `origin` y despliegue en Railway.
 
 ### 2026-10-19 — Plan `catalogo-stock` ejecutado (T1 a T7), sin fusionar
 Hecho:
