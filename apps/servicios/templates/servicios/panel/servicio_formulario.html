@@ -1,0 +1,7 @@
+{% extends "panel/base.html" %}
+{% block title %}{{ view.titulo }} · Detach{% endblock %}
+{% block panel_contenido %}
+  <h1>{{ view.titulo }}</h1>
+  {% url 'panel:servicios:listado' as listado_url %}
+  {% include "panel/partials/formulario.html" with cancelar_url=listado_url %}
+{% endblock %}

@@ -1,0 +1,8 @@
+{% extends "panel/base.html" %}
+{% block title %}Registrar movimiento · Detach{% endblock %}
+{% block panel_contenido %}
+  <h1>Registrar movimiento de {{ producto.nombre_comercial }}</h1>
+  <p>El stock se lleva en {{ producto.unidad_base }}; cada envase trae {{ producto.contenido_por_envase|floatformat:"-4" }} {{ producto.unidad_base }}.</p>
+  {% url 'panel:productos:ficha' producto.pk as ficha_url %}
+  {% include "panel/partials/formulario.html" with cancelar_url=ficha_url %}
+{% endblock %}

@@ -32,6 +32,7 @@ from apps.panel.demo_datos import (
 from apps.panel.demo_historia import GeneradorHistoria
 from apps.panel.demo_imagenes import plano_esquematico, posicion_en_plano
 from apps.productos.models import Producto
+from apps.productos.services import registrar_ingreso
 from apps.proyectos.models import Proyecto
 from apps.servicios.models import TipoServicio
 from apps.sitios import services as servicios_sitio
@@ -160,17 +161,25 @@ class Command(BaseCommand):
                 x, y = posicion_en_plano(numero, len(puntos))
                 servicios_sitio.ubicar_en_plano(punto, plano, x, y)
 
-    def _crear_productos(self):
-        return [
-            Producto.objects.create(
+    def _crear_productos(self, administrador):
+        """Productos demo, cada uno con su ingreso inicial de stock en envases."""
+        productos = []
+        for datos in PRODUCTOS:
+            nombre, principio, presentacion, unidad_dosis, registro = datos[:5]
+            base, contenido, modo, envases = datos[5:]
+            producto = Producto.objects.create(
                 nombre_comercial=f"{nombre}{SUFIJO_PRODUCTO}",
                 principio_activo=principio,
                 presentacion=presentacion,
-                unidad_dosis_por_defecto=unidad,
+                unidad_dosis_por_defecto=unidad_dosis,
                 registro=registro,
+                unidad_base=base,
+                contenido_por_envase=contenido,
+                modo_unidad=modo,
             )
-            for nombre, principio, presentacion, unidad, registro in PRODUCTOS
-        ]
+            registrar_ingreso(producto, envases, True, administrador, "Stock inicial")
+            productos.append(producto)
+        return productos
 
     def _tipos(self):
         """Tipos de servicio reales por slug; los que faltan se crean sin pisar."""
@@ -185,7 +194,10 @@ class Command(BaseCommand):
         """Un proyecto por sitio y sus jornadas quincenales de unos 90 días."""
         tipos = self._tipos()
         generador = GeneradorHistoria(
-            empleado, administrador, self._crear_productos(), self._archivos
+            empleado,
+            administrador,
+            self._crear_productos(administrador),
+            self._archivos,
         )
         hoy = timezone.localdate()
         antiguo = timezone.now() - timedelta(days=DIAS_DE_HISTORIA + 3)

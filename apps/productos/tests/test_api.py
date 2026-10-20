@@ -47,6 +47,9 @@ class CatalogoTests(TestCase):
                     "registro": "ANMAT 123",
                     "presentacion": "Bidón 5 l",
                     "unidad_dosis_por_defecto": "ml/l",
+                    "unidad_base": "unidad",
+                    "modo_unidad": "unica",
+                    "unidades_permitidas": ["unidad"],
                 }
             ],
         )
@@ -65,3 +68,23 @@ class CatalogoTests(TestCase):
         cambiado = self.cliente.get(URL, headers={"If-None-Match": etag})
         self.assertEqual(cambiado.status_code, 200)
         self.assertNotEqual(cambiado["ETag"], etag)
+
+
+class CatalogoUnidadesTests(TestCase):
+    """El catálogo expone la unidad base, el modo y las unidades permitidas."""
+
+    def test_expone_unidad_base_modo_y_unidades_permitidas(self):
+        empleado = User.objects.create_user(
+            "emp-uni", password="clave-segura-123", rol="empleado"
+        )
+        Producto.objects.create(
+            nombre_comercial="Líquido", unidad_base="l", modo_unidad="equivalentes"
+        )
+        Producto.objects.create(nombre_comercial="Sólido", unidad_base="kg")
+        cliente = APIClient()
+        cliente.force_authenticate(empleado)
+        datos = {p["nombre_comercial"]: p for p in cliente.get(URL).json()}
+        self.assertEqual(datos["Líquido"]["unidad_base"], "l")
+        self.assertEqual(datos["Líquido"]["modo_unidad"], "equivalentes")
+        self.assertEqual(datos["Líquido"]["unidades_permitidas"], ["ml", "l", "gal"])
+        self.assertEqual(datos["Sólido"]["unidades_permitidas"], ["kg"])

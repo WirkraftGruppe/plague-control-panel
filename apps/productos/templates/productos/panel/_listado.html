@@ -6,6 +6,8 @@
         {% include "panel/partials/th_orden.html" with campo="principio_activo" etiqueta="Principio activo" %}
         {% include "panel/partials/th_orden.html" with campo="registro" etiqueta="Registro" %}
         <th scope="col">Presentación</th>
+        <th scope="col">Stock</th>
+        <th scope="col">Envases</th>
         {% include "panel/partials/th_orden.html" with campo="activo" etiqueta="Estado" %}
         <th scope="col"><span class="visually-hidden">Acciones</span></th>
       </tr>
@@ -13,15 +15,17 @@
     <tbody>
       {% for producto in object_list %}
         <tr>
-          <td>{{ producto.nombre_comercial }}</td>
+          <td><a href="{% url 'panel:productos:ficha' producto.pk %}">{{ producto.nombre_comercial }}</a></td>
           <td>{{ producto.principio_activo }}</td>
           <td>{{ producto.registro }}</td>
           <td>{{ producto.presentacion }}</td>
+          <td>{{ producto.stock_total|floatformat:"-4" }} {{ producto.unidad_base }}{% if producto.stock_total < 0 %} {% include "panel/partials/etiqueta_estado.html" with tono="danger" texto="Negativo" %}{% endif %}</td>
+          <td>{{ producto.envases_total }}</td>
           <td>{% if producto.activo %}{% include "panel/partials/etiqueta_estado.html" with tono="ok" texto="Activo" %}{% else %}{% include "panel/partials/etiqueta_estado.html" with tono="neutral" texto="Inactivo" %}{% endif %}</td>
           <td><a href="{% url 'panel:productos:editar' producto.pk %}">Editar</a></td>
         </tr>
       {% empty %}
-        <tr><td colspan="6">No hay productos para mostrar.</td></tr>
+        <tr><td colspan="8">No hay productos para mostrar.</td></tr>
       {% endfor %}
     </tbody>
   </table>

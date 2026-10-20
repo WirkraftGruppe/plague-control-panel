@@ -26,7 +26,14 @@ class ProductoPanelTests(TestCase):
         self.client.force_login(self.admin)
         respuesta = self.client.post(
             reverse("panel:productos:alta"),
-            {"nombre_comercial": "Raticida X", "registro": "123", "activo": "on"},
+            {
+                "nombre_comercial": "Raticida X",
+                "registro": "123",
+                "unidad_base": "l",
+                "contenido_por_envase": "5",
+                "modo_unidad": "unica",
+                "activo": "on",
+            },
         )
         self.assertRedirects(respuesta, reverse("panel:productos:listado"))
         producto = Producto.objects.get(nombre_comercial="Raticida X")
@@ -34,7 +41,13 @@ class ProductoPanelTests(TestCase):
 
         self.client.post(
             reverse("panel:productos:editar", args=[producto.pk]),
-            {"nombre_comercial": "Raticida Y", "registro": "123"},
+            {
+                "nombre_comercial": "Raticida Y",
+                "registro": "123",
+                "unidad_base": "l",
+                "contenido_por_envase": "5",
+                "modo_unidad": "unica",
+            },
         )
         producto.refresh_from_db()
         self.assertEqual(producto.nombre_comercial, "Raticida Y")

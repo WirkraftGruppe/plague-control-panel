@@ -1,4 +1,4 @@
-"""Rutas del panel de Servicios (planillas); ninguna ruta borra campos."""
+"""Rutas del panel de Servicios ; ninguna ruta borra servicios ni campos."""
 
 from django.urls import path
 
@@ -8,6 +8,16 @@ app_name = "servicios"
 
 urlpatterns = [
     path("", panel_views.TipoServicioListadoView.as_view(), name="listado"),
+    path(
+        "nuevo/",
+        panel_views.TipoServicioAltaView.as_view(),
+        name="servicio_alta",
+    ),
+    path(
+        "<int:pk>/editar/",
+        panel_views.TipoServicioEditarView.as_view(),
+        name="servicio_editar",
+    ),
     path("<int:pk>/campos/", panel_views.CamposView.as_view(), name="campos"),
     path(
         "<int:pk>/campos/nuevo/",

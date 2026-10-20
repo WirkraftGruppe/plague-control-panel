@@ -4,7 +4,15 @@ from django import forms
 
 from apps.visitas.models import Revision, Visita
 
-from .models import CampoPlanilla
+from .models import CampoPlanilla, TipoServicio
+
+
+class TipoServicioForm(forms.ModelForm):
+    """Alta y edición del servicio; el slug se genera solo y `activo` lo retira."""
+
+    class Meta:
+        model = TipoServicio
+        fields = ["nombre", "activo"]
 
 
 def clave_en_uso(tipo_servicio, clave) -> bool:

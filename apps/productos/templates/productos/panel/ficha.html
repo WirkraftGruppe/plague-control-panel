@@ -1,0 +1,52 @@
+{% extends "panel/base.html" %}
+{% block title %}{{ object.nombre_comercial }} · Detach{% endblock %}
+{% block panel_contenido %}
+  <header class="encabezado-pagina">
+    <h1>{{ object.nombre_comercial }}</h1>
+    {% if object.activo %}
+      {% include "panel/partials/etiqueta_estado.html" with tono="ok" texto="Activo" %}
+    {% else %}
+      {% include "panel/partials/etiqueta_estado.html" with tono="neutral" texto="Inactivo" %}
+    {% endif %}
+    <a class="boton boton-secundario" href="{% url 'panel:productos:editar' object.pk %}">Editar</a>
+    <a class="boton boton-primario" href="{% url 'panel:productos:movimiento_alta' object.pk %}">Registrar movimiento</a>
+  </header>
+  {% include "panel/partials/mensajes.html" %}
+  <dl class="datos">
+    <dt>Principio activo</dt><dd>{{ object.principio_activo|default:"—" }}</dd>
+    <dt>Registro</dt><dd>{{ object.registro|default:"—" }}</dd>
+    <dt>Presentación</dt><dd>{{ object.presentacion|default:"—" }}</dd>
+    <dt>Stock</dt>
+    <dd>
+      {{ stock|floatformat:"-4" }} {{ object.unidad_base }}
+      {% if stock < 0 %}{% include "panel/partials/etiqueta_estado.html" with tono="danger" texto="Stock negativo" %}{% endif %}
+    </dd>
+    <dt>Envases</dt>
+    <dd>{{ envases }} (de {{ object.contenido_por_envase|floatformat:"-4" }} {{ object.unidad_base }})</dd>
+  </dl>
+  <h2>Movimientos</h2>
+  <table class="tabla">
+    <thead>
+      <tr>
+        <th scope="col">Fecha</th>
+        <th scope="col">Tipo</th>
+        <th scope="col">Cantidad ({{ object.unidad_base }})</th>
+        <th scope="col">Usuario</th>
+        <th scope="col">Nota</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for movimiento in movimientos %}
+        <tr>
+          <td>{{ movimiento.creado|date:"d/m/Y H:i" }}</td>
+          <td>{{ movimiento.get_tipo_display }}</td>
+          <td>{{ movimiento.cantidad_base|floatformat:"-4" }}</td>
+          <td>{{ movimiento.usuario }}</td>
+          <td>{{ movimiento.nota }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5">Este producto aún no tiene movimientos.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

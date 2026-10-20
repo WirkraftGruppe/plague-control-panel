@@ -1,6 +1,7 @@
 """Modelos de Servicios: tipos de servicio y su planilla dinámica."""
 
 from django.db import models
+from django.utils.text import slugify
 
 
 class TipoServicio(models.Model):
@@ -16,6 +17,24 @@ class TipoServicio(models.Model):
 
     def __str__(self):
         return self.nombre
+
+    def save(self, *args, **kwargs):
+        """Genera el slug solo si viene vacío; nunca lo cambia después."""
+        if not self.slug:
+            self.slug = self._slug_libre()
+            campos = kwargs.get("update_fields")
+            if campos is not None:
+                kwargs["update_fields"] = {*campos, "slug"}
+        super().save(*args, **kwargs)
+
+    def _slug_libre(self) -> str:
+        """`slugify(nombre)` con sufijo `-2`, `-3`… si ya existe."""
+        base = slugify(self.nombre)[:140] or "servicio"
+        slug, numero = base, 2
+        while TipoServicio.objects.filter(slug=slug).exists():
+            slug = f"{base}-{numero}"
+            numero += 1
+        return slug
 
     def esquema_planilla(self, ambito: str = "punto") -> list[dict]:
         """Esquema de los campos activos de un ámbito ordenado por `orden`.

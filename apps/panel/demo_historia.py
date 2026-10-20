@@ -14,6 +14,8 @@ from django.utils import timezone
 
 from apps.panel.demo_datos import ESQUEMA_PUNTO
 from apps.panel.demo_imagenes import foto_de_demostracion
+from apps.productos.services import registrar_consumo
+from apps.productos.unidades import convertir, unidades_permitidas
 from apps.visitas.models import Foto, ProductoAplicado, Revision, Visita
 from apps.visitas.ubicacion import verificar
 
@@ -72,16 +74,25 @@ class GeneradorHistoria:
 
     def _producto_aplicado(self, revision, numero):
         producto = self.productos[numero % len(self.productos)]
+        permitidas = unidades_permitidas(producto)
+        unidad = permitidas[numero % len(permitidas)]
+        cantidad = Decimal(numero % 4 + 1)
         aplicado = ProductoAplicado(
             revision=revision,
             producto=producto,
             lote=f"LOTE-DEMO-{numero % 7 + 1:03d}",
             dosis=Decimal("2.500"),
-            unidad=producto.unidad_dosis_por_defecto or "g",
-            cantidad=Decimal(numero % 4 + 1),
+            unidad_dosis=producto.unidad_dosis_por_defecto or "g",
+            unidad=unidad,
+            cantidad=cantidad,
+            cantidad_base=convertir(cantidad, unidad, producto.unidad_base),
         )
-        aplicado.full_clean()
+        aplicado.full_clean(exclude=["movimiento"])
         aplicado.save()
+        aplicado.movimiento = registrar_consumo(
+            producto, aplicado.cantidad_base, self.empleado
+        )
+        aplicado.save(update_fields=["movimiento"])
 
     def _revision(self, visita, punto, esquema, orden, momento, lejos, numero):
         """Revisión de un punto: cerca de él o, con `lejos`, a más del máximo."""
@@ -114,7 +125,8 @@ class GeneradorHistoria:
         revision.save()
         self._fotos(revision, 2 if numero % 5 == 0 else 1)
         if numero % 3 == 0:
-            self._producto_aplicado(revision, numero)
+            # `numero` es múltiplo de 3: se divide para recorrer todos los productos.
+            self._producto_aplicado(revision, numero // 3)
         return revision
 
     def jornada(self, proyecto, puntos, fecha, lejanos):

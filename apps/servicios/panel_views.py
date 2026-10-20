@@ -2,14 +2,21 @@
 
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect
-from django.urls import reverse
-from django.views.generic import DetailView, FormView, TemplateView, View
+from django.urls import reverse, reverse_lazy
+from django.views.generic import (
+    CreateView,
+    DetailView,
+    FormView,
+    TemplateView,
+    UpdateView,
+    View,
+)
 
 from apps.accounts.mixins import AdministradorRequeridoMixin
 from apps.panel.listados import ListadoPanelMixin
 
 from .models import CampoPlanilla, TipoServicio
-from .panel_forms import CampoPlanillaForm
+from .panel_forms import CampoPlanillaForm, TipoServicioForm
 
 
 class TipoServicioListadoView(AdministradorRequeridoMixin, ListadoPanelMixin):
@@ -18,6 +25,25 @@ class TipoServicioListadoView(AdministradorRequeridoMixin, ListadoPanelMixin):
     template_parcial = "servicios/panel/_listado.html"
     orden_permitido = ("nombre", "activo")
     campos_busqueda = ("nombre",)
+
+
+class TipoServicioFormularioMixin(AdministradorRequeridoMixin):
+    model = TipoServicio
+    form_class = TipoServicioForm
+    template_name = "servicios/panel/servicio_formulario.html"
+    success_url = reverse_lazy("panel:servicios:listado")
+
+    def form_valid(self, form):
+        messages.success(self.request, "Servicio guardado.")
+        return super().form_valid(form)
+
+
+class TipoServicioAltaView(TipoServicioFormularioMixin, CreateView):
+    titulo = "Nuevo servicio"
+
+
+class TipoServicioEditarView(TipoServicioFormularioMixin, UpdateView):
+    titulo = "Editar servicio"
 
 
 class CamposView(AdministradorRequeridoMixin, DetailView):

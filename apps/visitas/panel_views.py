@@ -305,10 +305,17 @@ class RegistrarVisitaManual(AdministradorRequeridoMixin, FormView):
                 if hasattr(error, "error_dict")
                 else {None: error.messages}
             )
+            # `productos_aplicados.<i>.<campo>` va al formulario de ese producto.
+            filas = [p for p in productos if p.cleaned_data]
             for campo, lista in mensajes.items():
-                destino = campo if campo in form.fields else None
+                destino, formulario = campo if campo in form.fields else None, form
+                _, _, resto = (campo or "").partition("productos_aplicados.")
+                posicion, _, campo_fila = resto.partition(".")
+                if resto and posicion.isdigit() and int(posicion) < len(filas):
+                    formulario = filas[int(posicion)]
+                    destino = campo_fila if campo_fila in formulario.fields else None
                 for mensaje in lista:
-                    form.add_error(destino, mensaje)
+                    formulario.add_error(destino, mensaje)
             return self.render_to_response(
                 self.get_context_data(form=form, productos=productos)
             )
