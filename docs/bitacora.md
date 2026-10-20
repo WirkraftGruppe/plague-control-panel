@@ -7,9 +7,9 @@ Planes activos (los hooks derivan el plan de la rama; la línea `Plan activo:` d
 
 | plan | rama | ola actual | pendiente inmediato | sesión |
 |---|---|---|---|---|
-| (ninguno) | main | — | push a `origin` y proyecto en Railway; P-catalogo-stock-1 lo cierra el plan `flujo-sitio` | sesión 2026-10-20 |
+| (ninguno) | main | — | planificar `flujo-sitio` (cierra P-catalogo-stock-1) | sesión 2026-10-20 |
 
-Siguiente: ver `pendientes.py` (catalogo-stock suma P-catalogo-stock-1 a -9 y cierra P-nombre-empresa-prod-3). Regla de cuándo preguntar: CLAUDE.md § Reglas globales, regla 8.
+Siguiente (orden decidido el 2026-10-19): `flujo-sitio` → `diseno-panel` → `multiempresa` → despliegue. El despliegue en Railway espera a que los tres planes estén en `main`, para no tener que migrar datos reales. Problemas abiertos: ver `pendientes.py`. Regla de cuándo preguntar: CLAUDE.md § Reglas globales, regla 8.
 
 Problemas abiertos: ver `py -3 .claude/hooks/pendientes.py` (cada plan los declara en `## Pendientes que deja este plan`; los anteriores están en `docs/planes/2026-10-03-pendientes-heredados.md`).
 
