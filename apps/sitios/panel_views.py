@@ -20,6 +20,7 @@ from apps.clientes.models import Cliente
 from apps.panel.listados import ListadoPanelMixin
 from apps.panel.mapa import ORIGEN_TESELAS
 from apps.servicios.models import TipoServicio
+from apps.visitas.models import Visita
 
 from . import geocodificacion, qr, services
 from .estado import EstadoVencimiento, estados_por_vencimiento
@@ -34,6 +35,7 @@ from .panel_forms import (
 )
 
 PESTANAS = ("mapa", "planos", "puntos")
+TURNOS_REALIZADOS_MAXIMO = 10
 CLASE_VENCIMIENTO = {
     EstadoVencimiento.AL_DIA: "ok",
     EstadoVencimiento.PROXIMA: "warn",
@@ -144,12 +146,31 @@ class SitioFicha(AdministradorRequeridoMixin, DetailView):
             servicios=TipoServicio.objects.filter(activo=True).order_by("nombre"),
             planos=planos,
             plano=plano,
+            turnos_pendientes=self._turnos(sitio, Visita.Estado.PENDIENTE),
+            turnos_realizados=self._turnos(sitio, Visita.Estado.REALIZADA)[
+                :TURNOS_REALIZADOS_MAXIMO
+            ],
         )
         if pestana == "mapa":
             contexto["datos_mapa"] = self._datos_mapa(sitio)
         if pestana == "planos" and plano:
             contexto["datos_plano"] = self._datos_plano(plano, activos)
         return contexto
+
+    @staticmethod
+    def _turnos(sitio, estado):
+        """Turnos del sitio en un estado: pendientes por fecha, el resto recientes."""
+        orden = (
+            ("programada_para", "pk")
+            if estado == Visita.Estado.PENDIENTE
+            else ("-cerrada_en", "-pk")
+        )
+        return (
+            sitio.visitas.filter(estado=estado)
+            .select_related("empleado")
+            .prefetch_related("items")
+            .order_by(*orden)
+        )
 
     @staticmethod
     def _datos_mapa(sitio):

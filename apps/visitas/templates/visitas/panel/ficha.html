@@ -1,7 +1,7 @@
 {% extends "panel/base.html" %}
 {% load panel_ui %}
 {% block panel_contenido %}
-  <h1>Visita {{ visita.pk }}</h1>
+  <h1>Turno {{ visita.pk }}</h1>
   <p>
     {% include "panel/partials/etiqueta_estado.html" with tono=visita.estado|tono_estado texto=visita.get_estado_display %}
     {% if visita.incidencia %}{% include "panel/partials/etiqueta_estado.html" with tono="danger" texto="Incidencia" %}{% endif %}
@@ -41,6 +41,20 @@
       <tbody>{% for etiqueta, valor in filas %}<tr><th scope="row">{{ etiqueta }}</th><td>{{ valor }}</td></tr>{% endfor %}</tbody>
     </table>
   {% endfor %}
+
+  <h2>Ítems del turno</h2>
+  {% if items %}
+    <table class="tabla">
+      <thead><tr><th scope="col">Punto</th><th scope="col">Servicio</th><th scope="col">Revisión</th></tr></thead>
+      <tbody>
+        {% for item in items %}
+        <tr><td>{{ item.punto.nombre }}</td><td>{{ item.servicio }}</td><td>{% if item.revisado %}Revisado{% else %}Sin revisar{% endif %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>Este turno no tiene ítems.</p>
+  {% endif %}
 
   <h2>Revisiones</h2>
   {% for revision in revisiones %}

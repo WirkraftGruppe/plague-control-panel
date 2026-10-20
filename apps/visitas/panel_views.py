@@ -16,6 +16,7 @@ from django.views.generic import DetailView, FormView
 from apps.accounts.mixins import AdministradorRequeridoMixin
 from apps.accounts.models import User
 from apps.panel.listados import ListadoPanelMixin
+from apps.sitios.estado import EstadoVencimiento
 from apps.sitios.models import Sitio
 
 from .models import Foto, Revision, Visita
@@ -154,6 +155,8 @@ class FichaVisita(AdministradorRequeridoMixin, DetailView):
         "revisiones__servicio",
         "revisiones__fotos",
         "revisiones__productos__producto",
+        "items__punto",
+        "items__servicio",
     )
 
     def get_context_data(self, **kwargs):
@@ -165,6 +168,10 @@ class FichaVisita(AdministradorRequeridoMixin, DetailView):
             if esquema
         ]
         contexto["revisiones"] = list(visita.revisiones.all())
+        revisados = {r.punto_id for r in contexto["revisiones"]}
+        contexto["items"] = list(visita.items.all())
+        for item in contexto["items"]:
+            item.revisado = item.punto_id in revisados
         contexto["con_ubicacion"] = visita.incidencia_ubicacion or any(
             r.incidencia_ubicacion for r in contexto["revisiones"]
         )
@@ -226,9 +233,48 @@ class _SitioMixin:
         return contexto
 
 
+def _numero(valor):
+    """Decimal de la base a número de JSON; vacío queda en ``None``."""
+    return None if valor is None else float(valor)
+
+
 class NuevoTurnoView(AdministradorRequeridoMixin, _SitioMixin, FormView):
     form_class = FormularioTurno
     template_name = "visitas/panel/nuevo_turno.html"
+
+    def datos_planos(self, form):
+        """Planos activos del sitio con sus puntos ubicados, para dibujarlos."""
+        estados = {f["punto"].pk: f["estado"] for f in form.filas()}
+        planos = []
+        for plano in self.sitio.planos.filter(activo=True):
+            puntos = [
+                {
+                    "id": p.pk,
+                    "nombre": p.nombre,
+                    "x": _numero(p.x),
+                    "y": _numero(p.y),
+                    "estado": estados[p.pk],
+                    "estado_texto": EstadoVencimiento(estados[p.pk]).label,
+                }
+                for p in form.puntos_activos
+                if p.plano_id == plano.pk and p.x is not None and p.y is not None
+            ]
+            planos.append(
+                {
+                    "id": plano.pk,
+                    "nombre": plano.nombre,
+                    "imagen": reverse("panel:sitios:plano_imagen", args=[plano.pk]),
+                    "ancho": plano.ancho_px,
+                    "alto": plano.alto_px,
+                    "puntos": puntos,
+                }
+            )
+        return planos
+
+    def get_context_data(self, **kwargs):
+        contexto = super().get_context_data(**kwargs)
+        contexto["planos"] = self.datos_planos(contexto["form"])
+        return contexto
 
     def form_valid(self, form):
         datos = form.cleaned_data

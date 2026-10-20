@@ -187,6 +187,29 @@
 .contador-etiqueta { color: var(--text-muted); font-size: 14px; }
 .contador-danger .contador-cifra { color: var(--danger); }
 
+.barra-lateral nav a .contador-menu {
+  display: inline-block;
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 12px;
+  line-height: 20px;
+  text-align: center;
+}
+.menu-grupo { padding: 10px 12px 2px; font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--text-muted); }
+.barra-lateral nav a.menu-subitem { padding-left: 28px; }
+
+/* Nuevo turno: atajos, plano y lista de puntos */
+.atajos-puntos { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+#turno-plano { margin-bottom: 16px; }
+#turno-plano .marcador { cursor: pointer; }
+#turno-plano .marcador-elegido { border-color: var(--text); box-shadow: 0 0 0 3px var(--brand), 0 1px 4px rgba(0, 0, 0, 0.5); }
+.tabla tr.fila-elegida { background: var(--surface-2); }
+.tabla tr.fila-resaltada { outline: 2px solid var(--brand); }
+.turnos-ficha { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; }
+
 /* Mapa */
 .mapa-filtros { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
 .mapa-filtros .campo { margin-bottom: 0; }
@@ -195,7 +218,7 @@
 .mapa-popup h3 { margin: 0 0 4px; font-size: 18px; }
 .mapa-popup ul { margin: 4px 0; padding-left: 18px; }
 
-/* Fichas de proyecto y de visita */
+/* Fichas de turno y de visita */
 .linea-tiempo { list-style: none; margin: 0; padding: 0 0 0 16px; border-left: 2px solid var(--border-strong); }
 .linea-tiempo > li { position: relative; margin-bottom: 20px; padding: 12px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; }
 .linea-tiempo > li::before {

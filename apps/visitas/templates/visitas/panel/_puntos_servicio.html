@@ -1,18 +1,27 @@
+{% load panel_ui %}
 {# Puntos del sitio con casilla y servicio (cambiable); los campos con `agrupado` no se dibujan aparte. #}
 <fieldset class="campo{% if form.puntos.errors %} campo-error{% endif %}">
   <legend>Puntos de control</legend>
   {% for error in form.puntos.errors %}<small class="error">{{ error }}</small>{% endfor %}
+  {% if con_atajos %}
+  <div class="atajos-puntos" role="group" aria-label="Atajos de selección">
+    <button class="boton boton-secundario" type="button" data-atajo="todos">Todos</button>
+    <button class="boton boton-secundario" type="button" data-atajo="vencidos">Solo vencidos</button>
+    <button class="boton boton-secundario" type="button" data-atajo="ninguno">Ninguno</button>
+  </div>
+  {% endif %}
   <table class="tabla">
-    <thead><tr><th scope="col">Revisar</th><th scope="col">Punto</th><th scope="col">Servicio</th></tr></thead>
+    <thead><tr><th scope="col">Revisar</th><th scope="col">Punto</th><th scope="col">Estado</th><th scope="col">Servicio</th></tr></thead>
     <tbody>
       {% for fila in form.filas %}
-      <tr>
+      <tr data-punto="{{ fila.punto.pk }}" data-estado="{{ fila.estado }}" data-servicio="{{ fila.punto.servicio_id|default_if_none:'' }}">
         <td><input type="checkbox" name="puntos" value="{{ fila.punto.pk }}" id="punto-{{ fila.punto.pk }}"{% if fila.marcado %} checked{% endif %} aria-label="Revisar {{ fila.punto.nombre }}"></td>
         <td><label for="punto-{{ fila.punto.pk }}">{{ fila.punto.nombre }}</label></td>
+        <td>{% include "panel/partials/etiqueta_estado.html" with tono=fila.estado|tono_estado texto=fila.estado_texto %}</td>
         <td>{{ fila.servicio }}{% for error in fila.servicio.errors %}<small class="error">{{ error }}</small>{% endfor %}</td>
       </tr>
       {% empty %}
-      <tr><td colspan="3">Este sitio no tiene puntos activos.</td></tr>
+      <tr><td colspan="4">Este sitio no tiene puntos activos.</td></tr>
       {% endfor %}
     </tbody>
   </table>

@@ -23,7 +23,7 @@
   <table class="tabla">
     <thead>
       <tr>
-        {% include "panel/partials/th_orden.html" with campo="creado" etiqueta="Visita" %}
+        {% include "panel/partials/th_orden.html" with campo="creado" etiqueta="Turno" %}
         <th scope="col">Sitio</th>
         <th scope="col">Empleado</th>
         {% include "panel/partials/th_orden.html" with campo="estado" etiqueta="Estado" %}
@@ -35,7 +35,7 @@
     <tbody>
       {% for v in visitas %}
         <tr>
-          <td><a href="{% url 'panel:visitas:ficha' v.pk %}">Visita {{ v.pk }}</a></td>
+          <td><a href="{% url 'panel:visitas:ficha' v.pk %}">Turno {{ v.pk }}</a></td>
           <td>{{ v.sitio.nombre }}</td>
           <td>{{ v.empleado.get_full_name|default:v.empleado.username }}</td>
           <td>{% include "panel/partials/etiqueta_estado.html" with tono=v.estado|tono_estado texto=v.get_estado_display %}</td>
@@ -49,7 +49,7 @@
           </td>
         </tr>
       {% empty %}
-        <tr><td colspan="7">No hay visitas que coincidan.</td></tr>
+        <tr><td colspan="7">No hay turnos que coincidan.</td></tr>
       {% endfor %}
     </tbody>
   </table>

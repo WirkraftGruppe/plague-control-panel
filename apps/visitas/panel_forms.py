@@ -8,6 +8,7 @@ from apps.accounts.models import User
 from apps.productos.models import Producto
 from apps.productos.unidades import CHOICES as UNIDADES
 from apps.servicios.models import TipoServicio
+from apps.sitios.estado import EstadoVencimiento, estados_por_vencimiento
 from apps.sitios.models import PuntoControl
 
 from .models import Revision, Visita
@@ -48,11 +49,14 @@ class FormularioPuntosConServicio(forms.Form):
             self.fields[f"servicio_{punto.pk}"] = campo
 
     def filas(self):
-        """Una fila por punto: el punto, si está tildado y su campo de servicio."""
+        """Una fila por punto: el punto, su estado, si está tildado y su servicio."""
         tildados = {str(valor) for valor in self["puntos"].value() or []}
+        estados = estados_por_vencimiento(self.puntos_activos, timezone.localdate())
         return [
             {
                 "punto": punto,
+                "estado": estados[punto.pk],
+                "estado_texto": EstadoVencimiento(estados[punto.pk]).label,
                 "marcado": str(punto.pk) in tildados,
                 "servicio": self[f"servicio_{punto.pk}"],
             }
