@@ -326,15 +326,15 @@ Worktree: sí (`worktrees/flujo-sitio-T<n>`, base `plan/flujo-sitio`). Ruta: del
 
 ## Registro de verificación
 
-commit_base: <hash del commit docs(plan): flujo-sitio>
+commit_base: fefbf2d
 
 ### Estado de subtareas
 
 | Tarea | Estado |
 |---|---|
-| T1 | pendiente |
-| T2 | pendiente |
-| T3 | pendiente |
+| T1 | en curso |
+| T2 | en curso |
+| T3 | en curso |
 | T4 | pendiente |
 | T5 | pendiente |
 | T6 | pendiente |
