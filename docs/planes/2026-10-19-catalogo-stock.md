@@ -253,6 +253,7 @@ commit_base: f9a7b64
 - P-catalogo-stock-7 [menor] spectacular avisa que `UnidadEnum` y `UnidadBaseEnum` comparten opciones; se resuelve con `ENUM_NAME_OVERRIDES` en `config/settings` (implementador T6).
 - P-catalogo-stock-8 [menor] El menú lateral (`templates/panel/base.html:23`) sigue diciendo "Planillas" y la sección se titula "Servicios"; para el plan `diseno-panel` (implementador T2).
 - P-catalogo-stock-9 [observación] La ficha de producto muestra los últimos 50 movimientos sin paginar; el formulario manual ofrece todas las unidades y el servicio valida contra las del producto elegido; la `unidad_dosis` no se precarga por fila (implementadores T1 y T4).
+- P-catalogo-stock-10 [menor] El criterio de suite completa (`manage.py test --keepdb`, 698 tests) supera el timeout por criterio de 300 s del hook de cierre (`TIMEOUT_CRITERIO`/`VERIFICAR_PLAN_TIMEOUT` en `.claude/hooks/verificar_plan.py:71`): el hook reportó un falso FALLA en T4 mientras `verificador` y `verificador-b` la vieron en OK. Subir el timeout para ese criterio o medirlo aparte (usuario, 2026-10-20).
 
 ### Decisiones
 
@@ -267,6 +268,8 @@ commit_base: f9a7b64
 - 2026-10-19 — El slug de `TipoServicio` se genera en `save()` si viene vacío (`slugify` y sufijo `-2`, `-3`…) y no se edita desde el panel; la baja es `activo` en la edición — decidida por Claude, revisable — reemplaza a: (nada)
 - 2026-10-19 — `Producto.presentacion` queda como texto descriptivo; el dato calculable es `contenido_por_envase` — decidida por Claude, revisable — reemplaza a: (nada)
 - 2026-10-19 — La migración `visitas/0010` junta en un archivo el `RenameField` y los `AddField`/`AlterField` que `makemigrations` generó en dos pasos — Django no detecta el renombre si el nombre viejo sigue en uso — decidida por Claude (implementador T4), revisable — reemplaza a: (nada)
+- 2026-10-20 — El usuario acepta las decisiones del plan marcadas 'decidida por Claude, revisable' y fusiona `plan/catalogo-stock` en `main` tal como está (fdbc1e5) — decisión del usuario — reemplaza a: (nada)
+- 2026-10-20 — P-catalogo-stock-1 queda abierto y lo cierra el plan `flujo-sitio` — decisión del usuario — reemplaza a: (nada)
 
 ### Cierra
 
