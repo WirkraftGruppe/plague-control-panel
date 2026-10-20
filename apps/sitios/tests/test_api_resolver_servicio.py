@@ -114,4 +114,13 @@ class ResolverServicioTests(TestCase):
         self.assertFalse(punto["en_turno"])
         self.assertEqual(punto["estado"], "sin_programar")
         self.assertIsNone(punto["proximo_vencimiento"])
-        self.assertNotIn("proyectos", cuerpo)
+        self.assertEqual(
+            set(cuerpo),
+            {
+                "punto",
+                "sitio",
+                "cliente",
+                "visita_pendiente_propia",
+                "visita_abierta_propia",
+            },
+        )
