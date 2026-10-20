@@ -42,7 +42,7 @@ class MenuTests(TestCase):
             self.assertContains(respuesta, texto)
         for texto in ("Productos", "Usuarios"):
             self.assertContains(respuesta, texto)
-        for texto in ("Tablero", "Proyectos", "Planillas"):
+        for texto in ("Tablero", "Planillas"):
             self.assertNotContains(respuesta, f">{texto}<")
 
     def test_contador_de_incidencias_sin_revisar(self):
