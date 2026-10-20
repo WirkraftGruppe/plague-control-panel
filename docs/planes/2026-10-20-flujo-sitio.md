@@ -332,11 +332,11 @@ commit_base: fefbf2d
 
 | Tarea | Estado |
 |---|---|
-| T1 | en curso |
-| T2 | en curso |
-| T3 | en curso |
-| T4 | pendiente |
-| T5 | pendiente |
+| T1 | hecha |
+| T2 | hecha |
+| T3 | hecha |
+| T4 | hecha |
+| T5 | en curso |
 | T6 | pendiente |
 | T7 | pendiente |
 | T8 | pendiente |
@@ -348,10 +348,17 @@ commit_base: fefbf2d
 
 | Fecha/hora | Alcance | HEAD verificado | Veredicto | Notas |
 |---|---|---|---|---|
+| 2026-10-20 | T1 (verificador) | b8f17ee | PASA 8/8 | contraprueba del principal: `test_tope` 3 OK |
+| 2026-10-20 | T2 (verificador) | f6608bb | PASA 8/8 | contraprueba: `TestTimeoutSuite` 5 passed |
+| 2026-10-20 | T3 (verificador) | 4648291 | PASA 17/17 | suite 711 tests en 401 s; contraprueba: `test_estado_vencimiento` 6 OK |
+| 2026-10-20 | T4 (principal) | fb3337d | PASA 3/3 | T1, T2 y T3 integrados con `worktree-integrar.sh` (exit 0) |
 
 ## Pendientes que deja este plan
 
 ### Problemas
+
+- P-flujo-sitio-1 [importante] `MovimientoAltaView` (`apps/productos/panel_views.py:80`) no pasa `producto` a `MovimientoForm`: un ingreso "en envases" desbordado desde el panel llega a `registrar_ingreso`, que lanza `ValidationError` sin capturar, y da 500. Corrección: `get_form_kwargs` con `producto=self.producto` y un test. Va a un plan aparte (decisión 2026-10-04; usuario, 2026-10-20) (implementador T1).
+- P-flujo-sitio-2 [menor] `ProgramacionForm` (`apps/sitios/panel_forms.py`) ofrece solo servicios activos: si un punto tiene un servicio desactivado, el select de la fila no lo muestra y cualquier cambio en la fila lo pisa con otro valor o vacío (implementador T3).
 
 ### Decisiones
 
