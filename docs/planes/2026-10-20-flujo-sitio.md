@@ -342,7 +342,7 @@ commit_base: fefbf2d
 | T8 | hecha |
 | T9 | hecha |
 | T10 | en curso |
-| T11 | pendiente |
+| T11 | en curso |
 
 ### Corridas
 
@@ -358,6 +358,7 @@ commit_base: fefbf2d
 | 2026-10-20 | T7 (verificador) | d954ee2 | PASA 13/13 | suite 705 tests en 390 s; commit `T7:` hecho por el principal con los archivos del implementador; contraprueba: 8 tests nuevos OK |
 | 2026-10-20 | T8 (verificador) | 8241879 | PASA 17/17 | suite 709 tests en 391 s; sin `apps/panel/`, sin `<script>` ni `style=` en línea; contraprueba: 9 tests OK |
 | 2026-10-20 | T9 (principal) | d7d9e5b | PASA 2/2 | T7 y T8 integrados; el primer intento de T7 lo rechazó un archivo sin seguimiento en la raíz (respaldo de la base, movido fuera del repo) |
+| 2026-10-20 | T10 (verificador) | aa363f4 | FALLA 1/6 | único FALLA: el `grep-0` encuentra `.claude/skills/convenciones-proyecto/SKILL.md:2:name: convenciones-proyecto` (P-flujo-sitio-10); muestreo de docs/01 contra el código coincide; integrado igual en `plan/flujo-sitio`, T10 queda `en curso` |
 
 ## Pendientes que deja este plan
 
@@ -372,9 +373,11 @@ commit_base: fefbf2d
 - P-flujo-sitio-7 [menor] `apps/visitas/static/visitas/nuevo_turno.js` (atajos "Todos", "Solo vencidos", "Ninguno" y la sincronización plano ↔ lista) no tiene test de JS ni se probó en un navegador; los tests cubren solo el HTML y los `data-*` (implementador T8).
 - P-flujo-sitio-8 [observación] El plano coloreado por estado de la ficha del sitio está en la pestaña "Planos"; la pestaña por defecto muestra la tabla de puntos con su etiqueta de estado (implementador T8).
 - P-flujo-sitio-9 [observación] Los marcadores del plano en "Nuevo turno" responden solo a clic (`keyboard: false`); la vía accesible es la lista con casillas (implementador T8).
+- P-flujo-sitio-10 [importante] Defecto del contrato: el primer `[grep-0]` de T10 incluye `.claude/skills/convenciones-proyecto/SKILL.md`, cuyo frontmatter es `name: convenciones-proyecto`; no puede pasar sin renombrar la skill. El usuario decidió renombrarla en un plan aparte (cambia `.claude/skills/`, CLAUDE.md, agentes y planes); hasta entonces T10 no se marca `hecha` y el plan no llega a TODO PASA (verificador T10).
 
 ### Decisiones
 
+- 2026-10-20 — La skill `convenciones-proyecto` se renombra en un plan aparte para que el criterio de T10 pueda pasar; este plan no modifica su contrato — decisión del usuario — reemplaza a: (nada)
 - 2026-10-20 — El resolver de QR elige, entre varios turnos propios con ese punto, el abierto antes que el pendiente y después el de `programada_para` más antigua; `SitioResumenSerializer` suma `id` en todas las respuestas — decidida por Claude (implementador T7), revisable — reemplaza a: (nada)
 - 2026-10-20 — En el menú, "Catálogo" es un encabezado no clicable con "Servicios" y "Productos"; el contador de incidencias devuelve 0 sin consultar la base si no hay un administrador autenticado — decidida por Claude (implementador T8), revisable — reemplaza a: (nada)
 - 2026-10-20 — El 400 "El punto no tiene servicio asignado." va bajo la clave `qr_codigo` — es el campo que identifica al punto — decidida por Claude (implementador T5), revisable — reemplaza a: (nada)
