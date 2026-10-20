@@ -5,8 +5,9 @@ from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.utils.functional import cached_property
 from django.utils.text import slugify
@@ -18,13 +19,20 @@ from apps.accounts.mixins import AdministradorRequeridoMixin
 from apps.clientes.models import Cliente
 from apps.panel.listados import ListadoPanelMixin
 from apps.panel.mapa import ORIGEN_TESELAS
+from apps.servicios.models import TipoServicio
 
 from . import geocodificacion, qr, services
-from .estado import EstadoPunto, estados_de_puntos
+from .estado import (
+    EstadoPunto,
+    EstadoVencimiento,
+    estados_de_puntos,
+    estados_por_vencimiento,
+)
 from .models import Plano, PuntoControl, Sitio
 from .panel_forms import (
     PlanoForm,
     PosicionForm,
+    ProgramacionForm,
     PuntoAltaForm,
     PuntoForm,
     SitioForm,
@@ -37,6 +45,22 @@ CLASE_ESTADO = {
     EstadoPunto.VENCIDA: "danger",
     EstadoPunto.SIN_REVISAR: "neutral",
 }
+
+CLASE_VENCIMIENTO = {
+    EstadoVencimiento.AL_DIA: "ok",
+    EstadoVencimiento.PROXIMA: "warn",
+    EstadoVencimiento.VENCIDA: "danger",
+    EstadoVencimiento.SIN_PROGRAMAR: "neutral",
+}
+
+
+def _marcar_vencimiento(puntos):
+    """Agrega a cada punto la etiqueta y la clase de su estado por vencimiento."""
+    estados = estados_por_vencimiento(puntos, timezone.localdate())
+    for punto in puntos:
+        estado = estados[punto.pk]
+        punto.vencimiento_etiqueta = EstadoVencimiento(estado).label
+        punto.vencimiento_clase = CLASE_VENCIMIENTO[estado]
 
 
 class SitioListado(AdministradorRequeridoMixin, ListadoPanelMixin):
@@ -117,7 +141,8 @@ class SitioFicha(AdministradorRequeridoMixin, DetailView):
         pestana = self.request.GET.get("pestana", "puntos")
         if pestana not in PESTANAS:
             pestana = "puntos"
-        puntos = list(sitio.puntos.select_related("plano"))
+        puntos = list(sitio.puntos.select_related("plano", "servicio"))
+        _marcar_vencimiento(puntos)
         activos = [p for p in puntos if p.activo]
         estados = estados_de_puntos(activos)
         for punto in puntos:
@@ -135,6 +160,7 @@ class SitioFicha(AdministradorRequeridoMixin, DetailView):
             pestanas=(("puntos", "Puntos"), ("mapa", "Mapa"), ("planos", "Planos")),
             puntos=puntos,
             puntos_activos=activos,
+            servicios=TipoServicio.objects.filter(activo=True).order_by("nombre"),
             planos=planos,
             plano=plano,
         )
@@ -310,6 +336,46 @@ class _AccionPunto(_PuntoMixin, SingleObjectMixin, View):
     """Acción POST sobre un punto, para HTMX o para un botón de la ficha."""
 
     http_method_names = ["post"]
+
+
+class PuntoProgramacion(_PuntoMixin, SingleObjectMixin, View):
+    """Edición en línea de servicio, frecuencia y vencimiento; devuelve la fila."""
+
+    http_method_names = ["get", "post"]
+    template_name = "sitios/panel/_fila_punto.html"
+
+    def _fila(self, request, punto, form=None, estado=200):
+        _marcar_vencimiento([punto])
+        punto.estado_etiqueta = ""
+        punto.estado_clase = "neutral"
+        if punto.activo:
+            estado_punto = estados_de_puntos([punto])[punto.pk]
+            punto.estado_etiqueta = EstadoPunto(estado_punto).label
+            punto.estado_clase = CLASE_ESTADO[estado_punto]
+        contexto = {
+            "punto": punto,
+            "form": form,
+            "servicios": TipoServicio.objects.filter(activo=True).order_by("nombre"),
+        }
+        return render(request, self.template_name, contexto, status=estado)
+
+    def get(self, request, pk):
+        return self._fila(request, self.get_object())
+
+    def post(self, request, pk):
+        punto = self.get_object()
+        form = ProgramacionForm(request.POST)
+        if not form.is_valid():
+            return self._fila(request, punto, form, estado=422)
+        datos = form.cleaned_data
+        services.actualizar_programacion(
+            punto,
+            datos["servicio"],
+            datos["frecuencia_dias"],
+            datos["proximo_vencimiento"],
+            request.user,
+        )
+        return self._fila(request, punto)
 
 
 class PuntoPosicion(_AccionPunto):

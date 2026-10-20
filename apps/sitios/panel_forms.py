@@ -2,6 +2,8 @@
 
 from django import forms
 
+from apps.servicios.models import TipoServicio
+
 from .models import Plano, PuntoControl, Sitio
 
 
@@ -21,6 +23,7 @@ class SitioForm(forms.ModelForm):
             "contacto_en_sitio",
             "telefono_en_sitio",
             "horario_acceso",
+            "responsable",
             "notas",
             "activo",
         ]
@@ -104,4 +107,19 @@ class PosicionForm(forms.Form):
     y = forms.DecimalField(min_value=0, max_value=1, max_digits=5, decimal_places=4)
     plano = forms.ModelChoiceField(
         queryset=Plano.objects.filter(activo=True), required=False
+    )
+
+
+class ProgramacionForm(forms.Form):
+    """Servicio, frecuencia y próximo vencimiento de un punto (edición en línea)."""
+
+    servicio = forms.ModelChoiceField(
+        TipoServicio.objects.filter(activo=True), required=False
+    )
+    frecuencia_dias = forms.IntegerField(
+        min_value=1, max_value=3650, required=False, label="Frecuencia (días)"
+    )
+    proximo_vencimiento = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
     )

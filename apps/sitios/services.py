@@ -246,3 +246,26 @@ def fijar_ubicacion_en_campo(*, administrador, punto, latitud, longitud, precisi
         )
     punto.latitud, punto.longitud = bloqueado.latitud, bloqueado.longitud
     punto.precision_m = bloqueado.precision_m
+
+
+def actualizar_programacion(
+    punto, servicio, frecuencia_dias, proximo_vencimiento, usuario
+):
+    """Guarda servicio, frecuencia y vencimiento del punto, con motivo en el historial.
+
+    Editar la frecuencia no recalcula el vencimiento.
+    """
+    with transaction.atomic():
+        bloqueado = _bloquear_punto(punto)
+        bloqueado.servicio = servicio
+        bloqueado.frecuencia_dias = frecuencia_dias
+        bloqueado.proximo_vencimiento = proximo_vencimiento
+        bloqueado._change_reason = "Programación editada"
+        bloqueado._history_user = usuario
+        bloqueado.save(
+            update_fields=["servicio", "frecuencia_dias", "proximo_vencimiento"]
+        )
+    punto.servicio = servicio
+    punto.frecuencia_dias = frecuencia_dias
+    punto.proximo_vencimiento = proximo_vencimiento
+    return punto
