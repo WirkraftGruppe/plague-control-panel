@@ -5,6 +5,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from django.db.models import Sum
 
 from .models import MovimientoStock
+from .unidades import validar_cantidad_base
 
 
 def stock(producto):
@@ -38,6 +39,7 @@ def registrar_ingreso(producto, cantidad, en_envases, usuario, nota=""):
         raise ValueError("El ingreso debe ser mayor que cero.")
     if en_envases:
         cantidad *= producto.contenido_por_envase
+    validar_cantidad_base(cantidad)
     return _crear(producto, MovimientoStock.Tipo.INGRESO, cantidad, usuario, nota)
 
 
@@ -46,6 +48,7 @@ def registrar_ajuste(producto, cantidad_base, usuario, nota=""):
     cantidad_base = Decimal(cantidad_base)
     if cantidad_base == 0:
         raise ValueError("El ajuste no puede ser cero.")
+    validar_cantidad_base(cantidad_base)
     return _crear(producto, MovimientoStock.Tipo.AJUSTE, cantidad_base, usuario, nota)
 
 
