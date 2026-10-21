@@ -21,9 +21,9 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from apps.accounts.permisos import EsAdministrador, EsEmpleado
-from apps.servicios.models import TipoServicio
-from apps.visitas.models import ItemTurno, Visita
+from apps.visitas.models import Visita
 from apps.visitas.serializers import MAX_BYTES_FOTO
+from apps.visitas.services import servicio_para_punto, visita_destino
 
 from . import services
 from .estado import estado_por_vencimiento, estados_por_vencimiento
@@ -74,33 +74,6 @@ def _datos_plano(punto):
     }
 
 
-def _servicio_del_punto(punto, empleado):
-    """``(servicio, en_turno)`` del punto para el empleado.
-
-    El servicio es el del ítem del turno propio (abierto antes que pendiente, y el
-    más antiguo primero) en el sitio; sin ítem, el del punto, o ``None``.
-    """
-    item = (
-        ItemTurno.objects.filter(
-            punto=punto,
-            visita__empleado=empleado,
-            visita__estado__in=ESTADOS_CON_TRABAJO,
-        )
-        .select_related("servicio")
-        .prefetch_related("servicio__campos")
-        .order_by(
-            "visita__estado", F("visita__programada_para").asc(nulls_last=True), "id"
-        )
-        .first()
-    )
-    if item is not None:
-        return item.servicio, True
-    if punto.servicio_id is None:
-        return None, False
-    servicio = TipoServicio.objects.prefetch_related("campos").get(pk=punto.servicio_id)
-    return servicio, False
-
-
 def _datos_servicio(servicio):
     if servicio is None:
         return None
@@ -128,9 +101,12 @@ class ResolverQRView(APIView):
             "Empleados y administradores. Un QR inexistente, de un punto o sitio "
             "inactivo o de un cliente inactivo responde el mismo 404. El punto trae "
             "su `estado` y `proximo_vencimiento`, `en_turno` (tiene un ítem en un "
-            "turno propio pendiente o abierto) y el `servicio` con sus esquemas de "
-            "planilla: el del ítem del turno o, fuera de turno, el del punto "
-            "(`null` si no tiene)."
+            "turno propio) y el `servicio` con sus esquemas de planilla (`null` si "
+            "no tiene). `visita_destino` es el id de la visita en la que se guardaría "
+            "la revisión (la abierta propia del sitio o, si no hay, la pendiente más "
+            "antigua) y `null` si al abrir se crearía una nueva. El servicio y "
+            "`en_turno` se calculan sobre la visita destino: el del ítem del punto "
+            "en ella o, si no lo tiene, el del punto con `en_turno` falso."
         ),
     )
     def post(self, request, codigo):
@@ -163,7 +139,8 @@ class ResolverQRView(APIView):
             else:
                 pendiente = pendiente or visita_id
 
-        servicio, en_turno = _servicio_del_punto(punto, request.user)
+        destino = visita_destino(empleado=request.user, sitio=sitio)
+        servicio, en_turno = servicio_para_punto(visita=destino, punto=punto)
         datos = {
             "punto": {
                 "id": punto.id,
@@ -181,6 +158,7 @@ class ResolverQRView(APIView):
             "cliente": sitio.cliente,
             "visita_pendiente_propia": pendiente,
             "visita_abierta_propia": abierta,
+            "visita_destino": destino.id if destino else None,
         }
         return Response(ResolverQRSerializer(datos).data)
 
