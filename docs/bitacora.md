@@ -1,19 +1,26 @@
 # Bitácora de MAControl
 
 ## Estado actual
-Plan activo: (ninguno)
+Plan activo: docs/planes/2026-10-20-ajustes-flujo.md
 
 Planes activos (los hooks derivan el plan de la rama; la línea `Plan activo:` de arriba es el respaldo para la raíz):
 
 | plan | rama | ola actual | pendiente inmediato | sesión |
 |---|---|---|---|---|
-| (ninguno) | main | — | planificar `ajustes-flujo` (P-flujo-sitio-1, -11 y los demás de `flujo-sitio`) | sesión 2026-10-20 |
+| ajustes-flujo | plan/ajustes-flujo | 2 (completa) | el usuario decide el merge en `main` (verificación TODO en PASA) | sesión 2026-10-21 |
 
 Siguiente (orden decidido el 2026-10-20): `ajustes-flujo` → `diseno-panel` → `multiempresa` → despliegue. El despliegue en Railway espera a que los tres planes estén en `main`, para no tener que migrar datos reales. Problemas abiertos: ver `pendientes.py`. Regla de cuándo preguntar: CLAUDE.md § Reglas globales, regla 8.
 
 Problemas abiertos: ver `py -3 .claude/hooks/pendientes.py` (cada plan los declara en `## Pendientes que deja este plan`; los anteriores están en `docs/planes/2026-10-03-pendientes-heredados.md`).
 
 ## Entradas (la más reciente arriba)
+
+### 2026-10-21 — Plan `ajustes-flujo` ejecutado (T1 a T5), sin fusionar
+Hecho:
+- Cierra P-flujo-sitio-11: `visita_destino` y `servicio_para_punto` (`apps/visitas/services.py`) los usan `abrir_visita`, la revisión y el resolver; el resolver devuelve `visita_destino` (contrato y OpenAPI actualizados, cambio aditivo aprobado por el usuario).
+- Cierra P-flujo-sitio-1: `MovimientoAltaView.get_form_kwargs` pasa el producto; el ingreso en envases desbordado da error de formulario.
+- Verificación TODO en PASA 40/40 con verificador (befb3c7) y verificador-b (cbdbe8c); 731 tests. auditor-seguridad: sin bloqueantes ni importantes, 4 observaciones (P-ajustes-flujo-1 a -4).
+Pendiente: el usuario decide el merge de `plan/ajustes-flujo` en `main` y las decisiones revisables; después `diseno-panel`.
 
 ### 2026-10-20 — `flujo-sitio` fusionado en `main`
 Hecho:

@@ -151,6 +151,7 @@ commit_base: 377066c
 | 2026-10-21 | T4 | b6065a2 (worktree) | PASA 9/9 (verificador y verificador-b) | |
 | 2026-10-21 | T5 | befb3c7 | PASA 6/6 (verificador, dentro de TODO) | |
 | 2026-10-21 | TODO | befb3c7 | PASA 40/40 (verificador; 731 tests) | auditor-seguridad: 0 bloqueantes, 0 importantes, 4 observaciones (P-ajustes-flujo-1 a -4) |
+| 2026-10-21 | TODO | cbdbe8c | PASA 40/40 (verificador-b; 731 tests) | |
 
 ## Pendientes que deja este plan
 
