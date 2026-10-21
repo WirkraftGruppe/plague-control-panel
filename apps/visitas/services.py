@@ -381,10 +381,16 @@ def abrir_visita(
         # Orden de bloqueo: Sitio -> Visita -> PuntoControl.
         # Serializa las aperturas del mismo sitio: no quedan dos abiertas.
         Sitio.objects.select_for_update(of=("self",)).get(pk=sitio.pk)
+        # visita_destino no bloquea filas: se bloquean antes las visitas propias del
+        # sitio que pueden ser el destino (abiertas o pendientes).
+        list(
+            Visita.objects.select_for_update().filter(
+                sitio=sitio,
+                empleado=empleado,
+                estado__in=[Visita.Estado.ABIERTA, Visita.Estado.PENDIENTE],
+            )
+        )
         destino = visita_destino(empleado=empleado, sitio=sitio)
-        if destino is not None:
-            # Se bloquea la elegida (visita_destino no bloquea filas).
-            destino = Visita.objects.select_for_update().get(pk=destino.pk)
         if destino is not None and destino.estado == Visita.Estado.ABIERTA:
             return destino, False
         propia = destino
