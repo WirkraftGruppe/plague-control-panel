@@ -87,6 +87,11 @@ class MovimientoAltaView(AdministradorRequeridoMixin, FormView):
     def producto(self):
         return get_object_or_404(Producto, pk=self.kwargs["pk"])
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["producto"] = self.producto
+        return kwargs
+
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
         contexto["producto"] = self.producto

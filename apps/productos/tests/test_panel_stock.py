@@ -67,6 +67,21 @@ class FichaProductoTests(TestCase):
         )
         self.assertEqual(services.stock(self.producto), Decimal("10"))
 
+    def test_ingreso_en_envases_desbordado_muestra_error_sin_movimiento(self):
+        producto = Producto.objects.create(
+            nombre_comercial="Concentrado",
+            unidad_base="l",
+            contenido_por_envase=Decimal("5000"),
+        )
+        self.client.force_login(self.admin)
+        respuesta = self.client.post(
+            reverse("panel:productos:movimiento_alta", args=[producto.pk]),
+            {"tipo": "ingreso", "cantidad": "9999999", "en_envases": "on"},
+        )
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertTrue(respuesta.context["form"].errors)
+        self.assertEqual(MovimientoStock.objects.count(), 0)
+
     def test_ingreso_no_positivo_se_rechaza(self):
         self.client.force_login(self.admin)
         respuesta = self.client.post(

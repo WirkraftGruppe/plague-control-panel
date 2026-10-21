@@ -79,6 +79,10 @@ class ResolverQRSerializer(serializers.Serializer):
     cliente = ClienteQRSerializer()
     visita_pendiente_propia = serializers.IntegerField(allow_null=True)
     visita_abierta_propia = serializers.IntegerField(allow_null=True)
+    visita_destino = serializers.IntegerField(
+        allow_null=True,
+        help_text="Visita donde se guardaría la revisión; nulo si se crearía una.",
+    )
 
 
 class SitioPuntoSerializer(serializers.Serializer):

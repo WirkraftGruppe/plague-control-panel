@@ -26,10 +26,14 @@ límite de pedidos (throttle) y el rol que la puede usar. Todas las rutas cuelga
   turno `sitio{id, nombre, direccion, localidad}` e `items[]` con `punto{id, nombre,
   sector}`, `servicio{id, nombre}` y `revisado`.
 - **Resolver un QR** (`POST /api/v1/qr/<codigo>/resolver/`): el `punto` trae `estado`
-  (`al_dia`, `proxima`, `vencida` o `sin_programar`), `proximo_vencimiento`, `en_turno`
-  (el punto está en un turno propio pendiente o abierto) y `servicio`
-  (`{id, nombre, slug, esquema_punto, esquema_visita}` o `null`): el del ítem del turno o,
-  fuera de turno, el del punto. Además `visita_pendiente_propia` y `visita_abierta_propia`.
+  (`al_dia`, `proxima`, `vencida` o `sin_programar`), `proximo_vencimiento`, `en_turno` y
+  `servicio` (`{id, nombre, slug, esquema_punto, esquema_visita}` o `null`). `visita_destino`
+  es el id de la visita en la que se guardará la revisión (la abierta propia del sitio o, si
+  no hay, la pendiente que abre `visitas/abrir/`), o `null` si al abrir se crea una nueva.
+  `servicio` y `en_turno` se calculan sobre esa visita: el del ítem del punto en ella
+  (`en_turno` verdadero) o, si no lo tiene, el del punto (`en_turno` falso); es el mismo
+  servicio con el que se guarda la revisión. Además `visita_pendiente_propia` y
+  `visita_abierta_propia`.
 - **Revisiones**, fotos y servicio: `fotos` se repite de 0 a 2 veces. El servidor decide el
   servicio de la revisión (el del ítem del turno para ese punto o, fuera del turno, el del
   punto) y la respuesta lo devuelve en `servicio{id, nombre}` junto con `fuera_de_turno`.

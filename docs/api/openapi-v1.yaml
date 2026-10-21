@@ -292,8 +292,12 @@ paths:
       description: 'Empleados y administradores. Un QR inexistente, de un punto o
         sitio inactivo o de un cliente inactivo responde el mismo 404. El punto trae
         su `estado` y `proximo_vencimiento`, `en_turno` (tiene un ítem en un turno
-        propio pendiente o abierto) y el `servicio` con sus esquemas de planilla:
-        el del ítem del turno o, fuera de turno, el del punto (`null` si no tiene).'
+        propio) y el `servicio` con sus esquemas de planilla (`null` si no tiene).
+        `visita_destino` es el id de la visita en la que se guardaría la revisión
+        (la abierta propia del sitio o, si no hay, la pendiente más antigua) y `null`
+        si al abrir se crearía una nueva. El servicio y `en_turno` se calculan sobre
+        la visita destino: el del ítem del punto en ella o, si no lo tiene, el del
+        punto con `en_turno` falso.'
       summary: Resolver un código QR
       parameters:
       - in: path
@@ -1104,11 +1108,16 @@ components:
         visita_abierta_propia:
           type: integer
           nullable: true
+        visita_destino:
+          type: integer
+          nullable: true
+          description: Visita donde se guardaría la revisión; nulo si se crearía una.
       required:
       - cliente
       - punto
       - sitio
       - visita_abierta_propia
+      - visita_destino
       - visita_pendiente_propia
     Revision:
       type: object
