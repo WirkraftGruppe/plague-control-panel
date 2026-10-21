@@ -1,19 +1,25 @@
 # Bitácora de MAControl
 
 ## Estado actual
-Plan activo: docs/planes/2026-10-20-ajustes-flujo.md
+Plan activo: (ninguno)
 
 Planes activos (los hooks derivan el plan de la rama; la línea `Plan activo:` de arriba es el respaldo para la raíz):
 
 | plan | rama | ola actual | pendiente inmediato | sesión |
 |---|---|---|---|---|
-| ajustes-flujo | plan/ajustes-flujo | 2 (completa) | el usuario decide el merge en `main` (verificación TODO en PASA) | sesión 2026-10-21 |
+| (ninguno) | main | — | planificar `diseno-panel` | sesión 2026-10-21 |
 
-Siguiente (orden decidido el 2026-10-20): `ajustes-flujo` → `diseno-panel` → `multiempresa` → despliegue. El despliegue en Railway espera a que los tres planes estén en `main`, para no tener que migrar datos reales. Problemas abiertos: ver `pendientes.py`. Regla de cuándo preguntar: CLAUDE.md § Reglas globales, regla 8.
+Siguiente (orden decidido el 2026-10-20; reconfirmado el 2026-10-21): `diseno-panel` → `multiempresa` → despliegue. El despliegue en Railway espera a que los tres planes estén en `main`, para no tener que migrar datos reales. Problemas abiertos: ver `pendientes.py`. Regla de cuándo preguntar: CLAUDE.md § Reglas globales, regla 8.
 
 Problemas abiertos: ver `py -3 .claude/hooks/pendientes.py` (cada plan los declara en `## Pendientes que deja este plan`; los anteriores están en `docs/planes/2026-10-03-pendientes-heredados.md`).
 
 ## Entradas (la más reciente arriba)
+
+### 2026-10-21 — `ajustes-flujo` fusionado en `main`
+Hecho:
+- El usuario aprobó el merge (4fb35ef) y aceptó las decisiones revisables. Merge `--no-ff` en `main`; 4 decisiones copiadas a `docs/decisiones.md`, y la del 2026-10-20 sobre el turno abierto antes que el pendiente en el resolver queda marcada como reemplazada (visita destino). Push de `main` a `origin`.
+- P-ajustes-flujo-1 a -4 (observaciones del auditor) quedan abiertos para el plan `robustez-listados`.
+Pendiente: `diseno-panel` → `multiempresa` → despliegue.
 
 ### 2026-10-21 — Plan `ajustes-flujo` ejecutado (T1 a T5), sin fusionar
 Hecho:
