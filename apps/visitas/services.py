@@ -243,18 +243,57 @@ def _borrar_archivos(fotos):
             logger.exception("No se pudo borrar un archivo de foto.")
 
 
-def _pendiente_para(sitio, empleado):
-    """Pendiente propia bloqueada (la más antigua) y si hay una de otro empleado."""
+def _pendiente_para(sitio, empleado, *, bloquear=True):
+    """Pendiente propia (la más antigua) y si hay una de otro empleado.
+
+    Con `bloquear` (por defecto) la pendiente propia queda bloqueada.
+    """
     pendientes = Visita.objects.filter(sitio=sitio, estado=Visita.Estado.PENDIENTE)
     # Una pendiente con revisiones no se reutiliza.
     sin_revisiones = ~Exists(Revision.objects.filter(visita=OuterRef("pk")))
+    candidatas = pendientes.select_for_update() if bloquear else pendientes
     propia = (
-        pendientes.select_for_update()
-        .filter(sin_revisiones, empleado=empleado)
+        candidatas.filter(sin_revisiones, empleado=empleado)
         .order_by(F("programada_para").asc(nulls_last=True), "pk")
         .first()
     )
     return propia, pendientes.exclude(empleado=empleado).exists()
+
+
+def visita_destino(*, empleado, sitio):
+    """Visita a la que irá el próximo escaneo del empleado en el sitio, o `None`.
+
+    No bloquea filas. Es la abierta propia del sitio (la de menor `pk`); si no hay
+    y el empleado no es administrador, la pendiente más antigua sin revisiones.
+    """
+    abierta = (
+        Visita.objects.filter(
+            sitio=sitio, empleado=empleado, estado=Visita.Estado.ABIERTA
+        )
+        .order_by("pk")
+        .first()
+    )
+    if abierta is not None or empleado.es_administrador:
+        return abierta
+    return _pendiente_para(sitio, empleado, bloquear=False)[0]
+
+
+def servicio_para_punto(*, visita, punto):
+    """Servicio de un punto en una visita: `(servicio | None, en_turno)`.
+
+    Si la visita tiene un ítem para el punto, es el de ese ítem y `en_turno` es
+    `True`. Si no (o sin visita), es el servicio del punto y `en_turno` es `False`.
+    """
+    item = None
+    if visita is not None:
+        item = (
+            ItemTurno.objects.select_related("servicio")
+            .filter(visita=visita, punto=punto)
+            .first()
+        )
+    if item is not None:
+        return item.servicio, True
+    return punto.servicio, False
 
 
 def _errores_de_items(sitio_id, items):
@@ -342,18 +381,23 @@ def abrir_visita(
         # Orden de bloqueo: Sitio -> Visita -> PuntoControl.
         # Serializa las aperturas del mismo sitio: no quedan dos abiertas.
         Sitio.objects.select_for_update(of=("self",)).get(pk=sitio.pk)
-        abierta = (
-            Visita.objects.select_for_update()
-            .filter(sitio=sitio, empleado=empleado, estado=Visita.Estado.ABIERTA)
-            .order_by("pk")
-            .first()
+        # visita_destino no bloquea filas: se bloquean antes las visitas propias del
+        # sitio que pueden ser el destino (abiertas o pendientes).
+        list(
+            Visita.objects.select_for_update().filter(
+                sitio=sitio,
+                empleado=empleado,
+                estado__in=[Visita.Estado.ABIERTA, Visita.Estado.PENDIENTE],
+            )
         )
-        if abierta is not None:
-            return abierta, False
-        if empleado.es_administrador:
-            propia, hay_de_otro = None, False
-        else:
-            propia, hay_de_otro = _pendiente_para(sitio, empleado)
+        destino = visita_destino(empleado=empleado, sitio=sitio)
+        if destino is not None and destino.estado == Visita.Estado.ABIERTA:
+            return destino, False
+        propia = destino
+        hay_de_otro = (
+            not empleado.es_administrador
+            and _pendiente_para(sitio, empleado, bloquear=False)[1]
+        )
         distancia, incidencia_ubicacion = verificar(punto, latitud, longitud)
         ahora = timezone.now()
         if propia is not None:
@@ -463,15 +507,10 @@ def _servicio_de_la_revision(visita, punto):
     El servicio es el del ítem del turno para ese punto; si no hay ítem, el del
     punto (y la revisión queda fuera de turno). Sin ninguno de los dos, error.
     """
-    item = (
-        ItemTurno.objects.select_related("servicio")
-        .filter(visita=visita, punto=punto)
-        .first()
-    )
-    servicio = item.servicio if item else punto.servicio
+    servicio, en_turno = servicio_para_punto(visita=visita, punto=punto)
     if servicio is None:
         raise ValidationError({"qr_codigo": MENSAJE_SIN_SERVICIO})
-    return _servicio_con_campos(servicio.pk), item is None
+    return _servicio_con_campos(servicio.pk), not en_turno
 
 
 def _guardar_revision(
