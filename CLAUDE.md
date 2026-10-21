@@ -21,7 +21,6 @@ La raíz es un repositorio git propio. Cuando exista `mobile/`, será otro repos
 0. **Autorizar antes de escribir**: investigar, explicar, revisar, auditar, comparar o planificar es solo lectura: sin editar, sin delegar a un escritor, sin artefactos de implementación. Solo un pedido explícito de implementar habilita escribir; si la intención es ambigua, se hace una pregunta y se sigue en solo lectura.
 1. **Decisiones y escalamiento**: toda disyuntiva sigue `docs/protocolo-decisiones.md`.
    Ahí está qué se decide solo y se registra en `### Decisiones del plan`, y qué se escala al usuario.
-   Cambio de estructura general, de contrato de `/api/v1/` o borrado de apps o pantallas: escala.
 2. **Idioma**: docstrings, comentarios de código, textos de la interfaz, nombres de campos y de modelos, siempre en **español** (sin modismos regionales en textos visibles).
 3. **Sistema experto (skills)**: antes de codificar con una tecnología, leé la skill relevante de `.agents/skills/[skill]/SKILL.md`; la sección que aplica, no el archivo entero. La referencia del proyecto vive en `.claude/skills/convenciones-proyecto/SKILL.md`.
 4. **Plan con criterios comprobables por máquina** (ver § Flujo de trabajo).
