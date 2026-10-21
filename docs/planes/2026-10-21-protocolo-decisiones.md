@@ -148,7 +148,7 @@ El informe previo lista cada regla vigente y dice qué hace el protocolo con ell
 
 ## Registro de verificación
 
-commit_base: (se anota tras el commit `docs(plan): protocolo-decisiones`)
+commit_base: d6da5e1
 
 ### Estado de subtareas
 
