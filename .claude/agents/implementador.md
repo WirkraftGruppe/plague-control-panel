@@ -73,6 +73,8 @@ Si falta alguno de los cinco, no empiezas: devuelves qué falta y terminas.
    guardas la salida y el código de salida.
 5. Ejecutas `git status --porcelain` para listar los archivos modificados.
 
+Ante una disyuntiva, aplicá `docs/protocolo-decisiones.md`: si es autónoma, elegís con sus criterios y la reportás en el informe; si es escalable, no la decidís y la reportás como pendiente.
+
 ## Formato del informe
 
 Devuelves esto y nada más, en español:
