@@ -138,8 +138,8 @@ commit_base: 377066c
 | T1 | hecha |
 | T2 | hecha |
 | T3 | hecha |
-| T4 | pendiente |
-| T5 | pendiente |
+| T4 | hecha |
+| T5 | hecha |
 
 ### Corridas
 
@@ -148,13 +148,18 @@ commit_base: 377066c
 | 2026-10-21 | T1 | a81b59c (worktree) | PASA 13/13 (verificador y verificador-b) | |
 | 2026-10-21 | T2 | 2adba9c (worktree) | PASA 4/4 (verificador y verificador-b) | |
 | 2026-10-21 | T3 | 0b25de4 | integración: worktree-integrar exit 0 (T1 y T2) | sin verificador propio: criterios de log |
-| | T4 | | | |
-| | T5 | | | |
-| | TODO | | | |
+| 2026-10-21 | T4 | b6065a2 (worktree) | PASA 9/9 (verificador y verificador-b) | |
+| 2026-10-21 | T5 | befb3c7 | PASA 6/6 (verificador, dentro de TODO) | |
+| 2026-10-21 | TODO | befb3c7 | PASA 40/40 (verificador; 731 tests) | auditor-seguridad: 0 bloqueantes, 0 importantes, 4 observaciones (P-ajustes-flujo-1 a -4) |
 
 ## Pendientes que deja este plan
 
 ### Problemas
+
+- P-ajustes-flujo-1 [observación] `abrir_visita` (`apps/visitas/services.py:384-393`): el comentario dice que se bloquean antes las visitas que pueden ser destino, pero un turno que `crear_turno` confirma entre el bloqueo y `visita_destino` se toma sin lock de fila; no es explotable porque la serialización la da el lock del Sitio. Precisar el comentario (auditor-seguridad).
+- P-ajustes-flujo-2 [observación] `_pendiente_para(..., bloquear=True)` (`apps/visitas/services.py:246-256`) quedó sin llamadores con el valor por defecto: código muerto que sugiere un bloqueo que ya no ocurre (auditor-seguridad).
+- P-ajustes-flujo-3 [observación] Falta un test de `visita_destino` y del campo del resolver con una visita abierta o pendiente de otro empleado o del mismo empleado en otro sitio; el código filtra bien, el test fijaría el comportamiento contra regresiones (auditor-seguridad).
+- P-ajustes-flujo-4 [menor] `servicio_para_punto` no precarga `servicio__campos` como hacía `_servicio_del_punto`: el resolver hace 2-3 consultas extra por escaneo (auditor-seguridad y revisión del principal).
 
 ### Decisiones
 
