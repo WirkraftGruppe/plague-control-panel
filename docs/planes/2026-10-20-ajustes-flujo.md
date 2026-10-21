@@ -129,7 +129,7 @@
 
 ## Registro de verificación
 
-commit_base: <pendiente: hash del commit docs(plan): ajustes-flujo>
+commit_base: 377066c
 
 ### Estado de subtareas
 
