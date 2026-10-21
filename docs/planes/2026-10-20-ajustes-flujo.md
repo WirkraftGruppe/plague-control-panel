@@ -135,9 +135,9 @@ commit_base: 377066c
 
 | Tarea | Estado |
 |---|---|
-| T1 | pendiente |
-| T2 | pendiente |
-| T3 | pendiente |
+| T1 | hecha |
+| T2 | hecha |
+| T3 | hecha |
 | T4 | pendiente |
 | T5 | pendiente |
 
@@ -145,9 +145,9 @@ commit_base: 377066c
 
 | Fecha/hora | Alcance | HEAD verificado | Veredicto | Notas |
 |---|---|---|---|---|
-| | T1 | | | |
-| | T2 | | | |
-| | T3 | | | |
+| 2026-10-21 | T1 | a81b59c (worktree) | PASA 13/13 (verificador y verificador-b) | |
+| 2026-10-21 | T2 | 2adba9c (worktree) | PASA 4/4 (verificador y verificador-b) | |
+| 2026-10-21 | T3 | 0b25de4 | integración: worktree-integrar exit 0 (T1 y T2) | sin verificador propio: criterios de log |
 | | T4 | | | |
 | | T5 | | | |
 | | TODO | | | |
@@ -160,6 +160,7 @@ commit_base: 377066c
 
 - 2026-10-20 — El resolver de QR calcula servicio y `en_turno` sobre la visita destino (la que usaría `abrir_visita`: abierta propia del sitio; si no, la pendiente más antigua sin revisiones; si no, ninguna) y la devuelve en `visita_destino`; ya no busca el ítem en cualquier turno propio — invariante del usuario: lo que se muestra al escanear es lo que se guarda — reemplaza a: 2026-10-20 (el resolver elige el abierto antes que el pendiente y después el de `programada_para` más antigua)
 - 2026-10-20 — `visita_destino(*, empleado, sitio)` y `servicio_para_punto(*, visita, punto)` viven en `apps/visitas/services.py` y las usan `abrir_visita`, la revisión y el resolver — una sola regla evita que vuelvan a divergir — decidida por Claude, revisable — reemplaza a: (nada)
+- 2026-10-21 — `abrir_visita` bloquea con `select_for_update` las visitas propias abiertas o pendientes del sitio antes de llamar a `visita_destino`, que no bloquea — conserva el orden de bloqueo Sitio → Visita → PuntoControl que exige `BloqueosTests.test_orden_de_bloqueo_sitio_visita` — decidida por Claude (implementador T1), revisable — reemplaza a: (nada)
 - 2026-10-20 — La respuesta del resolver suma `visita_destino` y conserva `visita_pendiente_propia` y `visita_abierta_propia` — cambio aditivo del contrato, aprobado por el usuario — reemplaza a: (nada)
 
 ### Cierra
