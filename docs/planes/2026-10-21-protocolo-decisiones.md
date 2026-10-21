@@ -158,12 +158,15 @@ commit_base: d6da5e1
 |---|---|
 | T1 | hecha |
 | T2 | hecha |
-| T3 | pendiente |
+| T3 | hecha |
 
 ### Corridas
 
 | fecha | alcance | HEAD | resultado | notas |
 |---|---|---|---|---|
+| 2026-10-21 | T1 | f223a73 | autoverificación 7/7; spot check presupuesto 119/200 coincide | implementador; el principal leyó el protocolo |
+| 2026-10-21 | T2 | 7fae41b | autoverificación 10/10; spot check conteo en CLAUDE.md coincide; criterios repetidos tras la corrección, 10/10 | corrección del principal: la regla 1 copiaba parte de Escalable (quitado) e implementador en voseo (pasado a tú) |
+| 2026-10-21 | T3 | e73c383 | 4/4 (principal, inline: un único archivo de documentación) | bloque generado por script desde docs/protocolo-decisiones.md y CLAUDE.md |
 
 ### Decisiones del plan
 
