@@ -156,7 +156,7 @@ commit_base: d6da5e1
 
 | Tarea | Estado |
 |---|---|
-| T1 | pendiente |
+| T1 | hecha |
 | T2 | pendiente |
 | T3 | pendiente |
 
