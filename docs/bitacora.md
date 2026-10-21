@@ -7,13 +7,20 @@ Planes activos (los hooks derivan el plan de la rama; la línea `Plan activo:` d
 
 | plan | rama | ola actual | pendiente inmediato | sesión |
 |---|---|---|---|---|
-| (ninguno) | main | — | planificar `diseno-panel` | sesión 2026-10-21 |
+| protocolo-decisiones | plan/protocolo-decisiones | 3 de 3 (verificación TODO en PASA) | merge a `main`: lo decide el usuario | sesión 2026-10-21 |
 
-Siguiente (orden decidido el 2026-10-20; reconfirmado el 2026-10-21): `diseno-panel` → `multiempresa` → despliegue. El despliegue en Railway espera a que los tres planes estén en `main`, para no tener que migrar datos reales. Problemas abiertos: ver `pendientes.py`. Regla de cuándo preguntar: CLAUDE.md § Reglas globales, regla 8.
+Siguiente (orden decidido el 2026-10-20; reconfirmado el 2026-10-21): `protocolo-decisiones` (fusionar antes de `multiempresa`) → `diseno-panel` → `multiempresa` → despliegue. El despliegue en Railway espera a que esos planes estén en `main`, para no tener que migrar datos reales. Problemas abiertos: ver `pendientes.py`. Decisiones y cuándo preguntar: `docs/protocolo-decisiones.md` (CLAUDE.md § Reglas globales, regla 1).
 
 Problemas abiertos: ver `py -3 .claude/hooks/pendientes.py` (cada plan los declara en `## Pendientes que deja este plan`; los anteriores están en `docs/planes/2026-10-03-pendientes-heredados.md`).
 
 ## Entradas (la más reciente arriba)
+
+### 2026-10-21 — Plan `protocolo-decisiones` ejecutado (T1 a T3), sin fusionar
+Hecho:
+- `docs/protocolo-decisiones.md` reúne la clasificación autónoma/escalable, los criterios de elección, el registro en `### Decisiones del plan`, el escalamiento con conducta por defecto («pendiente de decisión») y dos ejemplos de `robustez-panel`.
+- CLAUDE.md: la regla 1 pasa a ser la referencia al protocolo y la regla 8 se borra; la plantilla suma `### Decisiones del plan` y el estado «pendiente de decisión»; el implementador remite al protocolo; `docs/ARRANQUE.md` (el kit) embebe el protocolo íntegro.
+- Verificación TODO en PASA, 28/28, HEAD 1097efc; el verificador no encuentra dos reglas sobre cuándo preguntar.
+Pendiente: el usuario decide el merge; después, `diseno-panel` → `multiempresa` → despliegue.
 
 ### 2026-10-21 — `ajustes-flujo` fusionado en `main`
 Hecho:

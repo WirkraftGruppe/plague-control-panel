@@ -167,6 +167,7 @@ commit_base: d6da5e1
 | 2026-10-21 | T1 | f223a73 | autoverificación 7/7; spot check presupuesto 119/200 coincide | implementador; el principal leyó el protocolo |
 | 2026-10-21 | T2 | 7fae41b | autoverificación 10/10; spot check conteo en CLAUDE.md coincide; criterios repetidos tras la corrección, 10/10 | corrección del principal: la regla 1 copiaba parte de Escalable (quitado) e implementador en voseo (pasado a tú) |
 | 2026-10-21 | T3 | e73c383 | 4/4 (principal, inline: un único archivo de documentación) | bloque generado por script desde docs/protocolo-decisiones.md y CLAUDE.md |
+| 2026-10-21 | TODO (verificador) | 1097efc | PASA 28/28 | lectura estructural: una sola regla sobre cuándo preguntar; CLAUDE.md no copia el protocolo |
 
 ### Decisiones del plan
 
@@ -181,6 +182,7 @@ commit_base: d6da5e1
 ### Problemas
 
 - P-protocolo-decisiones-1 [observación] No existe un kit de arranque real (`instalar_base.py` y el zip de `docs/ARRANQUE.md` no están en ningún repositorio); por decisión del usuario, `docs/ARRANQUE.md` hace de kit.
+- P-protocolo-decisiones-2 [observación] `docs/protocolo-decisiones.md:3` habla de cómo decide «el principal», pero `.claude/agents/implementador.md:76` también deja al implementador elegir las disyuntivas autónomas (y reportarlas); los criterios son los mismos y el registro lo hace el principal, pero el alcance del protocolo podría decirlo explícitamente (señalado por el verificador).
 
 ### Decisiones
 
