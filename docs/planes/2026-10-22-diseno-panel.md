@@ -241,14 +241,14 @@ Sin migraciones. Las olas siguen la propiedad de archivos: la ola 1 fija tokens,
 
 ## Registro de verificación
 
-commit_base: <hash del commit docs(plan): diseno-panel>
+commit_base: 0175082
 
 ### Estado de subtareas
 
 | Tarea | Estado |
 |---|---|
-| T1 | pendiente |
-| T2 | pendiente |
+| T1 | en curso |
+| T2 | en curso |
 | T3 | pendiente |
 | T4 | pendiente |
 | T5 | pendiente |
