@@ -7,13 +7,19 @@ Planes activos (los hooks derivan el plan de la rama; la línea `Plan activo:` d
 
 | plan | rama | ola actual | pendiente inmediato | sesión |
 |---|---|---|---|---|
-| protocolo-decisiones | plan/protocolo-decisiones | 3 de 3 (verificación TODO en PASA) | merge a `main`: lo decide el usuario | sesión 2026-10-21 |
+| (ninguno) | main | — | aplicar el protocolo en macontrol-web; después planificar `diseno-panel` | sesión 2026-10-22 |
 
-Siguiente (orden decidido el 2026-10-20; reconfirmado el 2026-10-21): `protocolo-decisiones` (fusionar antes de `multiempresa`) → `diseno-panel` → `multiempresa` → despliegue. El despliegue en Railway espera a que esos planes estén en `main`, para no tener que migrar datos reales. Problemas abiertos: ver `pendientes.py`. Decisiones y cuándo preguntar: `docs/protocolo-decisiones.md` (CLAUDE.md § Reglas globales, regla 1).
+Siguiente (orden decidido el 2026-10-20; reconfirmado el 2026-10-21): `diseno-panel` → `multiempresa` → despliegue. El despliegue en Railway espera a que esos planes estén en `main`, para no tener que migrar datos reales. Problemas abiertos: ver `pendientes.py`. Decisiones y cuándo preguntar: `docs/protocolo-decisiones.md` (CLAUDE.md § Reglas globales, regla 1).
 
 Problemas abiertos: ver `py -3 .claude/hooks/pendientes.py` (cada plan los declara en `## Pendientes que deja este plan`; los anteriores están en `docs/planes/2026-10-03-pendientes-heredados.md`).
 
 ## Entradas (la más reciente arriba)
+
+### 2026-10-22 — `protocolo-decisiones` fusionado en `main`
+Hecho:
+- El usuario aprobó el merge (ab9edeb). Merge `--no-ff` en `main`; 6 decisiones copiadas a `docs/decisiones.md`, y la regla del 2026-10-07 (cuándo preguntar) queda marcada como reemplazada por el protocolo.
+- P-protocolo-decisiones-1 y -2 (observaciones) quedan abiertos.
+Pendiente: aplicar el protocolo en macontrol-web; después `diseno-panel` → `multiempresa` → despliegue.
 
 ### 2026-10-21 — Plan `protocolo-decisiones` ejecutado (T1 a T3), sin fusionar
 Hecho:
