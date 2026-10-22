@@ -32,15 +32,12 @@ class MenuTests(TestCase):
             "panel:visitas:listado",
             "panel:clientes:listado",
             "panel:servicios:listado",
-            "panel:productos:listado",
             "panel:usuarios:listado",
         ):
             self.assertContains(
                 respuesta, f'href="{reverse(nombre)}"', msg_prefix=nombre
             )
-        for texto in ("Sitios", "Mapa", "Turnos", "Clientes", "Catálogo", "Servicios"):
-            self.assertContains(respuesta, texto)
-        for texto in ("Productos", "Usuarios"):
+        for texto in ("Sitios", "Mapa", "Turnos", "Clientes", "Catálogo", "Usuarios"):
             self.assertContains(respuesta, texto)
         for texto in ("Tablero", "Planillas"):
             self.assertNotContains(respuesta, f">{texto}<")
