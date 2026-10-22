@@ -1,14 +1,25 @@
 """Vistas del panel de Visitas: listado, ficha, fotos, nuevo turno y carga manual."""
 
 import logging
+from datetime import timedelta
 from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
-from django.db.models import BooleanField, Exists, ExpressionWrapper, OuterRef, Q
-from django.http import FileResponse, Http404
+from django.core.paginator import Paginator
+from django.db.models import (
+    BooleanField,
+    Count,
+    Exists,
+    ExpressionWrapper,
+    OuterRef,
+    Q,
+)
+from django.db.models.functions import Coalesce
+from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.functional import cached_property
 from django.views import View
 from django.views.generic import DetailView, FormView
@@ -39,6 +50,13 @@ HISTORIAL_MAXIMO = 50
 TIPOS_IMAGEN = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp"}
 CAMPOS_OCULTOS = {"datos"}
 TIPOS_CAMBIO = {"+": "Creación", "~": "Modificación", "-": "Eliminación"}
+DIAS_SEMANA = 7  # "Esta semana" llega hasta hoy + 7, como el umbral de "próximo"
+GRUPOS = (
+    ("hoy", "Hoy"),
+    ("manana", "Mañana"),
+    ("semana", "Esta semana"),
+    ("despues", "Más adelante"),
+)
 
 
 def _es_id_valido(valor):
@@ -59,6 +77,8 @@ class ListadoVisitas(AdministradorRequeridoMixin, ListadoPanelMixin):
     context_object_name = "visitas"
     orden_permitido = ("creado", "programada_para", "cerrada_en", "estado")
     campos_busqueda = ("sitio__nombre",)
+    # Solo se pagina "Realizados": lo hace `get_context_data`.
+    paginate_by = None
 
     def get_filtros(self):
         valores = {f: self.request.GET.get(f, "").strip() for f in FILTROS}
@@ -74,10 +94,11 @@ class ListadoVisitas(AdministradorRequeridoMixin, ListadoPanelMixin):
             .get_queryset()
             .select_related("sitio", "empleado")
             .annotate(
+                n_puntos=Count("items", distinct=True),
                 con_ubicacion=ExpressionWrapper(
                     Q(incidencia_ubicacion=True) | Exists(en_revision),
                     output_field=BooleanField(),
-                )
+                ),
             )
         )
         filtros = self.get_filtros()
@@ -104,6 +125,43 @@ class ListadoVisitas(AdministradorRequeridoMixin, ListadoPanelMixin):
             )
         return queryset
 
+    def agrupar(self, queryset, hoy):
+        """Reparte turnos pendientes y abiertos por `programada_para`.
+
+        Hoy lleva las abiertas y las pendientes de hoy o atrasadas (estas primero,
+        marcadas con `atrasado`); las pendientes sin fecha van a "Más adelante".
+        """
+        grupos = {clave: [] for clave, _ in GRUPOS}
+        atrasadas = []
+        abiertos = queryset.filter(
+            estado__in=(Visita.Estado.PENDIENTE, Visita.Estado.ABIERTA)
+        ).order_by("programada_para", "pk")
+        for visita in abiertos:
+            fecha = visita.programada_para
+            visita.atrasado = (
+                visita.estado == Visita.Estado.PENDIENTE
+                and fecha is not None
+                and fecha < hoy
+            )
+            if visita.atrasado:
+                atrasadas.append(visita)
+            elif visita.estado == Visita.Estado.ABIERTA or fecha == hoy:
+                grupos["hoy"].append(visita)
+            elif fecha is None:
+                grupos["despues"].append(visita)
+            elif fecha == hoy + timedelta(days=1):
+                grupos["manana"].append(visita)
+            elif fecha <= hoy + timedelta(days=DIAS_SEMANA):
+                grupos["semana"].append(visita)
+            else:
+                grupos["despues"].append(visita)
+        grupos["hoy"] = atrasadas + grupos["hoy"]
+        # Los pendientes sin fecha cierran la lista (el orden de NULL varía por base).
+        grupos["despues"].sort(
+            key=lambda v: (v.programada_para is None, v.programada_para or hoy, v.pk)
+        )
+        return grupos
+
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
         filtros = self.get_filtros()
@@ -116,6 +174,29 @@ class ListadoVisitas(AdministradorRequeridoMixin, ListadoPanelMixin):
         contexto["sitios"] = Sitio.objects.order_by("nombre")
         contexto["estados"] = Visita.Estado.choices
         contexto["incidencias"] = INCIDENCIAS
+
+        # Las incidencias sin revisar van arriba y no se repiten en los grupos.
+        queryset = self.object_list
+        sin_revisar = queryset.filter(
+            incidencia=True, incidencia_revisada_en__isnull=True
+        )
+        resto = queryset.exclude(incidencia=True, incidencia_revisada_en__isnull=True)
+        grupos = self.agrupar(resto, timezone.localdate())
+        realizados = resto.filter(
+            estado__in=(Visita.Estado.REALIZADA, Visita.Estado.CANCELADA)
+        ).order_by(Coalesce("cerrada_en", "creado").desc(), "-pk")
+        pagina = Paginator(realizados, 25).get_page(self.request.GET.get("page"))
+        contexto["page_obj"] = pagina
+        contexto["incidencias_sin_revisar"] = list(sin_revisar.order_by("-creado"))
+        contexto["grupos"] = [
+            (clave, titulo, grupos[clave]) for clave, titulo in GRUPOS if grupos[clave]
+        ]
+        contexto["realizados"] = list(pagina)
+        contexto["visitas"] = (
+            contexto["incidencias_sin_revisar"]
+            + [v for _, _, lista in contexto["grupos"] for v in lista]
+            + contexto["realizados"]
+        )
         return contexto
 
 
@@ -241,6 +322,14 @@ def _numero(valor):
 class NuevoTurnoView(AdministradorRequeridoMixin, _SitioMixin, FormView):
     form_class = FormularioTurno
     template_name = "visitas/panel/nuevo_turno.html"
+    template_parcial = "visitas/panel/_nuevo_turno_lateral.html"
+
+    @property
+    def es_htmx(self):
+        return bool(self.request.headers.get("HX-Request"))
+
+    def get_template_names(self):
+        return [self.template_parcial if self.es_htmx else self.template_name]
 
     def datos_planos(self, form):
         """Planos activos del sitio con sus puntos ubicados, para dibujarlos."""
@@ -274,6 +363,7 @@ class NuevoTurnoView(AdministradorRequeridoMixin, _SitioMixin, FormView):
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
         contexto["planos"] = self.datos_planos(contexto["form"])
+        contexto["lateral"] = self.es_htmx
         return contexto
 
     def form_valid(self, form):
@@ -291,6 +381,11 @@ class NuevoTurnoView(AdministradorRequeridoMixin, _SitioMixin, FormView):
                 form.add_error(None, mensaje)
             return self.form_invalid(form)
         messages.success(self.request, "Turno creado.")
+        if self.es_htmx:
+            # HTMX no sigue redirecciones de página: se le pide la navegación.
+            respuesta = HttpResponse(status=200)
+            respuesta["HX-Redirect"] = self.get_success_url()
+            return respuesta
         return redirect(self.get_success_url())
 
     def get_success_url(self):

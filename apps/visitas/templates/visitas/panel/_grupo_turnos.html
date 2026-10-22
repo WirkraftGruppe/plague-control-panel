@@ -1,0 +1,37 @@
+{% load panel_ui %}
+{# Un grupo del listado de turnos: requiere titulo, lista y clave. #}
+<section class="grupo-turnos" id="grupo-{{ clave }}" aria-labelledby="titulo-{{ clave }}">
+  <h2 id="titulo-{{ clave }}">{{ titulo }} <span class="grupo-cuenta">{{ lista|length }}</span></h2>
+  <table class="tabla">
+    <thead>
+      <tr>
+        <th scope="col">Fecha</th>
+        <th scope="col">Operario</th>
+        <th scope="col">Sitio</th>
+        <th scope="col">Puntos</th>
+        <th scope="col">Estado</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for v in lista %}
+        <tr>
+          <td>
+            <a href="{% url 'panel:visitas:ficha' v.pk %}">
+              {% if v.estado == "realizada" or v.estado == "cancelada" %}{{ v.cerrada_en|default:v.creado|date:"d/m/Y" }}{% else %}{{ v.programada_para|date:"d/m/Y"|default:"Sin fecha" }}{% endif %}
+            </a>
+          </td>
+          <td>{{ v.empleado.get_full_name|default:v.empleado.username }}</td>
+          <td>{{ v.sitio.nombre }}</td>
+          <td>{{ v.n_puntos }}</td>
+          <td>
+            {% if v.atrasado %}{% include "panel/partials/etiqueta_estado.html" with tono="danger" texto="Atrasado" %}
+            {% else %}{% include "panel/partials/etiqueta_estado.html" with tono=v.estado|tono_estado texto=v.get_estado_display %}{% endif %}
+            {% if v.incidencia or v.con_ubicacion %}
+              {% if v.incidencia_revisada_en %}{% include "panel/partials/etiqueta_estado.html" with tono="neutral" texto="Incidencia revisada" %}{% else %}{% include "panel/partials/etiqueta_estado.html" with tono="danger" texto="Incidencia sin revisar" %}{% endif %}
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
