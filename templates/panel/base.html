@@ -1,41 +1,47 @@
 {% extends "base.html" %}
-{% load static visitas_ui %}
-{% block tema %}claro{% endblock %}
+{% load static visitas_ui panel_ui %}
 {% block title %}Panel · Detach{% endblock %}
 {% block extra_head %}
   <meta name="htmx-config" content='{"includeIndicatorStyles":false}'>
   <link rel="stylesheet" href="{% static 'css/panel.css' %}">
   <script src="{% static 'vendor/htmx/htmx.min.js' %}" defer></script>
+  <script src="{% static 'panel/panel_lateral.js' %}" defer></script>
 {% endblock %}
+{# El panel trae su propio logo en la barra lateral. #}
+{% block encabezado %}{% endblock %}
 {% block contenido %}
 <div class="panel" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
   {% block barra_lateral %}
+  {% with espacios=request.resolver_match.namespaces vista=request.resolver_match.view_name %}
   <aside class="barra-lateral">
     <a class="panel-logo" href="/panel/"><img src="{% static 'img/logo.png' %}" alt="{{ NOMBRE_EMPRESA }}"></a>
     <nav aria-label="Principal">
-      {% url 'panel:sitios:listado' as u %}{% if u %}<a href="{{ u }}">Sitios</a>{% endif %}
-      {% url 'panel:mapa' as u %}{% if u %}<a href="{{ u }}">Mapa</a>{% endif %}
-      {% url 'panel:visitas:listado' as u %}{% if u %}<a href="{{ u }}">Turnos{% incidencias_sin_revisar as pendientes %}{% if pendientes %} <span class="contador-menu">{{ pendientes }}</span>{% endif %}</a>{% endif %}
-      {% url 'panel:clientes:listado' as u %}{% if u %}<a href="{{ u }}">Clientes</a>{% endif %}
-      <span class="menu-grupo">Catálogo</span>
-      {% url 'panel:servicios:listado' as u %}{% if u %}<a class="menu-subitem" href="{{ u }}">Servicios</a>{% endif %}
-      {% url 'panel:productos:listado' as u %}{% if u %}<a class="menu-subitem" href="{{ u }}">Productos</a>{% endif %}
-      {% url 'panel:usuarios:listado' as u %}{% if u %}<a href="{{ u }}">Usuarios</a>{% endif %}
+      <span class="menu-grupo">Trabajo</span>
+      {% url 'panel:sitios:listado' as u %}{% if u %}<a class="menu-enlace" href="{{ u }}"{% if "sitios" in espacios %} aria-current="page"{% endif %}>Sitios{% sitios_vencidos as vencidos %}{% if vencidos %} <span class="contador-menu contador-vencidos">{{ vencidos }}</span>{% endif %}</a>{% endif %}
+      {% url 'panel:visitas:listado' as u %}{% if u %}<a class="menu-enlace" href="{{ u }}"{% if "visitas" in espacios %} aria-current="page"{% endif %}>Turnos{% incidencias_sin_revisar as pendientes %}{% if pendientes %} <span class="contador-menu">{{ pendientes }}</span>{% endif %}</a>{% endif %}
+      {% url 'panel:mapa' as u %}{% if u %}<a class="menu-enlace" href="{{ u }}"{% if vista == "panel:mapa" %} aria-current="page"{% endif %}>Mapa</a>{% endif %}
+      <span class="menu-grupo menu-grupo-secundario">Administración</span>
+      {% url 'panel:clientes:listado' as u %}{% if u %}<a class="menu-enlace menu-enlace-secundario" href="{{ u }}"{% if "clientes" in espacios %} aria-current="page"{% endif %}>Clientes</a>{% endif %}
+      {% url 'panel:servicios:listado' as u %}{% if u %}<a class="menu-enlace menu-enlace-secundario" href="{{ u }}"{% if "servicios" in espacios or "productos" in espacios %} aria-current="page"{% endif %}>Catálogo</a>{% endif %}
+      {% url 'panel:usuarios:listado' as u %}{% if u %}<a class="menu-enlace menu-enlace-secundario" href="{{ u }}"{% if "usuarios" in espacios %} aria-current="page"{% endif %}>Usuarios</a>{% endif %}
     </nav>
-  </aside>
-  {% endblock %}
-  <div class="panel-principal">
     {% block cabecera %}
-    <header class="panel-cabecera">
+    <div class="barra-pie">
       <span class="panel-usuario">{% firstof request.user.get_full_name request.user.get_username %}</span>
-      <form method="post" action="{% url 'panel:salir' %}">
+      <form class="formulario-en-linea" method="post" action="{% url 'panel:salir' %}">
         {% csrf_token %}
         <button class="boton boton-secundario" type="submit">Salir</button>
       </form>
-    </header>
+      <span class="barra-marca">Detach</span>
+    </div>
     {% endblock %}
+  </aside>
+  {% endwith %}
+  {% endblock %}
+  <div class="panel-principal">
     {% include "panel/partials/mensajes.html" %}
     <div class="panel-contenido">{% block panel_contenido %}{% endblock %}</div>
   </div>
+  <div id="panel-lateral" role="dialog" aria-modal="true" aria-label="Panel lateral" hidden></div>
 </div>
 {% endblock %}

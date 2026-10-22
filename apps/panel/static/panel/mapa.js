@@ -1,12 +1,12 @@
-/* Mapa de sitios: marcadores con los colores del semáforo (docs/02-diseno.md). */
+/* Mapa de sitios: marcadores con los colores del semáforo (tokens de templates/base.html). */
 (function () {
   "use strict";
 
   var COLORES = {
-    vencida: "#d9463e",
-    proxima: "#ffc600",
-    al_dia: "#2e9e5b",
-    sin_programar: "#7f8890",
+    vencida: "#D92D20",
+    proxima: "#E0A100",
+    al_dia: "#2E9E5B",
+    sin_programar: "#9AA1A9",
   };
   var ETIQUETAS = {
     vencida: "Vencida",
@@ -86,7 +86,7 @@
           var color = COLORES[sitio.estado] || COLORES.sin_programar;
           L.circleMarker([sitio.lat, sitio.lng], {
             radius: 9,
-            color: "#1b1f23",
+            color: "#1A1E23",
             weight: 1,
             fillColor: color,
             fillOpacity: 0.9,

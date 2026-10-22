@@ -1,0 +1,7 @@
+{# Pestañas del catálogo: Servicios y Productos. Se incluye en los listados de ambos. #}
+{% with espacios=request.resolver_match.namespaces %}
+<nav class="pestanas" aria-label="Catálogo">
+  <a href="{% url 'panel:servicios:listado' %}"{% if "servicios" in espacios %} aria-current="page"{% endif %}>Servicios</a>
+  <a href="{% url 'panel:productos:listado' %}"{% if "productos" in espacios %} aria-current="page"{% endif %}>Productos</a>
+</nav>
+{% endwith %}
