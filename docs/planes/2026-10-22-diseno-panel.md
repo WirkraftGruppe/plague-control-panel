@@ -249,11 +249,11 @@ commit_base: 0175082
 |---|---|
 | T1 | hecha |
 | T2 | hecha |
-| T3 | pendiente |
+| T3 | en curso |
 | T4 | pendiente |
 | T5 | pendiente |
 | T6 | pendiente |
-| T7 | pendiente |
+| T7 | hecha |
 | T8 | pendiente |
 
 ### Corridas
@@ -266,7 +266,7 @@ commit_base: 0175082
 | | T4 | | | |
 | | T5 | | | |
 | | T6 | | | |
-| | T7 | | | |
+| 2026-10-22 | T7 | 2fcfad2 | PASA (verificador 7/7; verificador-b 7/7) | |
 | | T8 | | | |
 | | TODO | | | |
 
