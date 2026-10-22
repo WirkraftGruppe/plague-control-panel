@@ -6,6 +6,7 @@ import tempfile
 from datetime import timedelta
 from decimal import Decimal
 from io import BytesIO
+from pathlib import Path
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
@@ -199,3 +200,25 @@ class FichaRedisenoTests(TestCase):
         self.assertNotContains(
             self.client.get(self.url), "No hay turnos pendientes y hay puntos vencidos"
         )
+
+
+class FichaPlanoTests(FichaRedisenoTests):
+    def test_ficha_carga_script_y_estilos_del_plano(self):
+        plano = Plano.objects.create(
+            sitio=self.sitio,
+            nombre="Planta baja",
+            imagen=SimpleUploadedFile("p.png", _png()),
+        )
+        PuntoControl.objects.filter(pk=self.general.pk).update(
+            plano=plano, x=Decimal("0.2"), y=Decimal("0.3"), orden=0
+        )
+        html = self.client.get(self.url).content.decode()
+        self.assertIn("sitios/ficha_plano.js", html)
+        self.assertIn("sitios/ficha.css", html)
+        self.assertIn('id="ficha-plano"', html)
+        self.assertRegex(html, rf'<li[^>]*data-punto="{self.general.pk}"')
+        [datos] = self.client.get(self.url).context["datos_ficha_plano"]
+        self.assertEqual([p["id"] for p in datos["puntos"]], [self.general.pk])
+        # El script del plano resalta por el mismo atributo data-punto de la lista.
+        ruta = Path(__file__).resolve().parents[1] / "static/sitios/ficha_plano.js"
+        self.assertIn("data-punto", ruta.read_text(encoding="utf-8"))

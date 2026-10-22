@@ -236,3 +236,29 @@ class InicioSitiosTests(TestCase):
         self.assertIn("visitas/nuevo_turno.js", html)
         self.assertNotIn("<script>", html)
         self.assertNotIn("style=", html)
+
+
+class TurnosAtrasadosInicioTests(InicioSitiosTests):
+    def filas_de_turnos(self):
+        html = self.client.get(self.url).content.decode()
+        seccion = html.split('id="titulo-hoy"')[1].split("</section>")[0]
+        return re.findall(r"<tr>.*?</tr>", seccion.split("<tbody>")[-1], re.S)
+
+    def test_atrasados_primero_en_turnos_de_hoy_con_chip(self):
+        de_hoy = self.sitio("Aaa de hoy")
+        atrasado = self.sitio("Zzz atrasado")
+        self.turno(de_hoy, dias=0)
+        self.turno(atrasado, dias=-3)
+        filas = self.filas_de_turnos()
+        self.assertEqual(len(filas), 2)
+        self.assertIn("Zzz atrasado", filas[0])
+        self.assertRegex(filas[0], r'etiqueta-estado etiqueta-danger">Atrasado</span>')
+        self.assertNotIn("Pendiente", filas[0])
+        self.assertIn("Aaa de hoy", filas[1])
+        self.assertIn("Pendiente", filas[1])
+        self.assertNotIn("Atrasado", filas[1])
+
+    def test_realizados_de_dias_anteriores_no_aparecen(self):
+        sitio = self.sitio("Cerrado ayer")
+        self.turno(sitio, estado=Visita.Estado.REALIZADA, dias=-2)
+        self.assertEqual(self.filas_de_turnos(), [])

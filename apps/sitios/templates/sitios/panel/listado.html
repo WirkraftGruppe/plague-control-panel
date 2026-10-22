@@ -24,7 +24,7 @@
         <td><a href="{% url 'panel:sitios:ficha' turno.sitio_id %}">{{ turno.sitio.nombre }}</a></td>
         <td>{{ turno.empleado.get_full_name|default:turno.empleado.username }}</td>
         <td>{{ turno.revisados }} / {{ turno.total }}</td>
-        <td>{% include "panel/partials/etiqueta_estado.html" with tono=turno.estado|tono_estado texto=turno.get_estado_display %}</td>
+        <td>{% if turno.atrasado %}{% include "panel/partials/etiqueta_estado.html" with tono="danger" texto="Atrasado" %}{% else %}{% include "panel/partials/etiqueta_estado.html" with tono=turno.estado|tono_estado texto=turno.get_estado_display %}{% endif %}</td>
         <td class="acciones-fila"><a href="{% url 'panel:visitas:ficha' turno.pk %}">Ver turno</a></td>
       </tr>
       {% endfor %}

@@ -6,7 +6,19 @@ from csp.decorators import csp_update
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.db.models import Count, Exists, F, Min, OuterRef, Q, Subquery
+from django.db.models import (
+    BooleanField,
+    Case,
+    Count,
+    Exists,
+    F,
+    Min,
+    OuterRef,
+    Q,
+    Subquery,
+    Value,
+    When,
+)
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -139,7 +151,7 @@ class SitioListado(AdministradorRequeridoMixin, ListadoPanelMixin):
         hoy = self.hoy
         visitas = (
             Visita.objects.filter(
-                Q(estado=Visita.Estado.PENDIENTE, programada_para=hoy)
+                Q(estado=Visita.Estado.PENDIENTE, programada_para__lte=hoy)
                 | Q(estado=Visita.Estado.ABIERTA)
                 | Q(estado=Visita.Estado.REALIZADA, cerrada_en__date=hoy)
             )
@@ -147,8 +159,17 @@ class SitioListado(AdministradorRequeridoMixin, ListadoPanelMixin):
             .annotate(
                 total=Count("items", distinct=True),
                 revisados=Count("revisiones__punto", distinct=True),
+                atrasado=Case(
+                    When(
+                        estado=Visita.Estado.PENDIENTE,
+                        programada_para__lt=hoy,
+                        then=Value(True),
+                    ),
+                    default=Value(False),
+                    output_field=BooleanField(),
+                ),
             )
-            .order_by("sitio__nombre", "pk")
+            .order_by("-atrasado", "sitio__nombre", "pk")
         )
         return list(visitas)
 
