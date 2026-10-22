@@ -24,7 +24,7 @@
               <a href="{% url 'panel:usuarios:contrasena' u.pk %}">Contraseña</a>
               {% if u.is_active and u.pk != request.user.pk %}<a href="{% url 'panel:usuarios:desactivar' u.pk %}">Desactivar</a>{% endif %}
               {% if not u.is_active %}
-                <form method="post" action="{% url 'panel:usuarios:reactivar' u.pk %}" style="display:inline">
+                <form class="formulario-en-linea" method="post" action="{% url 'panel:usuarios:reactivar' u.pk %}">
                   {% csrf_token %}<button type="submit" class="enlace">Reactivar</button>
                 </form>
               {% endif %}
