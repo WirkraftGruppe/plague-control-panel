@@ -1,7 +1,7 @@
 """Formularios del panel de Visitas."""
 
 from django import forms
-from django.db.models import Exists, OuterRef
+from django.db.models import Case, Exists, OuterRef, When
 from django.utils import timezone
 
 from apps.accounts.models import User
@@ -93,6 +93,21 @@ class FormularioTurno(FormularioPuntosConServicio):
         label="Fecha programada",
         widget=forms.DateInput(attrs={"type": "date"}),
     )
+
+    def __init__(self, *args, sitio, **kwargs):
+        super().__init__(*args, sitio=sitio, **kwargs)
+        # Al abrir el formulario: todos los puntos activos tildados y fecha de hoy.
+        self.initial.setdefault("puntos", [p.pk for p in self.puntos_activos])
+        self.initial.setdefault("programada_para", timezone.localdate())
+        # El responsable del sitio, si es un empleado activo, va primero y preelegido.
+        campo = self.fields["empleado"]
+        responsable = campo.queryset.filter(pk=sitio.responsable_id).first()
+        if responsable:
+            campo.queryset = campo.queryset.order_by(
+                Case(When(pk=responsable.pk, then=0), default=1), "username"
+            )
+            campo.empty_label = None
+            self.initial.setdefault("empleado", responsable.pk)
 
     def clean_programada_para(self):
         fecha = self.cleaned_data["programada_para"]

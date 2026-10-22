@@ -20,38 +20,15 @@
     </select>
     <button class="boton boton-secundario" type="submit">Filtrar</button>
   </form>
-  <table class="tabla">
-    <thead>
-      <tr>
-        {% include "panel/partials/th_orden.html" with campo="creado" etiqueta="Turno" %}
-        <th scope="col">Sitio</th>
-        <th scope="col">Empleado</th>
-        {% include "panel/partials/th_orden.html" with campo="estado" etiqueta="Estado" %}
-        {% include "panel/partials/th_orden.html" with campo="programada_para" etiqueta="Programada" %}
-        {% include "panel/partials/th_orden.html" with campo="cerrada_en" etiqueta="Realizada" %}
-        <th scope="col">Incidencia</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for v in visitas %}
-        <tr>
-          <td><a href="{% url 'panel:visitas:ficha' v.pk %}">Turno {{ v.pk }}</a></td>
-          <td>{{ v.sitio.nombre }}</td>
-          <td>{{ v.empleado.get_full_name|default:v.empleado.username }}</td>
-          <td>{% include "panel/partials/etiqueta_estado.html" with tono=v.estado|tono_estado texto=v.get_estado_display %}</td>
-          <td>{{ v.programada_para|date:"d/m/Y"|default:"—" }}</td>
-          <td>{{ v.realizada_en|date:"d/m/Y H:i"|default:"—" }}</td>
-          <td>
-            {% if v.incidencia or v.con_ubicacion %}
-              {% if v.incidencia_revisada_en %}{% include "panel/partials/etiqueta_estado.html" with tono="neutral" texto="Revisada" %}{% else %}{% include "panel/partials/etiqueta_estado.html" with tono="danger" texto="Sin revisar" %}{% endif %}
-              {% if v.con_ubicacion %}<small>Ubicación</small>{% endif %}
-            {% else %}—{% endif %}
-          </td>
-        </tr>
-      {% empty %}
-        <tr><td colspan="7">No hay turnos que coincidan.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  {% if incidencias_sin_revisar %}
+    {% include "visitas/panel/_grupo_turnos.html" with titulo="Incidencias sin revisar" lista=incidencias_sin_revisar clave="incidencias" %}
+  {% endif %}
+  {% for clave, titulo, lista in grupos %}
+    {% include "visitas/panel/_grupo_turnos.html" %}
+  {% endfor %}
+  {% if realizados %}
+    {% include "visitas/panel/_grupo_turnos.html" with titulo="Realizados" lista=realizados clave="realizados" %}
+  {% endif %}
+  {% if not visitas %}<p class="vacio">No hay turnos que coincidan.</p>{% endif %}
   {% include "panel/partials/paginacion.html" %}
 </div>

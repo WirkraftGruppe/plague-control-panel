@@ -1,0 +1,7 @@
+/* Nuevo turno: dentro del panel lateral y como página completa. */
+#panel-lateral .nuevo-turno { display: contents; }
+.nuevo-turno .mapa-leaflet { height: 280px; }
+.nuevo-turno .panel-lateral-pie { flex-wrap: wrap; align-items: center; }
+.turno-resumen { flex: 1 1 100%; margin: 0; font-size: 14px; color: var(--text-muted); }
+.nuevo-turno .tabla td, .nuevo-turno .tabla th { padding: 0 8px; }
+.nuevo-turno .tabla td select { min-width: 120px; }
