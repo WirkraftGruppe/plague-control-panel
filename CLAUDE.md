@@ -19,14 +19,14 @@ La raíz es un repositorio git propio. Cuando exista `mobile/`, será otro repos
 
 ## Reglas globales (aplican en todo momento)
 0. **Autorizar antes de escribir**: investigar, explicar, revisar, auditar, comparar o planificar es solo lectura: sin editar, sin delegar a un escritor, sin artefactos de implementación. Solo un pedido explícito de implementar habilita escribir; si la intención es ambigua, se hace una pregunta y se sigue en solo lectura.
-1. **Preguntar antes de romper**: si un cambio altera la estructura arquitectónica general, el contrato de la API (`/api/v1/`, que consumirá la app), o borra apps o pantallas enteras, hacer una pausa y confirmar la estrategia con el usuario.
+1. **Decisiones y escalamiento**: toda disyuntiva sigue `docs/protocolo-decisiones.md`.
+   Ahí está qué se decide solo y se registra en `### Decisiones del plan`, y qué se escala al usuario.
 2. **Idioma**: docstrings, comentarios de código, textos de la interfaz, nombres de campos y de modelos, siempre en **español** (sin modismos regionales en textos visibles).
 3. **Sistema experto (skills)**: antes de codificar con una tecnología, leé la skill relevante de `.agents/skills/[skill]/SKILL.md`; la sección que aplica, no el archivo entero. La referencia del proyecto vive en `.claude/skills/convenciones-proyecto/SKILL.md`.
 4. **Plan con criterios comprobables por máquina** (ver § Flujo de trabajo).
 5. **Delegación a subagentes con contrato** (ver § Flujo de trabajo).
 6. **Verificación independiente obligatoria** (ver § Flujo de trabajo). Ningún trabajo se reporta como terminado sin un informe del subagente `verificador`.
 7. **Datos de la empresa**: el nombre sale de `NOMBRE_EMPRESA`; ninguna plantilla ni código escribe el nombre de una empresa. Sin cifras ni datos inventados.
-8. **Cuándo preguntar**: Claude pregunta al usuario solo cuando la decisión (a) es de producto o del negocio, (b) es irreversible o toca datos, (c) contradice una decisión registrada, o (d) es una frontera del esquema (contrato, merge, FALLA). En todo lo demás elige la opción que recomendaría, la anota en ### Decisiones del plan con la marca 'decidida por Claude, revisable', y sigue; esas decisiones se presentan juntas al cierre de cada ola, no una por una.
 
 ## El principal coordina, no ejecuta
 

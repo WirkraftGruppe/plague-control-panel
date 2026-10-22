@@ -182,7 +182,7 @@ commit_base: <hash del commit docs(plan): <slug>>
 
 ### Estado de subtareas
 
-<!-- Valores: pendiente | en curso | hecha. Una tarea pasa a `hecha` solo después de ver pasar sus criterios. -->
+<!-- Valores: pendiente | en curso | pendiente de decisión | hecha. Una tarea pasa a `hecha` solo después de ver pasar sus criterios. -->
 
 | Tarea | Estado |
 |---|---|
@@ -205,6 +205,12 @@ corrida. Un veredicto vale solo para el HEAD verificado. -->
 | | T5 | | | |
 | | TODO | | | |
 
+### Decisiones del plan
+
+<!-- Disyuntivas resueltas durante la ejecución; criterios y escalamiento en
+`docs/protocolo-decisiones.md`. Una línea por decisión:
+- T<n> — disyuntiva — opciones — elección — motivo (una línea) — autónoma — cómo revertir — decidida por Claude, revisable -->
+
 ## Pendientes que deja este plan
 
 <!--
@@ -224,8 +230,8 @@ una línea sangrada continúa la anterior):
 
 - AAAA-MM-DD — decisión — motivo — reemplaza a: (nada|fecha)
 
-Claude pregunta al usuario solo cuando la decisión (a) es de producto o del negocio, (b) es irreversible o toca datos, (c) contradice una decisión registrada, o (d) es una frontera del esquema (contrato, merge, FALLA). En todo lo demás elige la opción que recomendaría, la anota en ### Decisiones del plan con la marca 'decidida por Claude, revisable', y sigue; esas decisiones se presentan juntas al cierre de cada ola, no una por una.
-Ejemplo: `- AAAA-MM-DD — decisión — motivo — reemplaza a: (nada) — decidida por Claude, revisable`
+Esta subsección recibe decisiones fechadas, del usuario o aceptadas al fusionar. Las disyuntivas
+autónomas de Claude van en `### Decisiones del plan` (ver `docs/protocolo-decisiones.md`).
 
 ### Cierra
 
