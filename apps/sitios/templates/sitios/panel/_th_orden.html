@@ -1,0 +1,10 @@
+{# Encabezado ordenable que conserva los filtros. Uso: include con campo y etiqueta; el contexto trae orden, q y conservar_qs. #}
+{% with descendente='-'|add:campo %}
+<th scope="col" aria-sort="{% if orden == campo %}ascending{% elif orden == descendente %}descending{% else %}none{% endif %}">
+  <a class="th-orden" href="?orden={% if orden == campo %}-{% endif %}{{ campo }}{% if q %}&amp;q={{ q|urlencode }}{% endif %}{% if conservar_qs %}&amp;{{ conservar_qs }}{% endif %}"
+     hx-get="?orden={% if orden == campo %}-{% endif %}{{ campo }}{% if q %}&amp;q={{ q|urlencode }}{% endif %}{% if conservar_qs %}&amp;{{ conservar_qs }}{% endif %}"
+     hx-target="#listado" hx-swap="outerHTML" hx-push-url="true">
+    {{ etiqueta }}{% if orden == campo %} ▲{% elif orden == descendente %} ▼{% endif %}
+  </a>
+</th>
+{% endwith %}

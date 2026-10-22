@@ -5,6 +5,7 @@ from collections import defaultdict
 from typing import NamedTuple
 
 from django.db import models
+from django.db.models import Count, Q
 
 from .models import PuntoControl
 
@@ -72,3 +73,55 @@ def resumen_de_sitios(sitios, hoy):
             estado, min((f for f in lista if f), default=None)
         )
     return resumen
+
+
+class EstadoSitio(models.TextChoices):
+    """Estado de un sitio por el mínimo vencimiento de sus puntos activos."""
+
+    VENCIDOS = "vencidos", "Vencidos"
+    SEMANA = "semana", "Esta semana"
+    AL_DIA = "al_dia", "Al día"
+    SIN_FECHAS = "sin_fechas", "Sin fechas"
+
+
+# Chip de cada fila: el tono de panel.css y el texto en singular.
+CHIP_ESTADO_SITIO = {
+    EstadoSitio.VENCIDOS: ("danger", "Vencido"),
+    EstadoSitio.SEMANA: ("warn", "Esta semana"),
+    EstadoSitio.AL_DIA: ("ok", "Al día"),
+    EstadoSitio.SIN_FECHAS: ("neutral", "Sin fechas"),
+}
+
+
+def estado_de_sitio(vencimiento, hoy):
+    """Estado del sitio según su mínimo ``proximo_vencimiento``; nulo, sin fechas."""
+    if vencimiento is None:
+        return EstadoSitio.SIN_FECHAS
+    if vencimiento < hoy:
+        return EstadoSitio.VENCIDOS
+    if vencimiento <= hoy + datetime.timedelta(days=UMBRAL_PROXIMA_DIAS):
+        return EstadoSitio.SEMANA
+    return EstadoSitio.AL_DIA
+
+
+def condicion_de_estado(estado, hoy, campo="proximo_vencimiento"):
+    """``Q`` equivalente a ``estado_de_sitio`` sobre una anotación con el mínimo."""
+    limite = hoy + datetime.timedelta(days=UMBRAL_PROXIMA_DIAS)
+    condiciones = {
+        EstadoSitio.VENCIDOS: Q(**{f"{campo}__lt": hoy}),
+        EstadoSitio.SEMANA: Q(**{f"{campo}__gte": hoy, f"{campo}__lte": limite}),
+        EstadoSitio.AL_DIA: Q(**{f"{campo}__gt": limite}),
+        EstadoSitio.SIN_FECHAS: Q(**{f"{campo}__isnull": True}),
+    }
+    return condiciones[estado]
+
+
+def conteos_por_estado(sitios, hoy):
+    """``{estado: cantidad}`` de un queryset con la anotación, en una agregación."""
+    agregados = sitios.order_by().aggregate(
+        **{
+            e.value: Count("pk", filter=condicion_de_estado(e, hoy))
+            for e in EstadoSitio
+        }
+    )
+    return {EstadoSitio(clave): total for clave, total in agregados.items()}

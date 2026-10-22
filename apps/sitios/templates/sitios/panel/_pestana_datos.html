@@ -1,0 +1,18 @@
+{% with sitio=object %}
+<section aria-labelledby="titulo-datos">
+  <h2 id="titulo-datos">Datos del sitio</h2>
+  <dl class="datos">
+    <dt>Dirección</dt><dd>{{ sitio.direccion|default:"—" }}</dd>
+    <dt>Localidad</dt><dd>{{ sitio.localidad|default:"—" }}</dd>
+    <dt>Sector</dt><dd>{{ sitio.get_sector_display }}</dd>
+    <dt>Coordenadas</dt><dd>{% if sitio.latitud is not None and sitio.longitud is not None %}{{ sitio.latitud }}, {{ sitio.longitud }}{% else %}Sin cargar{% endif %}</dd>
+    <dt>Contacto en el sitio</dt><dd>{{ sitio.contacto_en_sitio|default:"—" }} {{ sitio.telefono_en_sitio }}</dd>
+    <dt>Horario de acceso</dt><dd>{{ sitio.horario_acceso|default:"—" }}</dd>
+    <dt>Notas</dt><dd>{{ sitio.notas|default:"—"|linebreaksbr }}</dd>
+    <dt>Estado</dt><dd>{% if sitio.activo %}Activo{% else %}Inactivo{% endif %}</dd>
+  </dl>
+</section>
+{% include "sitios/panel/_pestana_mapa.html" %}
+{# Programación en línea, QR y baja de cada punto. #}
+{% include "sitios/panel/_pestana_puntos.html" %}
+{% endwith %}

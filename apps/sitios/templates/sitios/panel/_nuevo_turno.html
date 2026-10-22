@@ -1,0 +1,2 @@
+{# Botón "Nuevo turno": abre el formulario en el panel lateral. Uso: include con sitio y, opcional, clase. #}
+{% url 'panel:visitas:nuevo_turno' sitio.pk as url_turno %}<a class="boton {{ clase|default:'boton-secundario' }}" href="{{ url_turno }}" hx-get="{{ url_turno }}" hx-target="#panel-lateral" data-abre-panel>Nuevo turno</a>

@@ -5,69 +5,89 @@
   {{ block.super }}
   <link rel="stylesheet" href="{% static 'vendor/leaflet/leaflet.css' %}">
   <link rel="stylesheet" href="{% static 'sitios/puntos.css' %}">
+  <link rel="stylesheet" href="{% static 'sitios/ficha.css' %}">
 {% endblock %}
 {% block panel_contenido %}
 {% with sitio=object %}
-<h1>{{ sitio.nombre }}</h1>
-<p>
-  <a class="boton boton-secundario" href="{% url 'panel:sitios:editar' sitio.pk %}">Editar</a>
-  <a class="boton boton-secundario" href="{% url 'panel:sitios:listado' %}">Volver al listado</a>
-</p>
-<dl class="datos">
-  <dt>Cliente</dt><dd>{% url 'panel:clientes:ficha' sitio.cliente.pk as u %}{% if u %}<a href="{{ u }}">{{ sitio.cliente }}</a>{% else %}{{ sitio.cliente }}{% endif %}</dd>
-  <dt>Dirección</dt><dd>{{ sitio.direccion|default:"—" }}</dd>
-  <dt>Localidad</dt><dd>{{ sitio.localidad|default:"—" }}</dd>
-  <dt>Sector</dt><dd>{{ sitio.get_sector_display }}</dd>
-  <dt>Coordenadas</dt><dd>{% if sitio.latitud is not None and sitio.longitud is not None %}{{ sitio.latitud }}, {{ sitio.longitud }}{% else %}Sin cargar{% endif %}</dd>
-  <dt>Contacto en el sitio</dt><dd>{{ sitio.contacto_en_sitio|default:"—" }} {{ sitio.telefono_en_sitio }}</dd>
-  <dt>Horario de acceso</dt><dd>{{ sitio.horario_acceso|default:"—" }}</dd>
-  <dt>Notas</dt><dd>{{ sitio.notas|default:"—"|linebreaksbr }}</dd>
-  <dt>Estado</dt><dd>{% if sitio.activo %}Activo{% else %}Inactivo{% endif %}</dd>
-</dl>
-
-<section>
-  <h2>Turnos</h2>
-  <p class="acciones">
-    <a class="boton boton-primario" href="{% url 'panel:visitas:nuevo_turno' sitio.pk %}">Nuevo turno</a>
-    <a class="boton boton-secundario" href="{% url 'panel:visitas:cargar' sitio.pk %}">Cargar visita</a>
-  </p>
-  <div class="turnos-ficha">
-    <div>
-      <h3>Turnos pendientes</h3>
-      {% include "sitios/panel/_turnos.html" with turnos=turnos_pendientes vacio="No hay turnos pendientes." fecha_pendiente=True %}
+<header class="ficha-cabecera">
+  <div>
+    <a class="texto-secundario" href="{% url 'panel:sitios:listado' %}">&larr; Sitios</a>
+    <div class="ficha-titulo">
+      <h1>{{ sitio.nombre }}</h1>
+      {% include "panel/partials/etiqueta_estado.html" with tono=chip_general.0 texto=chip_general.1 %}
+      {% if not sitio.activo %}{% include "panel/partials/etiqueta_estado.html" with tono="neutral" texto="Inactivo" %}{% endif %}
     </div>
-    <div>
-      <h3>Turnos realizados</h3>
-      {% include "sitios/panel/_turnos.html" with turnos=turnos_realizados vacio="Todavía no hay turnos realizados." %}
-    </div>
+    <dl class="ficha-resumen">
+      <div><dt>Cliente</dt><dd>{% url 'panel:clientes:ficha' sitio.cliente.pk as u %}{% if u %}<a href="{{ u }}">{{ sitio.cliente }}</a>{% else %}{{ sitio.cliente }}{% endif %}</dd></div>
+      <div><dt>Dirección</dt><dd>{{ sitio.direccion|default:"—" }}{% if sitio.localidad %}, {{ sitio.localidad }}{% endif %}</dd></div>
+      <div><dt>Responsable</dt><dd>{% if sitio.responsable %}{{ sitio.responsable.get_full_name|default:sitio.responsable.username }}{% else %}—{% endif %}</dd></div>
+      <div><dt>Contacto</dt><dd>{{ sitio.contacto_en_sitio|default:"—" }}{% if sitio.telefono_en_sitio %} · {{ sitio.telefono_en_sitio }}{% endif %}</dd></div>
+    </dl>
   </div>
-</section>
+  <div class="acciones">
+    <a class="boton boton-secundario" href="{% url 'panel:sitios:editar' sitio.pk %}">Editar sitio</a>
+    <a class="boton boton-secundario" href="{% url 'panel:visitas:cargar' sitio.pk %}">Cargar visita</a>
+    {% include "sitios/panel/_nuevo_turno.html" with clase="boton-primario" %}
+  </div>
+</header>
 
-<nav class="pestanas" aria-label="Puntos de control del sitio">
+<div class="ficha-columnas">
+  <section aria-labelledby="titulo-plano">
+    <h2 id="titulo-plano">Plano</h2>
+    {% if datos_ficha_plano %}
+    {% if datos_ficha_plano|length > 1 %}
+    <div class="campo"><label for="ficha-plano-selector">Plano</label>
+      <select id="ficha-plano-selector">{% for p in datos_ficha_plano %}<option value="{{ p.id }}">{{ p.nombre }}</option>{% endfor %}</select>
+    </div>
+    {% endif %}
+    <div id="ficha-plano" class="mapa-leaflet mapa-ficha"></div>
+    {{ datos_ficha_plano|json_script:"datos-ficha-plano" }}
+    {% else %}
+    <p class="texto-secundario">Este sitio no tiene planos. Suba uno desde la pestaña Planos.</p>
+    {% endif %}
+  </section>
+  <section aria-labelledby="titulo-lista">
+    <h2 id="titulo-lista">Puntos de control</h2>
+    <ul class="lista-puntos" id="ficha-puntos">
+      {% for punto in puntos %}
+      <li class="punto-fila"{% if punto.activo %} data-punto="{{ punto.pk }}" data-estado="{{ punto.estado }}"{% endif %}>
+        <span class="numero-punto">{% if punto.activo %}{{ punto.numero }}{% else %}—{% endif %}</span>
+        <span class="punto-nombre">{{ punto.nombre }}<span class="texto-secundario">{{ punto.servicio.nombre|default:"Sin servicio" }}{% if punto.frecuencia_dias %} · cada {{ punto.frecuencia_dias }} días{% endif %}</span></span>
+        <span class="punto-vencimiento">{% if punto.activo %}{% if punto.proximo_vencimiento %}{{ punto.proximo_vencimiento|date:"d/m/Y" }} {% endif %}<span class="etiqueta-estado etiqueta-{{ punto.vencimiento_clase }}">{{ punto.vencimiento_etiqueta }}</span>{% else %}<span class="etiqueta-estado etiqueta-neutral">Inactivo</span>{% endif %}</span>
+        <a href="{% url 'panel:sitios:punto_editar' punto.pk %}">Editar<span class="visually-hidden"> {{ punto.nombre }}</span></a>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+</div>
+
+<nav class="pestanas" aria-label="Secciones del sitio">
   {% for clave, nombre in pestanas %}
   <a href="?pestana={{ clave }}"{% if clave == pestana %} aria-current="page"{% endif %}>{{ nombre }}</a>
   {% endfor %}
 </nav>
 
-{# Sondeo del estado de los puntos (contrato con apps/panel): el mapa y el editor se recolorean al recibirlo. #}
+{# Sondeo del estado de los puntos (contrato con apps/panel): el plano y el editor se recolorean al recibirlo. #}
 {% url 'panel:estado_sitio' sitio.pk as url_estado %}
 {% if url_estado %}
 <div id="estado-sitio" data-sondeo hx-get="{{ url_estado }}" hx-trigger="every 5s" hx-swap="innerHTML" hidden></div>
 {% endif %}
 
-{% if pestana == "mapa" %}
-  {% include "sitios/panel/_pestana_mapa.html" %}
-{% elif pestana == "planos" %}
+{% if pestana == "planos" %}
   {% include "sitios/panel/_pestana_planos.html" %}
+{% elif pestana == "datos" %}
+  {% include "sitios/panel/_pestana_datos.html" %}
 {% else %}
-  {% include "sitios/panel/_pestana_puntos.html" %}
+  {% include "sitios/panel/_pestana_turnos.html" %}
 {% endif %}
 
 {% endwith %}
 {% endblock %}
 {% block scripts %}
-  {% if pestana != "puntos" %}<script src="{% static 'vendor/leaflet/leaflet.js' %}"></script>{% endif %}
+  <script src="{% static 'vendor/leaflet/leaflet.js' %}"></script>
+  <script src="{% static 'visitas/nuevo_turno.js' %}"></script>
   <script src="{% static 'sitios/sondeo.js' %}"></script>
-  {% if pestana == "mapa" %}<script src="{% static 'sitios/sitio_ficha_mapa.js' %}"></script>{% endif %}
+  <script src="{% static 'sitios/ficha_plano.js' %}"></script>
+  {% if pestana == "datos" %}<script src="{% static 'sitios/sitio_ficha_mapa.js' %}"></script>{% endif %}
   {% if pestana == "planos" %}<script src="{% static 'sitios/plano_editor.js' %}"></script>{% endif %}
 {% endblock %}
