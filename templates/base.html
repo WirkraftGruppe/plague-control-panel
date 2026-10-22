@@ -1,5 +1,5 @@
 {% load static %}<!DOCTYPE html>
-<html lang="es" data-tema="claro">
+<html lang="es">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -35,51 +35,47 @@
       font-display: swap;
       src: url("{% static 'fonts/barlow-latin-700-normal.woff2' %}") format("woff2");
     }
-    @font-face {
-      font-family: "Barlow Condensed";
-      font-style: normal;
-      font-weight: 600;
-      font-display: swap;
-      src: url("{% static 'fonts/barlow-condensed-latin-600-normal.woff2' %}") format("woff2");
-    }
-    @font-face {
-      font-family: "Barlow Condensed";
-      font-style: normal;
-      font-weight: 700;
-      font-display: swap;
-      src: url("{% static 'fonts/barlow-condensed-latin-700-normal.woff2' %}") format("woff2");
-    }
-    @font-face {
-      font-family: "Barlow Condensed";
-      font-style: normal;
-      font-weight: 800;
-      font-display: swap;
-      src: url("{% static 'fonts/barlow-condensed-latin-800-normal.woff2' %}") format("woff2");
-    }
 
-    /* Colores de estado */
+    /* Tokens del sistema visual neutro de Detach (docs/02-diseno.md) */
     :root {
-      --ok: #2e9e5b;
-      --warn: #ffc600;
-      --danger: #d9463e;
-      --neutral: #7f8890;
-    }
+      --bg: #F5F6F7;
+      --surface: #FFFFFF;
+      --surface-2: #EEF0F2;
+      --border: #DFE2E6;
+      --border-strong: #C5CAD1;
+      --text: #1A1E23;
+      --text-muted: #545C66;
+      --text-faint: #646C76;
 
-    /* Tema claro (panel de gestión) */
-    [data-tema="claro"] {
-      --bg: #f4f3ef;
-      --surface: #ffffff;
-      --surface-2: #eceae4;
-      --border: #d9d6cf;
-      --border-strong: #b9b5ab;
-      --text: #15191c;
-      --text-muted: #4f565c;
-      --text-faint: #7f8890;
-      --brand: #ffc600;
-      --brand-hover: #e6b200;
-      --on-brand: #0f1417;
-      --on-brand-muted: #3a3410;
-      --brand-tint: #fff7d6;
+      --accion: #1F5FD1;
+      --accion-hover: #174AA6;
+      --sobre-accion: #FFFFFF;
+      --activo-fondo: #EAF1FD;
+      --activo-texto: #1F5FD1;
+
+      --vencido-punto: #D92D20;
+      --vencido-fondo: #FDECEA;
+      --vencido-texto: #B42318;
+      --proximo-punto: #E0A100;
+      --proximo-fondo: #FFF4D6;
+      --proximo-texto: #7A4F00;
+      --al-dia-punto: #2E9E5B;
+      --al-dia-fondo: #E6F4EC;
+      --al-dia-texto: #1B6B3C;
+      --sin-fecha-punto: #9AA1A9;
+      --sin-fecha-fondo: #EEF0F2;
+      --sin-fecha-texto: #4A525B;
+
+      --radio-control: 6px;
+      --radio-bloque: 8px;
+      --radio-chip: 999px;
+      --ancho-barra: 232px;
+
+      /* Alias de los puntos de estado para hojas de otras apps */
+      --ok: var(--al-dia-punto);
+      --warn: var(--proximo-punto);
+      --danger: var(--vencido-punto);
+      --neutral: var(--sin-fecha-punto);
     }
 
     * { box-sizing: border-box; }
@@ -93,22 +89,19 @@
       line-height: 1.5;
     }
 
-    h1, h2, h3 {
-      font-family: "Barlow Condensed", system-ui, sans-serif;
-      font-weight: 700;
-    }
+    h1, h2, h3 { font-weight: 700; }
 
-    a { color: var(--brand); }
-    a:hover { color: var(--brand-hover); }
+    a { color: var(--accion); }
+    a:hover { color: var(--accion-hover); }
 
     .logo { display: block; height: 40px; width: auto; }
   </style>
   {% block extra_head %}{% endblock %}
 </head>
 <body>
-  <header>
+  {% block encabezado %}<header>
     <a href="/"><img class="logo" src="{% static 'img/logo.png' %}" alt="{{ NOMBRE_EMPRESA }}"></a>
-  </header>
+  </header>{% endblock %}
   <main>
     {% block contenido %}{% endblock %}
   </main>
