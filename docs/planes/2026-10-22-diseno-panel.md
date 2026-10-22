@@ -25,7 +25,7 @@ Sin migraciones. Las olas siguen la propiedad de archivos: la ola 1 fija tokens,
 | Ola | Subtareas | Apps (migraciones) |
 |---|---|---|
 | 1 | T1, T2, T3 (integración: T2 antes que T1) | ninguna |
-| 2 | T4, T5, T6, T7, T8 (integración) | ninguna |
+| 2 | T4, T5, T6, T7, T9, T8 (integración) | ninguna |
 
 ## Subtareas
 
@@ -213,13 +213,36 @@ Sin migraciones. Las olas siguen la propiedad de archivos: la ola 1 fija tokens,
   - `[grep-0]` `grep -niE "barlow condensed|#ffc600" docs/02-diseno.md`
   - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 300 --subtarea T7`
 
+### T9 — Plano interactivo de la ficha y turnos atrasados en el inicio
+
+<!-- Agregada por contrato modificado (2026-10-22, decisión del usuario): T4 agregó 1093 líneas sobre un
+presupuesto de 1000. Lo que no entra en T4 va acá; T4 no cambia sus criterios ni su presupuesto. -->
+
+- **Ola**: 2
+- **Depende de**: T4 (mismo worktree `worktrees/diseno-panel-T4`, commits `T9:` después de los `T4:`)
+- **Puede tocar**: `apps/sitios/panel_views.py`, `apps/sitios/estado.py`, `apps/sitios/templates/sitios/panel/**`, `apps/sitios/static/sitios/**`, `apps/sitios/tests/**`
+- **No puede tocar**: `docs/planes/`, `templates/`, `static/`, `apps/panel/**`, `apps/visitas/**`, `apps/sitios/models.py`, `apps/sitios/qr.py`, el sitio público `/q/`, la API de sitios, `geocodificacion.py`, cualquier `migrations/`
+- **Skill a leer antes**: `.claude/skills/convenciones-proyecto/SKILL.md`
+- **Worktree**: sí (el de T4)
+- **Presupuesto**: 300 líneas agregadas
+- **Qué hacer**:
+  - `apps/sitios/static/sitios/ficha_plano.js` y `apps/sitios/static/sitios/ficha.css` (resaltado cruzado plano ↔ lista por `data-punto` y estilos de las dos columnas de la ficha) pasan del commit de T4 a un commit `T9:` sin cambiar su contenido.
+  - "Turnos de hoy" del inicio incluye también los turnos pendientes atrasados (`programada_para` < hoy), primero y con chip "Atrasado", como en la pantalla Turnos (decisión del usuario, 2026-10-22). La cantidad de consultas sigue sin depender de la cantidad de sitios.
+- **Criterios**:
+  - `[existe]` `apps/sitios/static/sitios/ficha.css`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_panel_ficha_rediseno.FichaPlanoTests.test_ficha_carga_script_y_estilos_del_plano --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_panel_inicio.TurnosAtrasadosInicioTests.test_atrasados_primero_en_turnos_de_hoy_con_chip --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_panel_inicio.TurnosAtrasadosInicioTests.test_realizados_de_dias_anteriores_no_aparecen --keepdb`
+  - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios apps.panel --keepdb`
+  - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 300 --subtarea T9`
+
 ### T8 — Integración ola 2 (principal)
 
-- **Ola**: 2 (después de verificar T4, T5, T6 y T7)
-- **Depende de**: T4, T5, T6, T7
+- **Ola**: 2 (después de verificar T4, T5, T6, T7 y T9)
+- **Depende de**: T4, T5, T6, T7, T9
 - **Pasos**:
   1. Revisar `bash .claude/hooks/cambios.sh . plan/diseno-panel` de cada subtarea, no los informes.
-  2. Desde la raíz, `worktree-integrar.sh diseno-panel T<n> plan/diseno-panel <rutas>` para T4 (`apps/sitios`), T5 (`apps/visitas`), T6 (`apps/servicios apps/productos apps/accounts apps/clientes`) y T7 (`docs/02-diseno.md`).
+  2. Desde la raíz, `worktree-integrar.sh diseno-panel T<n> plan/diseno-panel <rutas>` para T4 (`apps/sitios`; el worktree de T4 lleva también los commits de T9), T5 (`apps/visitas`), T6 (`apps/servicios apps/productos apps/accounts apps/clientes`) y T7 (`docs/02-diseno.md`).
   3. Prueba manual en el navegador (1280 px): abrir y cerrar el panel lateral desde la lista y la ficha, Escape, foco de vuelta, atajos, resumen y clic en el plano; registrar lo observado en el Registro.
   4. Cierre global, verificación `TODO` (verificador y verificador-b) y `auditor-seguridad`.
 - **Presupuesto**: no aplica (solo merges y commits `registro:`)
