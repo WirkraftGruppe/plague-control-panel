@@ -27,7 +27,7 @@
           <td>
             <a href="{% url 'panel:servicios:campo_editar' campo.pk %}">Editar</a>
             {% if campo.activo %}<a href="{% url 'panel:servicios:campo_desactivar' campo.pk %}">Desactivar</a>{% else %}
-              <form method="post" action="{% url 'panel:servicios:campo_reactivar' campo.pk %}" style="display:inline">
+              <form class="formulario-en-linea" method="post" action="{% url 'panel:servicios:campo_reactivar' campo.pk %}">
                 {% csrf_token %}<button type="submit" class="enlace">Reactivar</button>
               </form>
             {% endif %}
