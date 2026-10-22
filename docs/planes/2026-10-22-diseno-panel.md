@@ -247,7 +247,7 @@ commit_base: 0175082
 
 | Tarea | Estado |
 |---|---|
-| T1 | en curso |
+| T1 | hecha |
 | T2 | hecha |
 | T3 | pendiente |
 | T4 | pendiente |
@@ -260,7 +260,7 @@ commit_base: 0175082
 
 | Fecha/hora | Alcance | HEAD verificado | Veredicto | Notas |
 |---|---|---|---|---|
-| | T1 | | | |
+| 2026-10-22 | T1 | d4488fc | PASA (verificador 21/21; verificador-b 22/22) | login, 404, 500 y mapa.html sin cambios propios: toman los tokens por panel.css |
 | 2026-10-22 | T2 | 82a8da0 | PASA (verificador 5/5; verificador-b 5/5) | commit T2 hecho por el principal: el implementador dejó el cambio sin commitear |
 | | T3 | | | |
 | | T4 | | | |
