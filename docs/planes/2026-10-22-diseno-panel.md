@@ -248,7 +248,7 @@ commit_base: 0175082
 | Tarea | Estado |
 |---|---|
 | T1 | en curso |
-| T2 | en curso |
+| T2 | hecha |
 | T3 | pendiente |
 | T4 | pendiente |
 | T5 | pendiente |
@@ -261,7 +261,7 @@ commit_base: 0175082
 | Fecha/hora | Alcance | HEAD verificado | Veredicto | Notas |
 |---|---|---|---|---|
 | | T1 | | | |
-| | T2 | | | |
+| 2026-10-22 | T2 | 82a8da0 | PASA (verificador 5/5; verificador-b 5/5) | commit T2 hecho por el principal: el implementador dejó el cambio sin commitear |
 | | T3 | | | |
 | | T4 | | | |
 | | T5 | | | |
