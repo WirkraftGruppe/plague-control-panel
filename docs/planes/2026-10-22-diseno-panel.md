@@ -249,10 +249,10 @@ commit_base: 0175082
 |---|---|
 | T1 | hecha |
 | T2 | hecha |
-| T3 | en curso |
+| T3 | hecha |
 | T4 | pendiente |
 | T5 | pendiente |
-| T6 | pendiente |
+| T6 | hecha |
 | T7 | hecha |
 | T8 | pendiente |
 
@@ -262,10 +262,10 @@ commit_base: 0175082
 |---|---|---|---|---|
 | 2026-10-22 | T1 | d4488fc | PASA (verificador 21/21; verificador-b 22/22) | login, 404, 500 y mapa.html sin cambios propios: toman los tokens por panel.css |
 | 2026-10-22 | T2 | 82a8da0 | PASA (verificador 5/5; verificador-b 5/5) | commit T2 hecho por el principal: el implementador dejó el cambio sin commitear |
-| | T3 | | | |
+| 2026-10-22 | T3 | 1241038 | criterios 2/2 (git log); auditor-seguridad sobre T1 sin hallazgos | observación del auditor: 404 y 500 no cargan los tokens de base.html; `.pagina-error` usa respaldos con los valores del Adjunto |
 | | T4 | | | |
 | | T5 | | | |
-| | T6 | | | |
+| 2026-10-22 | T6 | ec34bb6 | PASA (verificador 7/7; verificador-b 7/7) | |
 | 2026-10-22 | T7 | 2fcfad2 | PASA (verificador 7/7; verificador-b 7/7) | |
 | | T8 | | | |
 | | TODO | | | |
