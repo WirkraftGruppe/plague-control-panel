@@ -16,7 +16,9 @@ class FiltrosClientesTests(TestCase):
         self.client.force_login(admin)
 
     def _marcados(self, parametros):
-        html = self.client.get(reverse("panel:clientes:listado"), parametros).content.decode()
+        html = self.client.get(
+            reverse("panel:clientes:listado"), parametros
+        ).content.decode()
         nav = re.search(r'<nav class="filtros[^"]*".*?</nav>', html, re.S).group(0)
         return re.findall(r'aria-current="page"[^>]*>\s*([^<]+?)\s*</a>', nav)
 
