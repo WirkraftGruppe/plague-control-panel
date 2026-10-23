@@ -37,5 +37,6 @@ class AccionesFilaTests(TestCase):
         html = self.client.get(reverse("panel:servicios:listado")).content.decode()
         self.assertRegex(
             html,
-            r'<div class="acciones-fila">\s*<a [^>]*>Editar</a>\s*<a [^>]*>Planilla</a>\s*</div>',
+            r'<div class="acciones-fila">\s*<a [^>]*>Editar</a>\s*'
+            r"<a [^>]*>Planilla</a>\s*</div>",
         )
