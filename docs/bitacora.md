@@ -7,13 +7,19 @@ Planes activos (los hooks derivan el plan de la rama; la línea `Plan activo:` d
 
 | plan | rama | ola actual | pendiente inmediato | sesión |
 |---|---|---|---|---|
-| `diseno-panel` | plan/diseno-panel | 2 (integrada) | el usuario revisa la verificación TODO (104/105; FALLA solo `congelado.sh` por los contratos modificados c235fc8 y f386238) y decide el merge a `main` | sesión 2026-10-22/23 |
+| (ninguno) | main | — | planificar `multiempresa`; P-diseno-panel-1 (primer clic en marcador del panel lateral) en un plan aparte | sesión 2026-10-23 |
 
-Siguiente (orden decidido el 2026-10-20; reconfirmado el 2026-10-21): `diseno-panel` → `multiempresa` → despliegue. El despliegue en Railway espera a que esos planes estén en `main`, para no tener que migrar datos reales. Problemas abiertos: ver `pendientes.py`. Decisiones y cuándo preguntar: `docs/protocolo-decisiones.md` (CLAUDE.md § Reglas globales, regla 1).
+Siguiente (orden decidido el 2026-10-20; reconfirmado el 2026-10-21): `multiempresa` → despliegue. El despliegue en Railway espera a que esos planes estén en `main`, para no tener que migrar datos reales. Problemas abiertos: ver `pendientes.py`. Decisiones y cuándo preguntar: `docs/protocolo-decisiones.md` (CLAUDE.md § Reglas globales, regla 1).
 
 Problemas abiertos: ver `py -3 .claude/hooks/pendientes.py` (cada plan los declara en `## Pendientes que deja este plan`; los anteriores están en `docs/planes/2026-10-03-pendientes-heredados.md`).
 
 ## Entradas (la más reciente arriba)
+
+### 2026-10-23 — `diseno-panel` fusionado en `main`
+Hecho:
+- El usuario autorizó el merge con la verificación TODO en 104/105 (FALLA solo `congelado.sh` por los contratos modificados c235fc8 y f386238, aprobados por él). Merge `--no-ff` en `main` (7270e4c); 5 decisiones copiadas a `docs/decisiones.md`.
+- P-diseno-panel-1 [importante] y P-diseno-panel-2 a -9 quedan abiertos.
+Pendiente: `multiempresa` → despliegue; P-diseno-panel-1 en un plan aparte.
 
 ### 2026-10-23 — Plan `diseno-panel` ejecutado (T1 a T11), sin fusionar
 Hecho:
