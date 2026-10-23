@@ -345,6 +345,7 @@ commit_base: 0175082
 | 2026-10-23 | T10 | fcea1a3 | criterios 6/6 PASA (verificador y verificador-b) | contrato MODIFICADO por c235fc8 y f386238 (decisiones del usuario): verificador da FALLA solo por eso |
 | 2026-10-23 | T11 | 1600c9d | criterios 6/6 PASA (verificador y verificador-b) | contrato MODIFICADO por c235fc8 y f386238 (decisiones del usuario): los verificadores dan FALLA solo por eso |
 | 2026-10-23 | T8 (prueba en navegador) | c2627ef | FALLA | panel lateral: nuevo_turno.js no se inicializa (htmx.onLoad antes de que htmx esté listo); fecha `22/10/2026` descartada por input date; visuales: desborde del panel, título duplicado, pie tapa filas, buscador de Turnos 26 px, filtros de Usuarios y Clientes, acciones de Servicios. Resto PASA (barra, inicio, ficha, Escape y foco, crear turno con fecha a mano, Turnos, Catálogo, mapa). Corrección: T10 y T11 |
+| 2026-10-23 | T8 (segunda prueba en navegador) | c37b595 | 6 de 7 puntos PASA | corregido: inicialización del panel lateral (también en la segunda apertura), fecha ISO y creación con valores por defecto, desborde, título único, pie, buscador 256 px, filtros de Usuarios y Clientes, acciones de Servicios; Escape y foco, `aria-current`, sin errores de JS ni CSP. Queda abierto: el primer clic en un marcador del plano del panel lateral se pierde (P-diseno-panel-1). Segunda y última ronda de esta revisión |
 | | T8 | | | |
 | | TODO | | | |
 
@@ -364,11 +365,25 @@ commit_base: 0175082
 
 ### Problemas
 
+- P-diseno-panel-1 [importante] En el panel lateral de nuevo turno el primer clic sobre un marcador del plano se pierde: Leaflet enfoca `.leaflet-container`, el foco desplaza `.panel-lateral-cuerpo` (40–56 px) y el `click` cae en el contenedor. Del segundo clic en adelante funciona y las casillas de la lista andan siempre; en la página completa no pasa. Corrección probable: `keyboard: false` en el mapa del panel o enfocar con `preventScroll` (`apps/visitas/static/visitas/nuevo_turno.js`), con prueba en navegador (segunda prueba de T8).
+- P-diseno-panel-2 [menor] Panel lateral de nuevo turno: la columna "Punto" corta palabras, la insignia "Sin programar" queda pegada al select y los selects de servicio (125 px) truncan el nombre (`apps/visitas/static/visitas/nuevo_turno.css`, anchos estimados en T10).
+- P-diseno-panel-3 [menor] `/panel/visitas/`: los selects de filtro (empleado, sitio, estado, incidencia) conservan el aspecto nativo; no usan la fila `.filtros` que T11 aplicó en Usuarios.
+- P-diseno-panel-4 [menor] Página completa de nuevo turno: "Sitio: …" queda fuera de la tarjeta del formulario.
+- P-diseno-panel-5 [observación] "Turnos de hoy" del inicio no tiene tope de filas: desde T9 lista todos los pendientes atrasados, sin importar su antigüedad (consultas constantes; auditor-seguridad sobre T4/T9).
+- P-diseno-panel-6 [observación] `templates/base.html` conserva los alias temporales `--ok`, `--warn`, `--danger` y `--neutral`; `apps/sitios` ya no los usa. Borrarlos cuando no quede ningún consumidor.
+- P-diseno-panel-7 [observación] `templates/404.html` y `templates/500.html` no cargan los tokens de `base.html`; `.pagina-error` usa respaldos `var(--x, valor)` con los valores del Adjunto (auditor-seguridad sobre T1). Con `DEBUG=True` la 404 propia no se ve en el navegador; la cubre `ErroresTests`.
+- P-diseno-panel-8 [observación] `TurnosAtrasadosInicioTests` y `FichaPlanoTests` heredan de `InicioSitiosTests` y `FichaRedisenoTests`: al correr la suite se repiten los tests de la clase base.
+- P-diseno-panel-9 [observación] `nuevo_turno.js`, `ficha_plano.js` y `panel_lateral.js` no tienen test de JS; los cubren solo las dos pruebas manuales en navegador de T8 (scripts en el scratchpad de la sesión, no en el repo).
+
 ### Decisiones
 
+- 2026-10-23 — Lo que encontró la primera prueba en navegador se corrige en T10 y T11 (bloqueantes y visuales), como contrato modificado — decisión del usuario — reemplaza a: (nada)
 - 2026-10-22 — `--text-faint` es `#646C76` y no el `#6B737D` del Adjunto — el aprobado da 4,44:1 sobre el fondo `#F5F6F7` y 4,2:1 sobre superficie-2 — reemplaza a: (nada)
 - 2026-10-22 — En Turnos, los pendientes atrasados van primero en "Hoy" con chip "Atrasado" y los cancelados en "Realizados" — los grupos del pedido no tenían lugar para ellos — reemplaza a: (nada)
 - 2026-10-22 — T4 excedió su presupuesto (1093 de 1000): lo que sobra (`ficha_plano.js`, `ficha.css`) pasa a una subtarea nueva T9, sin subir el presupuesto ni recortar código — regla de presupuesto de CLAUDE.md — reemplaza a: (nada)
 - 2026-10-22 — "Turnos de hoy" del inicio incluye los pendientes atrasados, primero y con chip "Atrasado" — un sitio con un turno atrasado no aparecía ni en "Turnos de hoy" ni en "Requieren atención" — reemplaza a: (nada)
 
 ### Cierra
+
+- cierra: P-robustez-panel-13 — T6 reemplazó los `style="display:inline"` de usuarios y de la planilla de servicios por `.formulario-en-linea`
+- cierra: P-flujo-sitio-8 — T4 muestra el plano coloreado por estado en la ficha, arriba y fuera de las pestañas, junto a la lista de puntos
