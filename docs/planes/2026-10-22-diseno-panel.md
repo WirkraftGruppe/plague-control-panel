@@ -25,7 +25,7 @@ Sin migraciones. Las olas siguen la propiedad de archivos: la ola 1 fija tokens,
 | Ola | Subtareas | Apps (migraciones) |
 |---|---|---|
 | 1 | T1, T2, T3 (integración: T2 antes que T1) | ninguna |
-| 2 | T4, T5, T6, T7, T9, T8 (integración) | ninguna |
+| 2 | T4, T5, T6, T7, T9, T10, T11, T8 (integración) | ninguna |
 
 ## Subtareas
 
@@ -236,13 +236,61 @@ presupuesto de 1000. Lo que no entra en T4 va acá; T4 no cambia sus criterios n
   - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios apps.panel --keepdb`
   - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 300 --subtarea T9`
 
+### T10 — Panel lateral de nuevo turno funcionando en el navegador
+
+<!-- Agregada por contrato modificado (2026-10-23, decisión del usuario): la prueba en navegador de T8
+encontró que el JS del panel lateral no se inicializa y que la fecha llega vacía. -->
+
+- **Ola**: 2 (después de integrar T4 y T5)
+- **Depende de**: T4, T5
+- **Puede tocar**: `apps/visitas/panel_forms.py`, `apps/visitas/templates/visitas/panel/**`, `apps/visitas/static/visitas/**`, `apps/visitas/tests/**`
+- **No puede tocar**: `docs/planes/`, `templates/`, `static/`, `apps/panel/**`, `apps/sitios/**`, `apps/visitas/services.py`, `apps/visitas/models.py`, `apps/visitas/panel_views.py`, la API de visitas, cualquier `migrations/`
+- **Skill a leer antes**: `.claude/skills/convenciones-proyecto/SKILL.md`
+- **Worktree**: sí
+- **Presupuesto**: 250 líneas agregadas
+- **Qué hacer**:
+  - `nuevo_turno.js` se inicializa sin depender del orden de carga respecto de htmx: hoy llama a `htmx.onLoad` antes de que htmx esté listo y el callback nunca se registra, así que en el panel lateral no andan atajos, marcadores, resumen ni `disabled`. Inicializar al cargar el documento y en el evento `htmx:load` (o `htmx:afterSwap` de `#panel-lateral`) con `document.addEventListener`, sin `htmx.onLoad`.
+  - La fecha del turno (`programada_para`) y toda fecha de `input type="date"` de los formularios del panel de visitas se renderizan en formato `AAAA-MM-DD` (hoy salen `22/10/2026` y el navegador las descarta).
+  - El listado de puntos del panel lateral no se sale de la tarjeta (selects y nombres dentro del ancho); en la página completa, un solo título "Nuevo turno" y el pie fijo no tapa las últimas filas.
+- **Criterios**:
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_navegador.PanelLateralNavegadorTests.test_nuevo_turno_js_no_usa_htmx_onload --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_navegador.PanelLateralNavegadorTests.test_fecha_del_turno_en_formato_iso --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_navegador.PanelLateralNavegadorTests.test_pagina_completa_con_un_solo_titulo --keepdb`
+  - `[grep-0]` `grep -n "htmx.onLoad" apps/visitas/static/visitas/nuevo_turno.js`
+  - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas apps.panel --keepdb`
+  - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 250 --subtarea T10`
+
+### T11 — Buscador, filtros y acciones de los listados
+
+<!-- Agregada por contrato modificado (2026-10-23, decisión del usuario): la prueba en navegador de T8
+encontró el buscador de Turnos de 26 px, filtros sin estilo en Usuarios y Clientes y acciones pegadas en Servicios. -->
+
+- **Ola**: 2 (después de integrar T4 a T7)
+- **Depende de**: T4, T5, T6
+- **Puede tocar**: `static/css/panel.css`, `templates/panel/partials/**`, `apps/accounts/templates/**`, `apps/clientes/templates/**`, `apps/servicios/templates/**`, y en esas tres apps `tests/**`, `apps/panel/tests/**`
+- **No puede tocar**: `docs/planes/`, `templates/base.html`, `templates/panel/base.html`, `apps/visitas/**`, `apps/sitios/**`, `apps/panel/` salvo `tests/`, vistas, formularios, modelos y `migrations/` de cualquier app
+- **Skill a leer antes**: `.claude/skills/convenciones-proyecto/SKILL.md`
+- **Worktree**: sí
+- **Presupuesto**: 250 líneas agregadas
+- **Qué hacer**:
+  - El buscador compartido (`templates/panel/partials/buscador.html`) tiene un ancho mínimo legible en cualquier fila de filtros (en Turnos medía 26 px).
+  - Filtros de Usuarios (selects Rol y Estado) y de Clientes (Todos / Activos / Inactivos) con los componentes del sistema; el filtro activo de Clientes lleva `aria-current="page"`; "Nuevo cliente" separado del buscador.
+  - Las acciones de cada fila (p. ej. "Editar" y "Planilla" en Servicios) separadas con una clase común de `panel.css`.
+- **Criterios**:
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.panel.tests.test_diseno_tokens.ListadosCssTests.test_buscador_tiene_ancho_minimo --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.clientes.tests.test_panel_filtros.FiltrosClientesTests.test_filtro_activo_marcado --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.servicios.tests.test_panel_catalogo.AccionesFilaTests.test_acciones_de_fila_agrupadas --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.accounts.tests.test_panel_estilos.FiltrosUsuariosTests.test_filtros_usan_clase_del_sistema --keepdb`
+  - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.panel apps.accounts apps.clientes apps.servicios --keepdb`
+  - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 250 --subtarea T11`
+
 ### T8 — Integración ola 2 (principal)
 
-- **Ola**: 2 (después de verificar T4, T5, T6, T7 y T9)
-- **Depende de**: T4, T5, T6, T7, T9
+- **Ola**: 2 (después de verificar T4, T5, T6, T7, T9, T10 y T11)
+- **Depende de**: T4, T5, T6, T7, T9, T10, T11
 - **Pasos**:
   1. Revisar `bash .claude/hooks/cambios.sh . plan/diseno-panel` de cada subtarea, no los informes.
-  2. Desde la raíz, `worktree-integrar.sh diseno-panel T<n> plan/diseno-panel <rutas>` para T4 (`apps/sitios`; el worktree de T4 lleva también los commits de T9), T5 (`apps/visitas`), T6 (`apps/servicios apps/productos apps/accounts apps/clientes`) y T7 (`docs/02-diseno.md`).
+  2. Desde la raíz, `worktree-integrar.sh diseno-panel T<n> plan/diseno-panel <rutas>` para T4 (`apps/sitios`; el worktree de T4 lleva también los commits de T9), T5 (`apps/visitas`), T6 (`apps/servicios apps/productos apps/accounts apps/clientes`), T7 (`docs/02-diseno.md`), T10 (`apps/visitas`) y T11 (`static templates apps/accounts apps/clientes apps/servicios apps/panel`).
   3. Prueba manual en el navegador (1280 px): abrir y cerrar el panel lateral desde la lista y la ficha, Escape, foco de vuelta, atajos, resumen y clic en el plano; registrar lo observado en el Registro.
   4. Cierre global, verificación `TODO` (verificador y verificador-b) y `auditor-seguridad`.
 - **Presupuesto**: no aplica (solo merges y commits `registro:`)
