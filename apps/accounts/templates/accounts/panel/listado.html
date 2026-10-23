@@ -3,17 +3,21 @@
   <h1>Usuarios</h1>
   <p><a class="boton boton-primario" href="{% url 'panel:usuarios:alta' %}">Nuevo usuario</a></p>
   <form class="filtros" method="get" hx-get="." hx-target="#listado" hx-swap="outerHTML" hx-push-url="true" hx-trigger="change">
-    <label for="filtro-rol">Rol</label>
-    <select id="filtro-rol" name="rol">
-      <option value="">Todos</option>
-      {% for valor, nombre in roles %}<option value="{{ valor }}"{% if rol == valor %} selected{% endif %}>{{ nombre }}</option>{% endfor %}
-    </select>
-    <label for="filtro-activo">Estado</label>
-    <select id="filtro-activo" name="activo">
-      <option value="">Todos</option>
-      <option value="1"{% if activo == "1" %} selected{% endif %}>Activos</option>
-      <option value="0"{% if activo == "0" %} selected{% endif %}>Inactivos</option>
-    </select>
+    <div class="campo">
+      <label for="filtro-rol">Rol</label>
+      <select id="filtro-rol" name="rol">
+        <option value="">Todos</option>
+        {% for valor, nombre in roles %}<option value="{{ valor }}"{% if rol == valor %} selected{% endif %}>{{ nombre }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="campo">
+      <label for="filtro-activo">Estado</label>
+      <select id="filtro-activo" name="activo">
+        <option value="">Todos</option>
+        <option value="1"{% if activo == "1" %} selected{% endif %}>Activos</option>
+        <option value="0"{% if activo == "0" %} selected{% endif %}>Inactivos</option>
+      </select>
+    </div>
     {% if q %}<input type="hidden" name="q" value="{{ q }}">{% endif %}
   </form>
   {% include "panel/partials/buscador.html" with placeholder="Buscar por usuario, nombre o email" %}

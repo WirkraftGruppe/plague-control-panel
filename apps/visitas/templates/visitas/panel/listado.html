@@ -1,4 +1,9 @@
 {% extends "panel/base.html" %}
+{% load static %}
+{% block extra_head %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'visitas/turnos.css' %}">
+{% endblock %}
 {% block panel_contenido %}
   <h1>Turnos</h1>
   {% include "visitas/panel/_listado.html" %}

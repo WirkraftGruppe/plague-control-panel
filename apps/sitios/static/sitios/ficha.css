@@ -1,0 +1,33 @@
+/* Ficha del sitio: cabecera, plano con lista de puntos. Colores y radios: tokens de templates/base.html. */
+.ficha-cabecera { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 8px; }
+.ficha-cabecera .acciones { flex-shrink: 0; margin-top: 0; }
+.ficha-titulo { display: flex; align-items: center; gap: 12px; margin: 4px 0 12px; }
+.ficha-titulo h1 { margin: 0; }
+.ficha-resumen { display: flex; flex-wrap: wrap; gap: 8px 32px; margin: 0; }
+.ficha-resumen dt { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); }
+.ficha-resumen dd { margin: 0; }
+.ficha-columnas { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
+.mapa-ficha { height: 420px; }
+
+.lista-puntos { margin: 0; padding: 0; list-style: none; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radio-bloque); }
+.punto-fila { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto auto; align-items: center; gap: 12px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+.punto-fila:last-child { border-bottom: 0; }
+.punto-fila.punto-resaltado { background: var(--activo-fondo); outline: 2px solid var(--accion); outline-offset: -2px; }
+.punto-nombre { display: flex; flex-direction: column; font-weight: 600; }
+.punto-nombre .texto-secundario { font-weight: 400; }
+.numero-punto {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+}
+.punto-vencimiento { white-space: nowrap; }
+.datos { display: grid; grid-template-columns: max-content 1fr; gap: 6px 24px; max-width: 720px; }
+.datos dt { font-weight: 600; color: var(--text-muted); }
+.datos dd { margin: 0; }

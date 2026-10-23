@@ -1,7 +1,7 @@
 """Formularios del panel de Visitas."""
 
 from django import forms
-from django.db.models import Exists, OuterRef
+from django.db.models import Case, Exists, OuterRef, When
 from django.utils import timezone
 
 from apps.accounts.models import User
@@ -15,6 +15,8 @@ from .models import Revision, Visita
 from .planillas import validar_datos
 from .serializers import MAX_BYTES_FOTO
 from .services import MAX_FOTOS, MAX_PRODUCTOS
+
+FORMATO_FECHA = "%Y-%m-%d"  # el que exige <input type="date">
 
 
 class FormularioPuntosConServicio(forms.Form):
@@ -91,8 +93,23 @@ class FormularioTurno(FormularioPuntosConServicio):
     )
     programada_para = forms.DateField(
         label="Fecha programada",
-        widget=forms.DateInput(attrs={"type": "date"}),
+        widget=forms.DateInput(format=FORMATO_FECHA, attrs={"type": "date"}),
     )
+
+    def __init__(self, *args, sitio, **kwargs):
+        super().__init__(*args, sitio=sitio, **kwargs)
+        # Al abrir el formulario: todos los puntos activos tildados y fecha de hoy.
+        self.initial.setdefault("puntos", [p.pk for p in self.puntos_activos])
+        self.initial.setdefault("programada_para", timezone.localdate())
+        # El responsable del sitio, si es un empleado activo, va primero y preelegido.
+        campo = self.fields["empleado"]
+        responsable = campo.queryset.filter(pk=sitio.responsable_id).first()
+        if responsable:
+            campo.queryset = campo.queryset.order_by(
+                Case(When(pk=responsable.pk, then=0), default=1), "username"
+            )
+            campo.empty_label = None
+            self.initial.setdefault("empleado", responsable.pk)
 
     def clean_programada_para(self):
         fecha = self.cleaned_data["programada_para"]
@@ -177,7 +194,8 @@ def _campo_de_planilla(campo):
         return forms.BooleanField(**comunes)
     if tipo == "fecha":
         return forms.DateField(
-            widget=forms.DateInput(attrs={"type": "date"}), **comunes
+            widget=forms.DateInput(format=FORMATO_FECHA, attrs={"type": "date"}),
+            **comunes,
         )
     if tipo == "opcion":
         return forms.ChoiceField(choices=[("", "---------")] + opciones, **comunes)

@@ -1,9 +1,24 @@
 """Vistas del panel de Sitios (solo administradores)."""
 
+from urllib.parse import urlencode
+
 from csp.decorators import csp_update
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.db.models import (
+    BooleanField,
+    Case,
+    Count,
+    Exists,
+    F,
+    Min,
+    OuterRef,
+    Q,
+    Subquery,
+    Value,
+    When,
+)
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -23,7 +38,15 @@ from apps.servicios.models import TipoServicio
 from apps.visitas.models import Visita
 
 from . import geocodificacion, qr, services
-from .estado import EstadoVencimiento, estados_por_vencimiento
+from .estado import (
+    CHIP_ESTADO_SITIO,
+    EstadoSitio,
+    EstadoVencimiento,
+    condicion_de_estado,
+    conteos_por_estado,
+    estado_de_sitio,
+    estados_por_vencimiento,
+)
 from .models import Plano, PuntoControl, Sitio
 from .panel_forms import (
     PlanoForm,
@@ -34,8 +57,9 @@ from .panel_forms import (
     SitioForm,
 )
 
-PESTANAS = ("mapa", "planos", "puntos")
+PESTANAS = ("turnos", "planos", "datos")
 TURNOS_REALIZADOS_MAXIMO = 10
+ATENCION_MAXIMO = 10
 CLASE_VENCIMIENTO = {
     EstadoVencimiento.AL_DIA: "ok",
     EstadoVencimiento.PROXIMA: "warn",
@@ -54,14 +78,51 @@ def _marcar_vencimiento(puntos):
 
 
 class SitioListado(AdministradorRequeridoMixin, ListadoPanelMixin):
+    """Inicio del panel: turnos de hoy, qué requiere atención y todos los sitios.
+
+    El estado de cada sitio sale del mínimo ``proximo_vencimiento`` de sus puntos
+    activos; la cantidad de consultas no depende de la cantidad de sitios.
+    """
+
     model = Sitio
     template_name = "sitios/panel/listado.html"
     template_parcial = "sitios/panel/_listado.html"
-    orden_permitido = ("nombre", "cliente__razon_social", "localidad", "sector")
+    orden_permitido = (
+        "nombre",
+        "cliente__razon_social",
+        "localidad",
+        "proximo_vencimiento",
+    )
     campos_busqueda = ("nombre", "direccion", "localidad", "cliente__razon_social")
+    # Turnos que cuentan para "tiene turno": los que todavía no se hicieron.
+    ESTADOS_EN_CURSO = (Visita.Estado.PENDIENTE, Visita.Estado.ABIERTA)
 
-    def get_queryset(self):
-        queryset = super().get_queryset().select_related("cliente")
+    @cached_property
+    def hoy(self):
+        return timezone.localdate()
+
+    @staticmethod
+    def _con_vencimiento(queryset):
+        """Agrega el mínimo vencimiento de los puntos activos y el próximo turno."""
+        pendientes = Visita.objects.filter(
+            sitio=OuterRef("pk"), estado=Visita.Estado.PENDIENTE
+        ).order_by("programada_para", "pk")
+        return queryset.annotate(
+            proximo_vencimiento=Min(
+                "puntos__proximo_vencimiento", filter=Q(puntos__activo=True)
+            ),
+            proximo_turno=Subquery(pendientes.values("programada_para")[:1]),
+            proximo_turno_pk=Subquery(pendientes.values("pk")[:1]),
+        )
+
+    def _parametro_estado(self):
+        estado = self.request.GET.get("estado", "")
+        return estado if estado in EstadoSitio.values else ""
+
+    def _base(self):
+        """Sitios del alcance pedido (búsqueda, cliente, activo), sin el estado."""
+        self.queryset = self._con_vencimiento(Sitio.objects.select_related("cliente"))
+        queryset = super().get_queryset()
         cliente = self.request.GET.get("cliente", "")
         # Solo un id válido de BigAutoField; otro valor se ignora, sin dar 500.
         if (
@@ -71,16 +132,99 @@ class SitioListado(AdministradorRequeridoMixin, ListadoPanelMixin):
             and int(cliente) <= 2**63 - 1
         ):
             queryset = queryset.filter(cliente_id=cliente)
-        activo = self.request.GET.get("activo", "")
-        if activo in ("1", "0"):
-            queryset = queryset.filter(activo=activo == "1")
-        return queryset
+        return queryset.filter(activo=self.request.GET.get("activo") != "0")
+
+    def get_queryset(self):
+        base = self._base()
+        self.conteos = conteos_por_estado(base, self.hoy)
+        estado = self._parametro_estado()
+        if estado:
+            base = base.filter(condicion_de_estado(estado, self.hoy))
+        orden = self.get_orden()
+        if orden.lstrip("-") == "proximo_vencimiento" or not orden:
+            campo = F("proximo_vencimiento")
+            campo = campo.desc(nulls_last=True) if orden else campo.asc(nulls_last=True)
+            return base.order_by(campo, "nombre", "pk")
+        return base.order_by(orden, "pk")
+
+    def _turnos_de_hoy(self):
+        hoy = self.hoy
+        visitas = (
+            Visita.objects.filter(
+                Q(estado=Visita.Estado.PENDIENTE, programada_para__lte=hoy)
+                | Q(estado=Visita.Estado.ABIERTA)
+                | Q(estado=Visita.Estado.REALIZADA, cerrada_en__date=hoy)
+            )
+            .select_related("sitio", "empleado")
+            .annotate(
+                total=Count("items", distinct=True),
+                revisados=Count("revisiones__punto", distinct=True),
+                atrasado=Case(
+                    When(
+                        estado=Visita.Estado.PENDIENTE,
+                        programada_para__lt=hoy,
+                        then=Value(True),
+                    ),
+                    default=Value(False),
+                    output_field=BooleanField(),
+                ),
+            )
+            .order_by("-atrasado", "sitio__nombre", "pk")
+        )
+        return list(visitas)
+
+    def _requieren_atencion(self):
+        vencidos = (
+            self._con_vencimiento(Sitio.objects.select_related("cliente"))
+            .filter(activo=True)
+            .filter(condicion_de_estado(EstadoSitio.VENCIDOS, self.hoy))
+            .exclude(
+                Exists(
+                    Visita.objects.filter(
+                        sitio=OuterRef("pk"), estado__in=self.ESTADOS_EN_CURSO
+                    )
+                )
+            )
+            .order_by("proximo_vencimiento", "nombre", "pk")
+        )
+        return list(vencidos[:ATENCION_MAXIMO])
+
+    def _incidencias(self):
+        return list(
+            Visita.objects.filter(incidencia=True, incidencia_revisada_en__isnull=True)
+            .select_related("sitio", "empleado")
+            .order_by("-cerrada_en", "-pk")[:ATENCION_MAXIMO]
+        )
 
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
-        contexto["clientes"] = Cliente.objects.order_by("razon_social")
-        contexto["cliente"] = self.request.GET.get("cliente", "")
-        contexto["activo"] = self.request.GET.get("activo", "")
+        for sitio in contexto["object_list"]:
+            estado = estado_de_sitio(sitio.proximo_vencimiento, self.hoy)
+            sitio.estado_clave = estado.value
+            sitio.chip_tono, sitio.chip_texto = CHIP_ESTADO_SITIO[estado]
+        activo = self.request.GET.get("activo", "")
+        estado = self._parametro_estado()
+        cliente = self.request.GET.get("cliente", "")
+        conservar = {"estado": estado, "cliente": cliente, "activo": activo}
+        conservar = {k: v for k, v in conservar.items() if v}
+        contexto.update(
+            conteos=self.conteos,
+            estado=estado,
+            filtros=[(e.value, e.label, self.conteos[e]) for e in EstadoSitio],
+            clientes=Cliente.objects.order_by("razon_social"),
+            cliente=cliente,
+            activo=activo,
+            conservar=conservar,
+            conservar_qs=urlencode(conservar),
+        )
+        parametros = {"q": self.get_busqueda(), "orden": self.get_orden(), **conservar}
+        contexto["querystring"] = urlencode({k: v for k, v in parametros.items() if v})
+        if not self.request.headers.get("HX-Request"):
+            contexto.update(
+                turnos_hoy=self._turnos_de_hoy(),
+                requieren_atencion=self._requieren_atencion(),
+                incidencias=self._incidencias(),
+            )
         return contexto
 
 
@@ -117,45 +261,85 @@ def _numero(valor):
 
 @method_decorator(csp_update({"img-src": ORIGEN_TESELAS}), name="dispatch")
 class SitioFicha(AdministradorRequeridoMixin, DetailView):
-    """Ficha con pestañas ``?pestana=mapa|planos|puntos`` (por defecto, puntos)."""
+    """Ficha con pestañas ``?pestana=turnos|planos|datos`` (por defecto, turnos)."""
 
     model = Sitio
     template_name = "sitios/panel/ficha.html"
 
     def get_queryset(self):
-        return Sitio.objects.select_related("cliente")
+        return Sitio.objects.select_related("cliente", "responsable")
 
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
         sitio = self.object
-        pestana = self.request.GET.get("pestana", "puntos")
+        hoy = timezone.localdate()
+        pestana = self.request.GET.get("pestana", "turnos")
         if pestana not in PESTANAS:
-            pestana = "puntos"
+            pestana = "turnos"
         puntos = list(sitio.puntos.select_related("plano", "servicio"))
         _marcar_vencimiento(puntos)
         activos = [p for p in puntos if p.activo]
+        for numero, punto in enumerate(activos, start=1):
+            punto.numero = numero
         planos = list(sitio.planos.filter(activo=True))
         pk_plano = self.request.GET.get("plano", "")
         plano = next((p for p in planos if str(p.pk) == pk_plano), None)
         plano = plano or (planos[0] if planos else None)
+        fechas = [p.proximo_vencimiento for p in activos if p.proximo_vencimiento]
+        estado_general = estado_de_sitio(min(fechas, default=None), hoy)
+        turnos_pendientes = list(self._turnos(sitio, Visita.Estado.PENDIENTE))
         contexto.update(
             pestana=pestana,
-            pestanas=(("puntos", "Puntos"), ("mapa", "Mapa"), ("planos", "Planos")),
+            pestanas=(("turnos", "Turnos"), ("planos", "Planos"), ("datos", "Datos")),
+            estado_general=estado_general.value,
+            chip_general=CHIP_ESTADO_SITIO[estado_general],
             puntos=puntos,
             puntos_activos=activos,
-            servicios=TipoServicio.objects.filter(activo=True).order_by("nombre"),
+            datos_ficha_plano=self._datos_ficha_plano(planos, activos),
             planos=planos,
             plano=plano,
-            turnos_pendientes=self._turnos(sitio, Visita.Estado.PENDIENTE),
+            turnos_pendientes=turnos_pendientes,
             turnos_realizados=self._turnos(sitio, Visita.Estado.REALIZADA)[
                 :TURNOS_REALIZADOS_MAXIMO
             ],
+            aviso_sin_turnos=not turnos_pendientes
+            and any(p.estado == EstadoVencimiento.VENCIDA for p in activos),
         )
-        if pestana == "mapa":
+        if pestana == "datos":
             contexto["datos_mapa"] = self._datos_mapa(sitio)
+            contexto["servicios"] = TipoServicio.objects.filter(activo=True).order_by(
+                "nombre"
+            )
         if pestana == "planos" and plano:
             contexto["datos_plano"] = self._datos_plano(plano, activos)
         return contexto
+
+    @staticmethod
+    def _datos_ficha_plano(planos, activos):
+        """Planos con sus puntos ubicados y numerados, para el plano de solo lectura."""
+        return [
+            {
+                "id": plano.pk,
+                "nombre": plano.nombre,
+                "imagen": reverse("panel:sitios:plano_imagen", args=[plano.pk]),
+                "ancho": plano.ancho_px,
+                "alto": plano.alto_px,
+                "puntos": [
+                    {
+                        "id": p.pk,
+                        "numero": p.numero,
+                        "nombre": p.nombre,
+                        "x": _numero(p.x),
+                        "y": _numero(p.y),
+                        "estado": p.estado,
+                        "estado_texto": p.vencimiento_etiqueta,
+                    }
+                    for p in activos
+                    if p.plano_id == plano.pk and p.x is not None and p.y is not None
+                ],
+            }
+            for plano in planos
+        ]
 
     @staticmethod
     def _turnos(sitio, estado):
@@ -254,7 +438,7 @@ class PuntoAlta(AdministradorRequeridoMixin, CreateView):
         punto = self.object
         if punto.plano_id:
             return _url_ficha(self.sitio.pk, "planos", punto.plano_id)
-        return _url_ficha(self.sitio.pk, "puntos")
+        return _url_ficha(self.sitio.pk, "datos")
 
 
 class PuntoEdicion(_PuntoMixin, UpdateView):
@@ -288,7 +472,7 @@ class PuntoEdicion(_PuntoMixin, UpdateView):
         return contexto
 
     def get_success_url(self):
-        return _url_ficha(self.object.sitio_id, "puntos")
+        return _url_ficha(self.object.sitio_id, "datos")
 
 
 class PuntoDesactivar(_PuntoMixin, DetailView):
@@ -304,7 +488,7 @@ class PuntoDesactivar(_PuntoMixin, DetailView):
             messages.error(request, " ".join(error.messages))
         else:
             messages.success(request, f"Se desactivó el punto {punto.nombre}.")
-        return redirect(_url_ficha(punto.sitio_id, "puntos"))
+        return redirect(_url_ficha(punto.sitio_id, "datos"))
 
 
 class PuntoQRPng(_PuntoMixin, DetailView):
@@ -331,7 +515,7 @@ class PuntoRegenerarQR(_PuntoMixin, DetailView):
         messages.success(
             request, "Se generó un nuevo QR; la etiqueta anterior ya no sirve."
         )
-        return redirect(_url_ficha(punto.sitio_id, "puntos"))
+        return redirect(_url_ficha(punto.sitio_id, "datos"))
 
 
 class _AccionPunto(_PuntoMixin, SingleObjectMixin, View):

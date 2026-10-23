@@ -1,23 +1,41 @@
 {% load panel_ui %}
 <div id="listado">
+  <input type="hidden" class="conservar" name="estado" value="{{ estado }}">
+  {% if cliente %}<input type="hidden" class="conservar" name="cliente" value="{{ cliente }}">{% endif %}
+  {% if activo %}<input type="hidden" class="conservar" name="activo" value="{{ activo }}">{% endif %}
+  <nav class="pestanas filtros-estado" aria-label="Filtrar por estado">
+    {% for clave, etiqueta, cantidad in filtros %}
+    <a href="?estado={{ clave }}{% if cliente %}&amp;cliente={{ cliente }}{% endif %}{% if activo %}&amp;activo={{ activo }}{% endif %}{% if q %}&amp;q={{ q|urlencode }}{% endif %}"
+       hx-get="?estado={{ clave }}{% if cliente %}&amp;cliente={{ cliente }}{% endif %}{% if activo %}&amp;activo={{ activo }}{% endif %}{% if q %}&amp;q={{ q|urlencode }}{% endif %}"
+       hx-target="#listado" hx-swap="outerHTML" hx-push-url="true"{% if clave == estado %} aria-current="page"{% endif %}>{{ etiqueta }} <span class="cantidad-filtro">{{ cantidad }}</span></a>
+    {% endfor %}
+    {% if estado %}
+    <a href="?{% if cliente %}cliente={{ cliente }}&amp;{% endif %}{% if activo %}activo={{ activo }}&amp;{% endif %}{% if q %}q={{ q|urlencode }}{% endif %}"
+       hx-get="?{% if cliente %}cliente={{ cliente }}&amp;{% endif %}{% if activo %}activo={{ activo }}&amp;{% endif %}{% if q %}q={{ q|urlencode }}{% endif %}"
+       hx-target="#listado" hx-swap="outerHTML" hx-push-url="true">Quitar filtro</a>
+    {% endif %}
+  </nav>
   <table class="tabla">
     <thead>
       <tr>
-        {% include "panel/partials/th_orden.html" with campo="nombre" etiqueta="Nombre" %}
-        {% include "panel/partials/th_orden.html" with campo="cliente__razon_social" etiqueta="Cliente" %}
-        {% include "panel/partials/th_orden.html" with campo="localidad" etiqueta="Localidad" %}
-        {% include "panel/partials/th_orden.html" with campo="sector" etiqueta="Sector" %}
-        <th scope="col">Estado</th>
+        {% include "sitios/panel/_th_orden.html" with campo="nombre" etiqueta="Sitio y cliente" %}
+        {% include "sitios/panel/_th_orden.html" with campo="localidad" etiqueta="Localidad" %}
+        {% include "sitios/panel/_th_orden.html" with campo="proximo_vencimiento" etiqueta="Próximo vencimiento" %}
+        <th scope="col">Turno</th>
+        <th scope="col"><span class="visually-hidden">Acciones</span></th>
       </tr>
     </thead>
     <tbody>
       {% for sitio in object_list %}
       <tr>
-        <td><a href="{% url 'panel:sitios:ficha' sitio.pk %}">{{ sitio.nombre }}</a></td>
-        <td>{{ sitio.cliente }}</td>
-        <td>{{ sitio.localidad }}</td>
-        <td>{{ sitio.get_sector_display }}</td>
-        <td>{% if sitio.activo %}{% include "panel/partials/etiqueta_estado.html" with tono="ok" texto="Activo" %}{% else %}{% include "panel/partials/etiqueta_estado.html" with tono="neutral" texto="Inactivo" %}{% endif %}</td>
+        <td>
+          <a href="{% url 'panel:sitios:ficha' sitio.pk %}">{{ sitio.nombre }}</a>
+          <span class="texto-secundario">{{ sitio.cliente }}</span>
+        </td>
+        <td>{{ sitio.localidad|default:"—" }}</td>
+        <td>{% if sitio.proximo_vencimiento %}{{ sitio.proximo_vencimiento|date:"d/m/Y" }} {% endif %}{% include "panel/partials/etiqueta_estado.html" with tono=sitio.chip_tono texto=sitio.chip_texto %}</td>
+        <td>{% if sitio.proximo_turno %}<a href="{% url 'panel:visitas:ficha' sitio.proximo_turno_pk %}">{{ sitio.proximo_turno|date:"d/m/Y" }}</a>{% else %}Sin turno{% endif %}</td>
+        <td class="acciones-fila">{% if sitio.activo %}{% include "sitios/panel/_nuevo_turno.html" %}{% endif %}</td>
       </tr>
       {% empty %}
       <tr><td colspan="5">No hay sitios que coincidan.</td></tr>
@@ -25,4 +43,7 @@
     </tbody>
   </table>
   {% include "panel/partials/paginacion.html" %}
+  <p class="ayuda">
+    {% if activo == "0" %}<a href="{% url 'panel:sitios:listado' %}">Ver sitios activos</a>{% else %}<a href="?activo=0">Ver sitios inactivos</a>{% endif %}
+  </p>
 </div>

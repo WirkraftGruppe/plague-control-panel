@@ -18,14 +18,15 @@ class BaseTemplateTests(SimpleTestCase):
             self.assertIn("· Detach</title>", html, plantilla)
             self.assertIn(f'alt="{settings.NOMBRE_EMPRESA}"', html, plantilla)
 
-    def test_base_es_noindex_y_de_un_solo_tema(self):
+    def test_base_es_noindex_y_sin_tema_ni_marca_vieja(self):
         html = render_to_string("base.html")
         self.assertIn('<meta name="robots" content="noindex, nofollow">', html)
-        self.assertIn('<html lang="es" data-tema="claro">', html)
+        self.assertIn('<html lang="es">', html)
+        self.assertNotIn("data-tema", html)
         self.assertNotIn("oscuro", html)
         self.assertNotIn("sitio público", html)
-        self.assertEqual(html.count("[data-tema="), 1)
-        self.assertIn("--brand: #ffc600", html)
+        self.assertNotIn("--brand", html)
+        self.assertNotIn("Barlow Condensed", html)
 
     def test_base_no_carga_fuentes_de_terceros(self):
         html = render_to_string("base.html")
@@ -36,7 +37,7 @@ class BaseTemplateTests(SimpleTestCase):
         html = render_to_string("base.html")
         bloques = re.findall(r"@font-face\s*\{[^}]*\}", html)
         urls = [u for b in bloques for u in re.findall(r'url\("([^"]+)"\)', b)]
-        self.assertGreaterEqual(len(urls), 7)
+        self.assertGreaterEqual(len(urls), 4)
         for url in urls:
             ruta = url.removeprefix(settings.STATIC_URL)
             self.assertIsNotNone(finders.find(ruta), url)

@@ -1,24 +1,103 @@
 {% extends "panel/base.html" %}
+{% load static panel_ui %}
 {% block title %}Sitios · Detach{% endblock %}
+{% block extra_head %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'vendor/leaflet/leaflet.css' %}">
+  <link rel="stylesheet" href="{% static 'sitios/puntos.css' %}">
+  <link rel="stylesheet" href="{% static 'sitios/inicio.css' %}">
+{% endblock %}
 {% block panel_contenido %}
-<h1>Sitios</h1>
-<p><a class="boton boton-primario" href="{% url 'panel:sitios:alta' %}">Nuevo sitio</a></p>
-{% include "panel/partials/buscador.html" with placeholder="Buscar por nombre, dirección, localidad o cliente" %}
-<form class="filtros" method="get"
-      hx-get="." hx-target="#listado" hx-swap="outerHTML" hx-push-url="true" hx-trigger="change">
-  {% if q %}<input type="hidden" name="q" value="{{ q }}">{% endif %}
-  <label for="filtro-cliente">Cliente</label>
-  <select id="filtro-cliente" name="cliente">
-    <option value="">Todos</option>
-    {% for c in clientes %}<option value="{{ c.pk }}"{% if cliente == c.pk|stringformat:"s" %} selected{% endif %}>{{ c.razon_social }}</option>{% endfor %}
-  </select>
-  <label for="filtro-activo">Estado</label>
-  <select id="filtro-activo" name="activo">
-    <option value="">Todos</option>
-    <option value="1"{% if activo == "1" %} selected{% endif %}>Activos</option>
-    <option value="0"{% if activo == "0" %} selected{% endif %}>Inactivos</option>
-  </select>
-  <button class="boton boton-secundario" type="submit">Filtrar</button>
-</form>
-{% include "sitios/panel/_listado.html" %}
+<div class="inicio-cabecera">
+  <h1>Sitios</h1>
+  <a class="boton boton-primario" href="{% url 'panel:sitios:alta' %}">Nuevo sitio</a>
+</div>
+
+<section aria-labelledby="titulo-hoy">
+  <h2 id="titulo-hoy">Turnos de hoy</h2>
+  {% if turnos_hoy %}
+  <table class="tabla">
+    <thead><tr><th scope="col">Sitio</th><th scope="col">Operario</th><th scope="col">Puntos revisados</th><th scope="col">Estado</th><th scope="col"><span class="visually-hidden">Acciones</span></th></tr></thead>
+    <tbody>
+      {% for turno in turnos_hoy %}
+      <tr>
+        <td><a href="{% url 'panel:sitios:ficha' turno.sitio_id %}">{{ turno.sitio.nombre }}</a></td>
+        <td>{{ turno.empleado.get_full_name|default:turno.empleado.username }}</td>
+        <td>{{ turno.revisados }} / {{ turno.total }}</td>
+        <td>{% if turno.atrasado %}{% include "panel/partials/etiqueta_estado.html" with tono="danger" texto="Atrasado" %}{% else %}{% include "panel/partials/etiqueta_estado.html" with tono=turno.estado|tono_estado texto=turno.get_estado_display %}{% endif %}</td>
+        <td class="acciones-fila"><a href="{% url 'panel:visitas:ficha' turno.pk %}">Ver turno</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="texto-secundario">No hay turnos para hoy.</p>
+  {% endif %}
+</section>
+
+<section aria-labelledby="titulo-atencion">
+  <h2 id="titulo-atencion">Requieren atención</h2>
+  {% if requieren_atencion or incidencias %}
+  <div class="atencion">
+    <div>
+      <h3>Vencidos sin turno</h3>
+      {% if requieren_atencion %}
+      <table class="tabla">
+        <thead><tr><th scope="col">Sitio</th><th scope="col">Vencido desde</th><th scope="col"><span class="visually-hidden">Acciones</span></th></tr></thead>
+        <tbody>
+          {% for sitio in requieren_atencion %}
+          <tr>
+            <td><a href="{% url 'panel:sitios:ficha' sitio.pk %}">{{ sitio.nombre }}</a> <span class="texto-secundario">{{ sitio.cliente }}</span></td>
+            <td>{{ sitio.proximo_vencimiento|date:"d/m/Y" }}</td>
+            <td class="acciones-fila">{% include "sitios/panel/_nuevo_turno.html" with clase="boton-primario" %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p class="ayuda"><a href="?estado=vencidos">Ver todos los vencidos</a></p>
+      {% else %}
+      <p class="texto-secundario">Ningún sitio vencido sin turno.</p>
+      {% endif %}
+    </div>
+    <div>
+      <h3>Incidencias sin revisar</h3>
+      {% if incidencias %}
+      <table class="tabla">
+        <thead><tr><th scope="col">Sitio</th><th scope="col">Detalle</th><th scope="col"><span class="visually-hidden">Acciones</span></th></tr></thead>
+        <tbody>
+          {% for visita in incidencias %}
+          <tr>
+            <td><a href="{% url 'panel:sitios:ficha' visita.sitio_id %}">{{ visita.sitio.nombre }}</a> <span class="texto-secundario">{{ visita.empleado.get_full_name|default:visita.empleado.username }}</span></td>
+            <td>{{ visita.incidencia_detalle|default:"—"|truncatechars:60 }}</td>
+            <td class="acciones-fila"><a class="boton boton-secundario" href="{% url 'panel:visitas:ficha' visita.pk %}">Revisar</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="texto-secundario">No hay incidencias sin revisar.</p>
+      {% endif %}
+    </div>
+  </div>
+  {% else %}
+  <p class="texto-secundario">Nada requiere atención.</p>
+  {% endif %}
+</section>
+
+<section aria-labelledby="titulo-todos">
+  <h2 id="titulo-todos">Todos los sitios</h2>
+  <form class="buscador" method="get" role="search"
+        hx-get="." hx-target="#listado" hx-swap="outerHTML" hx-push-url="true"
+        hx-include="#listado .conservar"
+        hx-trigger="submit, input changed delay:400ms from:#campo-q">
+    <label class="visually-hidden" for="campo-q">Buscar</label>
+    <input id="campo-q" type="search" name="q" value="{{ q }}" placeholder="Buscar por nombre, dirección, localidad o cliente">
+    <button class="boton boton-secundario" type="submit">Buscar</button>
+  </form>
+  {% include "sitios/panel/_listado.html" %}
+</section>
+{% endblock %}
+{% block scripts %}
+  <script src="{% static 'vendor/leaflet/leaflet.js' %}"></script>
+  <script src="{% static 'visitas/nuevo_turno.js' %}"></script>
 {% endblock %}

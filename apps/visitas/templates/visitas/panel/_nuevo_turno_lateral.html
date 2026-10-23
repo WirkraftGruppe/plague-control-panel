@@ -1,0 +1,49 @@
+{% load static %}
+{# Nuevo turno: contenido del panel lateral y de la página completa (`lateral` en el contexto distingue el uso). #}
+<link rel="stylesheet" href="{% static 'sitios/puntos.css' %}">
+<link rel="stylesheet" href="{% static 'visitas/nuevo_turno.css' %}">
+<div class="nuevo-turno" data-nuevo-turno>
+  {% if lateral %}
+  <header class="panel-lateral-cabecera">
+    <h2>Nuevo turno</h2>
+    <button class="boton boton-secundario" type="button" aria-label="Cerrar" data-cierra-panel>&times;</button>
+  </header>
+  {% endif %}
+  <div class="panel-lateral-cuerpo">
+    <p>Sitio: {{ sitio.nombre }} ({{ sitio.cliente.razon_social }})</p>
+    <form id="form-turno" class="formulario" method="post" action="{% url 'panel:visitas:nuevo_turno' sitio.pk %}"
+          {% if lateral %}hx-post="{% url 'panel:visitas:nuevo_turno' sitio.pk %}" hx-target="#panel-lateral" hx-swap="innerHTML"{% endif %}>
+      {% csrf_token %}
+      {% if form.non_field_errors %}<div class="errores">{{ form.non_field_errors }}</div>{% endif %}
+      {% for campo in form.visible_fields %}
+        {% if not campo.field.agrupado %}
+        <div class="campo{% if campo.errors %} campo-error{% endif %}">
+          {{ campo.label_tag }}
+          {{ campo }}
+          {% for error in campo.errors %}<small class="error">{{ error }}</small>{% endfor %}
+        </div>
+        {% endif %}
+      {% endfor %}
+      {% if planos %}
+      <section>
+        <h3>Plano</h3>
+        {% if planos|length > 1 %}
+        <div class="campo"><label for="turno-plano-selector">Plano</label>
+          <select id="turno-plano-selector">{% for p in planos %}<option value="{{ p.id }}">{{ p.nombre }}</option>{% endfor %}</select>
+        </div>
+        {% endif %}
+        <p class="ayuda">Pulse un punto del plano o tilde la lista: ambos se resaltan juntos. El color indica el estado del vencimiento.</p>
+        <div id="turno-plano" class="mapa-leaflet"></div>
+        {{ planos|json_script:"datos-turno-plano" }}
+      </section>
+      {% endif %}
+      {% include "visitas/panel/_puntos_servicio.html" with con_atajos=True %}
+    </form>
+  </div>
+  <div class="panel-lateral-pie">
+    <p class="turno-resumen" data-resumen aria-live="polite">Elija los puntos del plano o de la lista.</p>
+    {% if lateral %}<button class="boton boton-secundario" type="button" data-cierra-panel>Cancelar</button>
+    {% else %}<a class="boton boton-secundario" href="{% url 'panel:sitios:ficha' sitio.pk %}">Cancelar</a>{% endif %}
+    <button class="boton boton-primario" type="submit" form="form-turno" data-crear{% if not form.puntos_activos %} disabled{% endif %}>Crear turno</button>
+  </div>
+</div>

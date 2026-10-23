@@ -207,6 +207,22 @@ class AccesoTests(TestCase):
                 self.assertEqual(self.client.get(ruta).status_code, 403)
                 self.assertEqual(self.client.post(ruta).status_code, 403)
 
+    def test_rutas_del_rediseno_estan_cubiertas(self):
+        """Las pantallas que toca el rediseño están en la lista que se recorre."""
+        rutas = _rutas_protegidas()
+        for ruta in (
+            "/panel/sitios/",
+            "/panel/sitios/1/",
+            "/panel/visitas/",
+            "/panel/visitas/sitios/1/turnos/nuevo/",
+            "/panel/servicios/",
+            "/panel/productos/",
+            "/panel/mapa/",
+            "/panel/clientes/",
+            "/panel/usuarios/",
+        ):
+            self.assertIn(ruta, rutas)
+
     def _rutas_con_objetos_reales(self):
         """Cada ruta con el id (o uuid) de un objeto real de su propio modelo.
 

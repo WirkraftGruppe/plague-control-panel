@@ -7,10 +7,10 @@
   </header>
   {% include "panel/partials/mensajes.html" %}
   {% include "panel/partials/buscador.html" with placeholder="Razón social o CUIT" %}
-  <nav class="filtros" aria-label="Filtro por estado">
-    <a href="?{% if q %}q={{ q|urlencode }}{% endif %}">Todos</a>
-    <a href="?activo=1{% if q %}&amp;q={{ q|urlencode }}{% endif %}">Activos</a>
-    <a href="?activo=0{% if q %}&amp;q={{ q|urlencode }}{% endif %}">Inactivos</a>
+  <nav class="filtros filtros-chips" aria-label="Filtro por estado">
+    <a href="?{% if q %}q={{ q|urlencode }}{% endif %}"{% if not activo %} aria-current="page"{% endif %}>Todos</a>
+    <a href="?activo=1{% if q %}&amp;q={{ q|urlencode }}{% endif %}"{% if activo == "1" %} aria-current="page"{% endif %}>Activos</a>
+    <a href="?activo=0{% if q %}&amp;q={{ q|urlencode }}{% endif %}"{% if activo == "0" %} aria-current="page"{% endif %}>Inactivos</a>
   </nav>
   {% include "clientes/panel/_listado.html" %}
 {% endblock %}

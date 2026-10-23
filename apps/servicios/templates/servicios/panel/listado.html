@@ -1,7 +1,8 @@
 {% extends "panel/base.html" %}
 {% block title %}Servicios · Detach{% endblock %}
 {% block panel_contenido %}
-  <h1>Servicios</h1>
+  <h1>Catálogo</h1>
+  {% include "panel/partials/pestanas_catalogo.html" %}
   <p><a class="boton boton-primario" href="{% url 'panel:servicios:servicio_alta' %}">Nuevo servicio</a></p>
   {% include "panel/partials/buscador.html" with placeholder="Buscar servicio…" %}
   {% include "servicios/panel/_listado.html" %}

@@ -1,0 +1,5 @@
+/* Listado de turnos agrupado por fecha. */
+.grupo-turnos { margin-bottom: 32px; }
+.grupo-turnos h2 { margin-bottom: 8px; }
+.grupo-cuenta { margin-left: 8px; color: var(--text-muted); font-size: 16px; font-weight: 500; }
+.vacio { color: var(--text-muted); }

@@ -92,4 +92,4 @@ class TipoServicioAbmTests(TestCase):
             respuesta, reverse("panel:servicios:servicio_editar", args=[servicio.pk])
         )
         self.assertContains(respuesta, reverse("panel:servicios:servicio_alta"))
-        self.assertContains(respuesta, "<h1>Servicios</h1>", html=True)
+        self.assertContains(respuesta, "<h1>Catálogo</h1>", html=True)

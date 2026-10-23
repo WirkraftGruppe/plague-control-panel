@@ -77,20 +77,20 @@ class SitioPanelTests(TestCase):
 
     def test_ficha_muestra_atribucion_osm(self):
         url = reverse("panel:sitios:ficha", args=[self.sitio.pk])
-        r = self.client.get(url, {"pestana": "mapa"})
+        r = self.client.get(url, {"pestana": "datos"})
         self.assertContains(r, "colaboradores de OpenStreetMap</a>")
         r = self.client.get(reverse("panel:sitios:alta"))
         self.assertContains(r, "https://www.openstreetmap.org/copyright")
 
-    def test_pestana_mapa_muestra_el_sitio_y_no_los_puntos(self):
+    def test_pestana_datos_muestra_el_mapa_del_sitio_y_no_los_puntos(self):
         url = reverse("panel:sitios:ficha", args=[self.sitio.pk])
-        r = self.client.get(url, {"pestana": "mapa"})
+        r = self.client.get(url, {"pestana": "datos"})
         self.assertContains(r, "El sitio no tiene ubicación cargada.")
         self.assertNotContains(r, 'id="mapa-sitio"')
         self.sitio.latitud = Decimal("-35.123456")
         self.sitio.longitud = Decimal("-57.654321")
         self.sitio.save()
-        r = self.client.get(url, {"pestana": "mapa"})
+        r = self.client.get(url, {"pestana": "datos"})
         self.assertContains(r, "Ubicación del sitio")
         self.assertContains(r, 'id="mapa-sitio"')
         self.assertContains(r, "sitios/sitio_ficha_mapa.js")
@@ -177,7 +177,7 @@ class SitioPanelTests(TestCase):
 
     def test_ficha_muestra_el_qr(self):
         r = self.client.get(
-            reverse("panel:sitios:ficha", args=[self.sitio.pk]), {"pestana": "puntos"}
+            reverse("panel:sitios:ficha", args=[self.sitio.pk]), {"pestana": "datos"}
         )
         general = self.sitio.puntos.get()
         self.assertContains(r, reverse("panel:sitios:punto_qr_png", args=[general.pk]))
@@ -374,7 +374,7 @@ class PuntoPanelTests(_BaseAdminTests):
         PuntoControl.objects.filter(pk=self.general.pk).update(
             ubicacion_fijada_en=timezone.now(), ubicacion_fijada_por=self.admin
         )
-        r = self.client.get(ficha, {"pestana": "puntos"})
+        r = self.client.get(ficha, {"pestana": "datos"})
         self.assertContains(r, "Punto fijado por escaneo", count=1)
         self.assertContains(self.client.get(editar), "Punto fijado por escaneo")
         editar_otro = reverse("panel:sitios:punto_editar", args=[otro.pk])
@@ -507,11 +507,11 @@ class PuntoPanelTests(_BaseAdminTests):
 
     def test_ficha_con_pestanas_sondeo_y_leaflet(self):
         ficha = reverse("panel:sitios:ficha", args=[self.sitio.pk])
-        for pestana in ("mapa", "planos", "puntos", "invalida"):
+        for pestana in ("turnos", "planos", "datos", "invalida"):
             self.assertEqual(
                 self.client.get(ficha, {"pestana": pestana}).status_code, 200
             )
-        r = self.client.get(ficha, {"pestana": "mapa"})
+        r = self.client.get(ficha, {"pestana": "datos"})
         self.assertIn("tile.openstreetmap.org", r["Content-Security-Policy"])
         try:
             url_estado = reverse("panel:estado_sitio", args=[self.sitio.pk])
@@ -522,7 +522,7 @@ class PuntoPanelTests(_BaseAdminTests):
             self.assertContains(r, f'hx-get="{url_estado}" hx-trigger="every 5s"')
         self.assertContains(r, "sitios/sondeo.js")
         self.assertNotContains(r, "<script>")
-        r = self.client.get(ficha, {"pestana": "puntos"})
+        r = self.client.get(ficha, {"pestana": "turnos"})
         self.assertContains(r, "Sin programar", msg_prefix="Punto sin vencimiento")
         self._entrar_como_empleado()
         self.assertEqual(self.client.get(ficha).status_code, 403)
