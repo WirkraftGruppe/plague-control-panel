@@ -1,6 +1,6 @@
 /* Nuevo turno: atajos, plano sincronizado con la lista y resumen en vivo.
-   Se inicializa con htmx.onLoad: sirve para el panel lateral (contenido insertado)
-   y para la página completa. */
+   Se inicializa al cargar el documento y en los eventos de htmx: sirve para el panel
+   lateral (contenido insertado) y para la página completa. */
 (function () {
   "use strict";
 
@@ -139,10 +139,12 @@
     }
   }
 
-  function registrar() {
-    if (typeof htmx !== "undefined") { htmx.onLoad(buscar); }
-    buscar(document);
-  }
+  function registrar() { buscar(document); }
+
+  // No se usa el registro de htmx, que depende del orden de carga. htmx:load sube hasta
+  // document cuando htmx inserta contenido (panel lateral); iniciar es idempotente.
+  document.addEventListener("htmx:load", function (evento) { buscar(evento.target); });
+  document.addEventListener("htmx:afterSwap", function (evento) { buscar(evento.target); });
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", registrar);

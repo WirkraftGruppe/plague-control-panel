@@ -4,4 +4,11 @@
 .nuevo-turno .panel-lateral-pie { flex-wrap: wrap; align-items: center; }
 .turno-resumen { flex: 1 1 100%; margin: 0; font-size: 14px; color: var(--text-muted); }
 .nuevo-turno .tabla td, .nuevo-turno .tabla th { padding: 0 8px; }
-.nuevo-turno .tabla td select { min-width: 120px; }
+.nuevo-turno .panel-lateral-cuerpo { padding-bottom: 96px; } /* el pie fijo no tapa las últimas filas */
+.nuevo-turno fieldset { width: 100%; min-width: 0; box-sizing: border-box; }
+.nuevo-turno .tabla { table-layout: fixed; width: 100%; }
+.nuevo-turno .tabla th:nth-child(1) { width: 68px; }
+.nuevo-turno .tabla th:nth-child(3) { width: 108px; }
+.nuevo-turno .tabla th:nth-child(4) { width: 36%; }
+.nuevo-turno .tabla td { overflow-wrap: anywhere; }
+.nuevo-turno .tabla td select { width: 100%; max-width: 100%; min-width: 0; }

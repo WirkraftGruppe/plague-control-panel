@@ -3,10 +3,12 @@
 <link rel="stylesheet" href="{% static 'sitios/puntos.css' %}">
 <link rel="stylesheet" href="{% static 'visitas/nuevo_turno.css' %}">
 <div class="nuevo-turno" data-nuevo-turno>
+  {% if lateral %}
   <header class="panel-lateral-cabecera">
     <h2>Nuevo turno</h2>
-    {% if lateral %}<button class="boton boton-secundario" type="button" aria-label="Cerrar" data-cierra-panel>&times;</button>{% endif %}
+    <button class="boton boton-secundario" type="button" aria-label="Cerrar" data-cierra-panel>&times;</button>
   </header>
+  {% endif %}
   <div class="panel-lateral-cuerpo">
     <p>Sitio: {{ sitio.nombre }} ({{ sitio.cliente.razon_social }})</p>
     <form id="form-turno" class="formulario" method="post" action="{% url 'panel:visitas:nuevo_turno' sitio.pk %}"
