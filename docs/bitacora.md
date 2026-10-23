@@ -1,19 +1,28 @@
 # Bitácora de MAControl
 
 ## Estado actual
-Plan activo: (ninguno)
+Plan activo: docs/planes/2026-10-22-diseno-panel.md
 
 Planes activos (los hooks derivan el plan de la rama; la línea `Plan activo:` de arriba es el respaldo para la raíz):
 
 | plan | rama | ola actual | pendiente inmediato | sesión |
 |---|---|---|---|---|
-| (ninguno) | main | — | aplicar el protocolo en macontrol-web; después planificar `diseno-panel` | sesión 2026-10-22 |
+| `diseno-panel` | plan/diseno-panel | 2 (integrada) | el usuario revisa la verificación TODO (104/105; FALLA solo `congelado.sh` por los contratos modificados c235fc8 y f386238) y decide el merge a `main` | sesión 2026-10-22/23 |
 
 Siguiente (orden decidido el 2026-10-20; reconfirmado el 2026-10-21): `diseno-panel` → `multiempresa` → despliegue. El despliegue en Railway espera a que esos planes estén en `main`, para no tener que migrar datos reales. Problemas abiertos: ver `pendientes.py`. Decisiones y cuándo preguntar: `docs/protocolo-decisiones.md` (CLAUDE.md § Reglas globales, regla 1).
 
 Problemas abiertos: ver `py -3 .claude/hooks/pendientes.py` (cada plan los declara en `## Pendientes que deja este plan`; los anteriores están en `docs/planes/2026-10-03-pendientes-heredados.md`).
 
 ## Entradas (la más reciente arriba)
+
+### 2026-10-23 — Plan `diseno-panel` ejecutado (T1 a T11), sin fusionar
+Hecho:
+- Sistema visual neutro de Detach (tokens del Adjunto, `--text-faint #646C76` por contraste), barra lateral con grupos y `aria-current`, panel lateral de nuevo turno por HTMX, inicio en `/panel/sitios/` (Turnos de hoy, Requieren atención, Todos los sitios), ficha con plano y lista, Turnos agrupados, Catálogo con pestañas, `docs/02-diseno.md` reescrito.
+- Contrato modificado dos veces por decisión del usuario: T9 (T4 excedió su presupuesto; atrasados en Turnos de hoy) y T10/T11 (lo que encontró la primera prueba en navegador).
+- Verificación TODO en 81a5b11: 104 de 105 criterios PASA en verificador y verificador-b; FALLA solo `congelado.sh` (contrato modificado). auditor-seguridad sin hallazgos en T1, T5, T4/T9 y cierre.
+- Dos pruebas manuales en Chromium 1280×800; la segunda deja abierto P-diseno-panel-1 (primer clic en un marcador del panel lateral se pierde). Pendientes nuevos P-diseno-panel-1 a -9; cierra P-robustez-panel-13 y P-flujo-sitio-8.
+- Incidente: el principal hizo `cd` a un worktree (T2); se volvió a la raíz y se revisó `git status` en raíz y worktrees, sin efectos.
+Pendiente: decisión del usuario sobre el merge de `plan/diseno-panel` en `main`; después `multiempresa` → despliegue.
 
 ### 2026-10-22 — `protocolo-decisiones` fusionado en `main`
 Hecho:

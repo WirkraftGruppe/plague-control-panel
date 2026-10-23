@@ -328,7 +328,7 @@ commit_base: 0175082
 | T9 | hecha |
 | T10 | hecha |
 | T11 | hecha |
-| T8 | en curso |
+| T8 | hecha |
 
 ### Corridas
 
@@ -346,8 +346,8 @@ commit_base: 0175082
 | 2026-10-23 | T11 | 1600c9d | criterios 6/6 PASA (verificador y verificador-b) | contrato MODIFICADO por c235fc8 y f386238 (decisiones del usuario): los verificadores dan FALLA solo por eso |
 | 2026-10-23 | T8 (prueba en navegador) | c2627ef | FALLA | panel lateral: nuevo_turno.js no se inicializa (htmx.onLoad antes de que htmx esté listo); fecha `22/10/2026` descartada por input date; visuales: desborde del panel, título duplicado, pie tapa filas, buscador de Turnos 26 px, filtros de Usuarios y Clientes, acciones de Servicios. Resto PASA (barra, inicio, ficha, Escape y foco, crear turno con fecha a mano, Turnos, Catálogo, mapa). Corrección: T10 y T11 |
 | 2026-10-23 | T8 (segunda prueba en navegador) | c37b595 | 6 de 7 puntos PASA | corregido: inicialización del panel lateral (también en la segunda apertura), fecha ISO y creación con valores por defecto, desborde, título único, pie, buscador 256 px, filtros de Usuarios y Clientes, acciones de Servicios; Escape y foco, `aria-current`, sin errores de JS ni CSP. Queda abierto: el primer clic en un marcador del plano del panel lateral se pierde (P-diseno-panel-1). Segunda y última ronda de esta revisión |
-| | T8 | | | |
-| | TODO | | | |
+| 2026-10-23 | T8 | 81a5b11 | criterios 5/5 PASA (verificador y verificador-b, dentro de TODO) | auditor-seguridad de cierre: sin hallazgos (su informe cita nombres de clases que no existen en el código: `PanelAdminMixin`, `SitioPanelListView`; tomarlo con reserva) |
+| 2026-10-23 | TODO | 81a5b11 | FALLA (verificador 104/105; verificador-b 104/105) | único criterio en FALLA: `congelado.sh` (exit 1, CONTRATO MODIFICADO por c235fc8 y f386238, decisiones del usuario). Suite completa 795 tests OK, check, makemigrations, ruff y árbol limpio en PASA |
 
 ### Decisiones del plan
 
