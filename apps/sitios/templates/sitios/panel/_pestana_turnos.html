@@ -1,0 +1,18 @@
+{% with sitio=object %}
+<section aria-labelledby="titulo-turnos">
+  <h2 id="titulo-turnos">Turnos</h2>
+  {% if aviso_sin_turnos %}
+  <p class="mensaje mensaje-warning">No hay turnos pendientes y hay puntos vencidos. {% include "sitios/panel/_nuevo_turno.html" with clase="boton-primario" %}</p>
+  {% endif %}
+  <div class="turnos-ficha">
+    <div>
+      <h3>Turnos pendientes</h3>
+      {% include "sitios/panel/_turnos.html" with turnos=turnos_pendientes vacio="No hay turnos pendientes." fecha_pendiente=True %}
+    </div>
+    <div>
+      <h3>Turnos realizados</h3>
+      {% include "sitios/panel/_turnos.html" with turnos=turnos_realizados vacio="Todavía no hay turnos realizados." %}
+    </div>
+  </div>
+</section>
+{% endwith %}

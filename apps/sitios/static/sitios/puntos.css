@@ -1,21 +1,11 @@
-/* Ficha del sitio: pestañas, mapa de puntos y editor de planos. Colores: tokens de templates/base.html. */
-.pestanas { display: flex; gap: 4px; margin: 24px 0 16px; border-bottom: 1px solid var(--border); }
-.pestanas a {
-  padding: 10px 16px;
-  color: var(--text-muted);
-  text-decoration: none;
-  border-bottom: 3px solid transparent;
-}
-.pestanas a:hover { color: var(--text); }
-.pestanas a[aria-current="page"] { color: var(--text); border-bottom-color: var(--brand); font-weight: 600; }
-
+/* Mapas de puntos y editor de planos. Colores: tokens de templates/base.html. */
 .acciones-punto { display: flex; flex-wrap: wrap; gap: 12px; }
 .acciones-punto a { white-space: nowrap; }
 .en-linea { display: inline-flex; gap: 8px; margin-left: 8px; }
 .propuestas { margin-bottom: 16px; }
 .propuestas li { margin-bottom: 8px; }
 
-.mapa-leaflet { height: 520px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); }
+.mapa-leaflet { height: 520px; border: 1px solid var(--border); border-radius: var(--radio-bloque); background: var(--surface-2); }
 #plano-alta { margin-top: 16px; }
 #plano-alta[hidden] { display: none; }
 
@@ -25,13 +15,24 @@
   box-sizing: border-box;
   border: 3px solid #fff;
   border-radius: 50%;
-  background: var(--neutral);
+  background: var(--sin-fecha-punto);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
 }
-.marcador-al_dia { background: var(--ok); }
-.marcador-proxima { background: var(--warn); }
-.marcador-vencida { background: var(--danger); }
-.marcador-sin_programar { background: var(--neutral); }
+.marcador-al_dia { background: var(--al-dia-punto); }
+.marcador-proxima { background: var(--proximo-punto); color: var(--text); }
+.marcador-vencida { background: var(--vencido-punto); }
+.marcador-sin_programar { background: var(--sin-fecha-punto); }
+/* Resaltado cruzado entre el plano y la lista de la ficha. */
+.marcador.marcador-resaltado { border-color: var(--text); box-shadow: 0 0 0 3px var(--accion), 0 1px 4px rgba(0, 0, 0, 0.5); }
 .marcador-sin-posicion { opacity: 0.6; }
 .mapa-leaflet.modo-activo, .mapa-leaflet.modo-activo .leaflet-interactive { cursor: crosshair; }
 #plano-modo { font-weight: 600; }
+
+.texto-secundario { color: var(--text-muted); font-size: 14px; }
