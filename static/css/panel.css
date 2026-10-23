@@ -202,6 +202,34 @@ a:hover { color: var(--accion-hover); }
 
 /* Buscador y paginación */
 .buscador { display: flex; gap: 8px; margin-bottom: 16px; max-width: 480px; }
+.buscador input { flex: 1; min-width: 16rem; }
+
+/* Fila de filtros de un listado: campos con rótulo o chips, alineados abajo */
+.filtros { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; margin-bottom: 16px; }
+.filtros .campo { margin-bottom: 0; }
+.filtros .campo select { min-height: 40px; min-width: 10rem; }
+.filtros-chips { align-items: center; gap: 8px; }
+.filtros-chips a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 16px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radio-chip);
+  color: var(--text);
+  font-weight: 500;
+  text-decoration: none;
+}
+.filtros-chips a:hover { background: var(--surface-2); }
+.filtros-chips a[aria-current="page"] { background: var(--activo-fondo); border-color: var(--accion); color: var(--activo-texto); font-weight: 600; }
+
+/* Encabezado de página con el botón principal separado del título */
+.encabezado-pagina { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.encabezado-pagina h1 { margin: 0; }
+
+/* Varias acciones en la celda de una fila */
+.acciones-fila { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
 .paginacion { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
 .paginacion-estado { color: var(--text-muted); font-size: 14px; }
 
