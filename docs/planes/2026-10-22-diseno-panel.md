@@ -273,11 +273,11 @@ commit_base: 0175082
 | T1 | hecha |
 | T2 | hecha |
 | T3 | hecha |
-| T4 | en curso |
+| T4 | hecha |
 | T5 | hecha |
 | T6 | hecha |
 | T7 | hecha |
-| T9 | en curso |
+| T9 | hecha |
 | T8 | pendiente |
 
 ### Corridas
@@ -287,11 +287,11 @@ commit_base: 0175082
 | 2026-10-22 | T1 | d4488fc | PASA (verificador 21/21; verificador-b 22/22) | login, 404, 500 y mapa.html sin cambios propios: toman los tokens por panel.css |
 | 2026-10-22 | T2 | 82a8da0 | PASA (verificador 5/5; verificador-b 5/5) | commit T2 hecho por el principal: el implementador dejó el cambio sin commitear |
 | 2026-10-22 | T3 | 1241038 | criterios 2/2 (git log); auditor-seguridad sobre T1 sin hallazgos | observación del auditor: 404 y 500 no cargan los tokens de base.html; `.pagina-error` usa respaldos con los valores del Adjunto |
-| | T4 | | | |
+| 2026-10-22 | T4 | 04b3cc3 | criterios 17/17 PASA (verificador y verificador-b); auditor-seguridad sin hallazgos nuevos | contrato MODIFICADO por c235fc8 (T9, decisión del usuario): verificador da FALLA solo por eso, sin criterios en FALLA |
 | 2026-10-22 | T5 | 485472f | PASA (verificador 17/17; verificador-b 17/17); auditor-seguridad sin hallazgos | observación del auditor: `?q=%00` en PostgreSQL (ya registrado como P-robustez-panel-10) |
 | 2026-10-22 | T6 | ec34bb6 | PASA (verificador 7/7; verificador-b 7/7) | |
 | 2026-10-22 | T7 | 2fcfad2 | PASA (verificador 7/7; verificador-b 7/7) | |
-| | T9 | | | |
+| 2026-10-22 | T9 | 04b3cc3 | criterios 6/6 PASA (verificador y verificador-b) | contrato MODIFICADO por c235fc8 (T9, decisión del usuario): verificador da FALLA solo por eso, sin criterios en FALLA |
 | | T8 | | | |
 | | TODO | | | |
 
