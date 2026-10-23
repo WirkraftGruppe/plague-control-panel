@@ -326,7 +326,9 @@ commit_base: 0175082
 | T6 | hecha |
 | T7 | hecha |
 | T9 | hecha |
-| T8 | pendiente |
+| T10 | en curso |
+| T11 | en curso |
+| T8 | en curso |
 
 ### Corridas
 
@@ -340,6 +342,9 @@ commit_base: 0175082
 | 2026-10-22 | T6 | ec34bb6 | PASA (verificador 7/7; verificador-b 7/7) | |
 | 2026-10-22 | T7 | 2fcfad2 | PASA (verificador 7/7; verificador-b 7/7) | |
 | 2026-10-22 | T9 | 04b3cc3 | criterios 6/6 PASA (verificador y verificador-b) | contrato MODIFICADO por c235fc8 (T9, decisión del usuario): verificador da FALLA solo por eso, sin criterios en FALLA |
+| | T10 | | | |
+| | T11 | | | |
+| 2026-10-23 | T8 (prueba en navegador) | c2627ef | FALLA | panel lateral: nuevo_turno.js no se inicializa (htmx.onLoad antes de que htmx esté listo); fecha `22/10/2026` descartada por input date; visuales: desborde del panel, título duplicado, pie tapa filas, buscador de Turnos 26 px, filtros de Usuarios y Clientes, acciones de Servicios. Resto PASA (barra, inicio, ficha, Escape y foco, crear turno con fecha a mano, Turnos, Catálogo, mapa). Corrección: T10 y T11 |
 | | T8 | | | |
 | | TODO | | | |
 
