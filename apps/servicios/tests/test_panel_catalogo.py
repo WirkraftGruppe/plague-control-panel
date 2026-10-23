@@ -25,3 +25,17 @@ class CatalogoServiciosTests(TestCase):
             respuesta, f'<a href="{reverse("panel:productos:listado")}">Productos</a>'
         )
         self.assertContains(respuesta, "Roedores")
+
+
+class AccionesFilaTests(TestCase):
+    def test_acciones_de_fila_agrupadas(self):
+        admin = User.objects.create_user(
+            username="admin-acc-s", password="x", rol=User.Rol.ADMINISTRADOR
+        )
+        TipoServicio.objects.create(nombre="Insectos", slug="insectos-acc")
+        self.client.force_login(admin)
+        html = self.client.get(reverse("panel:servicios:listado")).content.decode()
+        self.assertRegex(
+            html,
+            r'<div class="acciones-fila">\s*<a [^>]*>Editar</a>\s*<a [^>]*>Planilla</a>\s*</div>',
+        )

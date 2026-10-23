@@ -102,3 +102,10 @@ class ContrasteTokensTests(SimpleTestCase):
                 ("activo-texto", "activo-fondo"),
             ]
         )
+
+
+class ListadosCssTests(SimpleTestCase):
+    def test_buscador_tiene_ancho_minimo(self):
+        css = (RAIZ / "static" / "css" / "panel.css").read_text(encoding="utf-8")
+        regla = re.search(r"\.buscador input[^{,]*\{[^}]*min-width:\s*\d", css)
+        self.assertIsNotNone(regla, "el campo del buscador necesita un min-width")
