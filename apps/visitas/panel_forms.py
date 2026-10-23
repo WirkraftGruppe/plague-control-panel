@@ -16,6 +16,8 @@ from .planillas import validar_datos
 from .serializers import MAX_BYTES_FOTO
 from .services import MAX_FOTOS, MAX_PRODUCTOS
 
+FORMATO_FECHA = "%Y-%m-%d"  # el que exige <input type="date">
+
 
 class FormularioPuntosConServicio(forms.Form):
     """Puntos activos de un sitio, cada uno con el servicio que se le hará.
@@ -91,7 +93,7 @@ class FormularioTurno(FormularioPuntosConServicio):
     )
     programada_para = forms.DateField(
         label="Fecha programada",
-        widget=forms.DateInput(attrs={"type": "date"}),
+        widget=forms.DateInput(format=FORMATO_FECHA, attrs={"type": "date"}),
     )
 
     def __init__(self, *args, sitio, **kwargs):
@@ -192,7 +194,8 @@ def _campo_de_planilla(campo):
         return forms.BooleanField(**comunes)
     if tipo == "fecha":
         return forms.DateField(
-            widget=forms.DateInput(attrs={"type": "date"}), **comunes
+            widget=forms.DateInput(format=FORMATO_FECHA, attrs={"type": "date"}),
+            **comunes,
         )
     if tipo == "opcion":
         return forms.ChoiceField(choices=[("", "---------")] + opciones, **comunes)
