@@ -79,6 +79,17 @@ class EmpresaQuerySet(models.QuerySet):
         Si Django devolvió una de las partes tal cual (por ejemplo un `.none()`), se
         respeta: esa parte ya tiene su propio estado.
         """
+        if not isinstance(resultado, EmpresaQuerySet):
+            # Con slice a la izquierda Django arma el resultado con `_base_manager`
+            # (QuerySet común, sin guardia): se lo vuelve a envolver.
+            convertido = self.__class__(
+                model=resultado.model,
+                query=resultado.query,
+                using=resultado._db,
+                hints=dict(self._hints),
+            )
+            convertido._empresa_marcada = self._empresa_marcada
+            resultado = convertido
         if any(resultado is parte for parte in partes):
             return resultado
         if not all(

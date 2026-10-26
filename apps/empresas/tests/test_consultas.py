@@ -127,6 +127,15 @@ class GuardiaTests(TestCase):
         self.assertEqual(len(propia | self.Raiz.objects.none()), 1)
 
     @override_settings(EMPRESA_GUARDIA="exigir")
+    def test_or_con_slice_a_la_izquierda_lanza(self):
+        propia = self.Raiz.objects.de_empresa(self.empresa)
+        with self.assertRaises(ConsultaSinEmpresa):
+            list(propia[:5] | self.Raiz.objects.all())
+        with self.assertRaises(ConsultaSinEmpresa):
+            list(self.Raiz.objects.all()[:5] | self.Raiz.objects.all())
+        self.assertEqual(len(propia[:5] | propia), 1)
+
+    @override_settings(EMPRESA_GUARDIA="exigir")
     def test_aiterator_sin_empresa_lanza(self):
         async def consumir(consulta):
             return [objeto async for objeto in consulta.aiterator()]
