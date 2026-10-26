@@ -458,7 +458,7 @@ commit_base: 0927fcd
 
 | Tarea | Estado |
 |---|---|
-| T1 | pendiente |
+| T1 | verificada (sin integrar) |
 | T2 | pendiente |
 | T3 | pendiente |
 | T4 | pendiente |
@@ -477,7 +477,7 @@ commit_base: 0927fcd
 
 | Fecha/hora | Alcance | HEAD verificado | Veredicto | Notas |
 |---|---|---|---|---|
-| | T1 | | | |
+| 2026-10-26 17:45 | T1 | edf757c | PASA (verificador 21/21, verificador-b 21/21) | auditor-seguridad: 0 bloqueantes, 1 importante, 2 menores (P-multiempresa-1 a 3); falta integrar (T3 paso 1) |
 | | T2 | | | |
 | | T3 | | | |
 | | T4–T9 | | | |
@@ -502,6 +502,14 @@ commit_base: 0927fcd
 ## Pendientes que deja este plan
 
 ### Problemas
+
+- P-multiempresa-1 [importante] La marca de `de_empresa` se hereda al combinar con un queryset sin filtrar (`|`, `^`, `union`, `intersection`, `difference`; también el hint `instance`): `de_empresa(a) | objects.all()` devuelve datos de otra empresa sin lanzar en `exigir` (`apps/empresas/consultas.py:50-70`). Hoy no hay usos; la guardia debería marcar el resultado como seguro solo si lo son todas las partes, con tests. Un `Subquery` no correlacionado en `annotate` tampoco se verifica (regla de revisión para la ola 3). Origen: auditor-seguridad sobre T1.
+- P-multiempresa-2 [menor] `aiterator()` se salta la guardia (`apps/empresas/consultas.py:84-86` sobrescribe `_iterator`; Django 5.2 `aiterator` no lo llama). Origen: auditor-seguridad sobre T1.
+- P-multiempresa-3 [menor] La excepción por hint `instance` acepta instancias no cargadas de la base (`Cliente(pk=x).sitios.all()`, `db_manager(hints={"instance": …})`) (`apps/empresas/consultas.py:68`); exigir `not instancia._state.adding` y un `[grep-0]` de `db_manager(`/`_add_hints` fuera de tests. Origen: auditor-seguridad sobre T1.
+- P-multiempresa-4 [observación] `.env.example` no documenta `EMPRESA_GUARDIA` ni `CORREO_PLATAFORMA` (T12 toca `.env.example`). Origen: implementador T1.
+- P-multiempresa-5 [observación] `MAX_PIXELES = 25_000_000` en `apps/empresas/logos.py:12` permite ~125 MB transitorios por subida; para un logo de 512 px alcanza con ~16,7 M. Para T5: el `ModelForm` del logo no debe usar `forms.ImageField` (abre con todos los plugins de Pillow) y el servido de `empresas/logos/` sigue el criterio de los planos. Origen: auditor-seguridad sobre T1.
+- P-multiempresa-6 [observación] `SERVE_AUTHENTICATION` incluye `SessionAuthentication`: una sesión de empresa inactiva sigue leyendo `/api/v1/schema/` (sin datos de empresa). Sin dueño en el plan. Origen: auditor-seguridad sobre T1.
+- P-multiempresa-7 [observación] `demo-plataforma` es el primer usuario demo con `/admin/` completo y contraseña publicada; sugerencia: system check en `prod.py` (T10) que falle si existe `username__startswith="demo-"`. `JWTAutenticacionEmpresa.get_user` copia el de simplejwt 5.5.1 y no hereda arreglos futuros. Origen: auditor-seguridad sobre T1.
 
 ### Decisiones
 

@@ -7,7 +7,7 @@ Planes activos (los hooks derivan el plan de la rama; la línea `Plan activo:` d
 
 | plan | rama | ola actual | pendiente inmediato | sesión |
 |---|---|---|---|---|
-| `multiempresa` | plan/multiempresa | 1 (T1 en curso) | T1: implementador en `worktrees/multiempresa-T1`, después `verificador`, `verificador-b` y `auditor-seguridad`; plan commiteado (0927fcd) | sesión 2026-10-26 |
+| `multiempresa` | plan/multiempresa | 1 (T1 verificada, sin integrar) | decidir P-multiempresa-1 (importante del auditor) y T3 paso 1: integrar `multiempresa-T1` | sesión 2026-10-26 |
 
 Siguiente (orden decidido el 2026-10-20; reconfirmado el 2026-10-21): `multiempresa` → despliegue. El despliegue en Railway espera a que esos planes estén en `main`, para no tener que migrar datos reales. Problemas abiertos: ver `pendientes.py`. Decisiones y cuándo preguntar: `docs/protocolo-decisiones.md` (CLAUDE.md § Reglas globales, regla 1).
 
