@@ -21,7 +21,7 @@
   - Las comparaciones de empresa usan `empresa_id`, no `obj.empresa`: con `null=False` (T14), leer `obj.empresa` en una instancia sin empresa lanza `RelatedObjectDoesNotExist`.
   - Toda `ModelForm` que crea un objeto de una empresa (incluido `UsuarioAltaForm` de `apps/accounts/panel_forms.py`) fija `instance.empresa` antes de validar (en `__init__` o antes de `is_valid()`), no en `form_valid` ni en `save()`: `_post_clean` corre `full_clean()` y desde T14 `User.clean()` exige la empresa. Como `empresa` no es campo del formulario, Django la excluye de la validación de restricciones (`UniqueConstraint.validate` sale sin validar, `django/db/models/constraints.py:316-317`): los formularios con `UniqueConstraint(empresa, …)` sacan `empresa` de las exclusiones (`_get_validation_exclusions`) para que el duplicado dé error de formulario y no `IntegrityError`.
   - Serializers y formularios que leen el request (`self.context["request"]`) contemplan que no haya request: drf-spectacular instancia los serializers sin `context` al generar el esquema (`drf_spectacular/plumbing.py:121`). Sin request, el queryset acotado es `Modelo.objects.none()` (que la guardia no mira); nunca `empresa_de(None)` ni `de_empresa(None)`, que lanzan.
-- Subida de logo: mismo criterio que `apps/sitios/planos.py:80-106` (`_abrir_imagen`: solo JPEG/PNG, `info = {}`) y nombre `uuid4().hex` como `ruta_plano` (`apps/sitios/models.py:137`), pero con proceso propio en `apps/empresas/logos.py` (2 MB, lado máximo 512 px) para que `empresas` no dependa de `sitios`. Tampoco sirve `procesar_imagen` de `apps/visitas/imagenes.py:25`: devuelve JPEG RGB (`imagenes.py:68`) y el logo se guarda como PNG con transparencia; además `empresas` tampoco depende de `visitas`.
+- Subida de logo: mismo criterio que `apps/sitios/planos.py:80-106` (`_abrir_imagen`: solo JPEG/PNG, `info = {}`) y nombre `uuid4().hex` como `ruta_plano` (`apps/sitios/models.py:137`), pero con proceso propio en `apps/empresas/logos.py` (2 MB, lado máximo 512 px en T1; T5 lo pasa al criterio de las fotos: 16 MP de entrada y 1000 px de lado mayor guardado, contrato modificado del 2026-10-26) para que `empresas` no dependa de `sitios`. Tampoco sirve `procesar_imagen` de `apps/visitas/imagenes.py:25`: devuelve JPEG RGB (`imagenes.py:68`) y el logo se guarda como PNG con transparencia; además `empresas` tampoco depende de `visitas`.
 - Docs: `docs/01-modelo-y-arquitectura.md` §1, §2, §3 (Empresa nueva; FK en 3.1–3.11), §4.2, §6, §7.
 
 ## Olas
@@ -179,8 +179,8 @@ Orden dentro de las olas 3 y 4 (una flecha `A → B` dice que B ramifica de `pla
 
 - **Ola**: 3
 - **Depende de**: T3
-- **Puede tocar**: `apps/empresas/panel_views.py`, `apps/empresas/panel_urls.py`, `apps/empresas/panel_forms.py`, `apps/empresas/templates/**`, `apps/empresas/tests/test_panel.py`, `templates/**`, `static/css/panel.css`, `apps/panel/tests/test_plantilla_base.py`, `apps/panel/tests/test_menu.py`
-- **No puede tocar**: `docs/planes/`, `config/`, `apps/empresas/models.py`, `apps/empresas/consultas.py`, `apps/empresas/logos.py`, el resto de `apps/panel/**`, las demás apps
+- **Puede tocar**: `apps/empresas/panel_views.py`, `apps/empresas/panel_urls.py`, `apps/empresas/panel_forms.py`, `apps/empresas/templates/**`, `apps/empresas/tests/test_panel.py`, `apps/empresas/logos.py`, `apps/empresas/tests/test_logos.py`, `templates/**`, `static/css/panel.css`, `apps/panel/tests/test_plantilla_base.py`, `apps/panel/tests/test_menu.py`
+- **No puede tocar**: `docs/planes/`, `config/`, `apps/empresas/models.py`, `apps/empresas/consultas.py`, el resto de `apps/panel/**`, las demás apps
 - **Skill a leer antes**: `.claude/skills/convenciones-proyecto/SKILL.md`; `docs/02-diseno.md` (tokens y barra lateral)
 - **Worktree**: sí
 - **Ruta**: delegada · Evidencia: … · Commit: …
@@ -190,6 +190,7 @@ Orden dentro de las olas 3 y 4 (una flecha `A → B` dice que B ramifica de `pla
   - `templates/panel/base.html`: ítem "Empresa" en el grupo Administración; la barra lateral muestra el logo (por `panel:empresas:logo`) o, sin logo, el nombre de `empresa_actual`. `templates/base.html` y `templates/panel/ingresar.html`: "Detach", sin `NOMBRE_EMPRESA` ni el logo de una empresa.
   - `apps/panel/tests/test_plantilla_base.py` y `apps/panel/tests/test_menu.py` comprueban el `alt` de las plantillas que cambia esta subtarea y dejan de leer `settings.NOMBRE_EMPRESA` (`test_menu.py:95`, `test_plantilla_base.py:15,19`), porque T10 borra el setting y no es dueña de esos archivos: son de T5 por excepción de propiedad (ver `### Decisiones`) y T9 no los toca.
   - `IngresoTests.test_login_no_muestra_el_nombre_de_ninguna_empresa`: crea dos empresas y, con `override_settings(NOMBRE_EMPRESA=<nombre de una de ellas>)` (la fuente que usa hoy `ingresar.html:6`), exige que `/panel/ingresar/` muestre "Detach" y ninguno de los dos nombres. Antes de T5 falla por ese `alt`. T10, que borra `NOMBRE_EMPRESA`, saca ese `override_settings` y es dueña del archivo desde entonces.
+  - Límite del logo (contrato modificado del 2026-10-26, decisión del usuario; P-multiempresa-5): `apps/empresas/logos.py` pasa al criterio de las fotos, 16 MP de entrada (`MAX_PIXELES = 16_000_000`) y 1000 px de lado mayor guardado, con el resto igual (PNG sin metadatos, 2 MB, solo JPEG/PNG). T5 es dueña de `apps/empresas/tests/test_logos.py` desde esta subtarea: reescribe el cuerpo de `test_guarda_png_sin_exif_con_nombre_aleatorio` (criterio de T1, que hoy exige 512 px con una imagen de 800×600) con una imagen de más de 1000 px y conserva el nombre. El campo del formulario del logo no es `forms.ImageField` (abre el archivo con todos los plugins de Pillow antes de `procesar_logo`): `FileField`, o `procesar_logo` en `clean_logo`, como los planos.
 - **Criterios**:
   - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_panel.PanelEmpresaTests.test_administrador_edita_nombre_logo_y_correo --keepdb`
   - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_panel.PanelEmpresaTests.test_logo_que_no_es_imagen_o_de_mas_de_2_mb_da_error_de_formulario --keepdb`
@@ -201,6 +202,9 @@ Orden dentro de las olas 3 y 4 (una flecha `A → B` dice que B ramifica de `pla
   - `[grep-0]` `git grep -n "NOMBRE_EMPRESA" -- templates ':!*/tests/*'`
   - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_panel.IngresoTests.test_login_no_muestra_el_nombre_de_ninguna_empresa --keepdb`
   - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas apps.panel --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_logos.LogoTests.test_guarda_hasta_1000_px_de_lado_mayor --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_logos.LogoTests.test_rechaza_mas_de_16_mp --keepdb`
+  - `[grep-1]` `grep -n "16_000_000" apps/empresas/logos.py`
   - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 600 --subtarea T5`
 
 ### T6 — Clientes, servicios y productos por empresa
@@ -350,8 +354,8 @@ Orden dentro de las olas 3 y 4 (una flecha `A → B` dice que B ramifica de `pla
 
 - **Ola**: 4
 - **Depende de**: T10 (y por lo tanto T9: ramifica de `plan/multiempresa` con la ola 3 integrada)
-- **Puede tocar**: `apps/**` (salvo `models.py` y `migrations/` de cada app, `apps/panel/urls.py` y `apps/api/urls.py`), solo para los tests de abajo, `apps/empresas/consultas.py` y las consultas que la guardia en `exigir` encuentre sin empresa
-- **No puede tocar**: `docs/planes/`, `config/`, `templates/**`, `docs/**`, `apps/*/serializers.py` en lo que cambie el esquema de la API
+- **Puede tocar**: `apps/**` (salvo `models.py` y `migrations/` de cada app, `apps/panel/urls.py` y `apps/api/urls.py`), solo para los tests de abajo, `apps/empresas/consultas.py` y las consultas que la guardia en `exigir` encuentre sin empresa; `docs/01-modelo-y-arquitectura.md`, solo la descripción de la guardia (contrato modificado del 2026-10-26)
+- **No puede tocar**: `docs/planes/`, `config/`, `templates/**`, `docs/**` (salvo `docs/01-modelo-y-arquitectura.md`, ver arriba), `apps/*/serializers.py` en lo que cambie el esquema de la API
 - **Skill a leer antes**: `.claude/skills/convenciones-proyecto/SKILL.md`
 - **Worktree**: sí
 - **Ruta**: delegada · Evidencia: … · Commit: …
@@ -361,6 +365,8 @@ Orden dentro de las olas 3 y 4 (una flecha `A → B` dice que B ramifica de `pla
   - `consultas.py`: la guardia siempre lanza; se borran la rama `advertir`, la advertencia, la lectura de `EMPRESA_GUARDIA` y el test del modo `advertir` de T1. T11 es dueña de `apps/empresas/tests/test_consultas.py` y reescribe `test_consulta_sin_empresa_lanza` sin `override_settings(EMPRESA_GUARDIA=…)`, con el mismo nombre. Se corrige toda consulta que la suite encuentre sin empresa (con `de_empresa`, nunca con `todos` en panel o API).
   - `apps/empresas/tests/test_guardia.py`: recorre `apps.get_models()` y exige que `objects.all()` lance en cada subclase de `ModeloDeEmpresa`; busca `.todos` en `panel_views.py`, `api_views.py`, `serializers.py`, `panel_forms.py`, `templatetags/` y `apps/panel`, `apps/api`.
   - `apps/panel/tests/test_aislamiento.py`: con `AccesoTests` como base (mapa ruta → objeto), crea los objetos en la empresa A y recorre con el administrador de B todas las rutas de `/panel/` con identificador: en cada ruta, cada método que la vista implementa (`_allowed_methods()` en las vistas de clase; los métodos que acepta en las de función), salvo `OPTIONS`, da 404. `OPTIONS` (que `View.options()` y `APIView.options()` responden con 200 y el encabezado `Allow` sin buscar el objeto) y los métodos que la vista no acepta (405 antes de resolver el objeto) no se prueban. `apps/api/tests/test_aislamiento.py`: lo mismo con `/api/v1/` (rutas de `get_resolver()` bajo `api/v1/` con identificador en la URL; las que reciben el `qr_codigo` en el cuerpo, como `/visitas/abrir/` y `/revisiones/`, las cubren los tests de 400 de T8), con cada usuario de B que pasa el permiso de la vista (administrador de B en las de `EsAdministrador`, como `AltaPuntoView` y `UbicacionPuntoView`; operario de B en las de `EsEmpleado`; los dos en las de `EsEmpleado | EsAdministrador`, como `PlanoImagenView` y `FotoView`, porque el administrador se saltea el filtro por empleado), y solo con los métodos que la vista acepta. Un 403 de permiso o un 405 no cuentan como aislamiento: el test exige 404. Los dos fallan si aparece una ruta con parámetro sin objeto en el mapa.
+  - Límites de la guardia (contrato modificado del 2026-10-26, decisión del usuario; P-multiempresa-9 y -10): el docstring de `EmpresaQuerySet` (`apps/empresas/consultas.py`) y la sección de la guardia de `docs/01-modelo-y-arquitectura.md` dicen qué cubre y qué no: un queryset pasado a `Prefetch(queryset=…)` queda exento si se reutiliza solo (recibe el hint `instance`), y `db_manager(hints=…)` o `_add_hints` con una instancia cargada eximen todo el modelo. Dicen también que la garantía principal es el test de aislamiento generado (`test_aislamiento.py` del panel y de la API), no la guardia. Fuera de los tests y de `consultas.py`, nadie usa `db_manager(` ni `_add_hints`.
+  - Cobertura de la guardia (P-multiempresa-11): los tests de `test_consultas.py` usan una segunda empresa con sus filas, para que los casos seguros comprueben que no traen datos de otra empresa, y cubren `^`, el orden inverso (`all() | propia`), las cadenas (`a | b | c`) y el slice a la izquierda.
 - **Criterios**:
   - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_guardia.GuardiaModelosTests.test_objects_all_sin_empresa_lanza_en_todos_los_modelos --keepdb`
   - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_guardia.GuardiaModelosTests.test_panel_y_api_no_usan_el_manager_sin_filtro --keepdb`
@@ -373,6 +379,14 @@ Orden dentro de las olas 3 y 4 (una flecha `A → B` dice que B ramifica de `pla
   - `[grep-0]` `git grep -n "EMPRESA_GUARDIA" -- apps/empresas/tests/test_consultas.py`
   - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test --keepdb`
   - `[cmd]` `f=$(mktemp) && PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py spectacular --validate --file "$f" 2>&1 >/dev/null | grep -q "^Warnings: 1 (1 unique)$"`
+  - `[grep-0]` `git grep -n "db_manager(\|_add_hints" -- apps config ':!*/tests/*' ':!apps/empresas/consultas.py'`
+  - `[grep-1]` `grep -n "Prefetch" apps/empresas/consultas.py`
+  - `[grep-1]` `grep -n "db_manager" apps/empresas/consultas.py`
+  - `[grep-1]` `grep -n "Prefetch" docs/01-modelo-y-arquitectura.md`
+  - `[grep-1]` `grep -n "db_manager" docs/01-modelo-y-arquitectura.md`
+  - `[grep-1]` `grep -n "test_aislamiento" docs/01-modelo-y-arquitectura.md`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_consultas.GuardiaTests.test_xor_orden_inverso_cadenas_y_slice_lanzan --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_consultas.GuardiaTests.test_combinaciones_seguras_no_traen_datos_de_otra_empresa --keepdb`
   - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 1400 --subtarea T11`
 
 ### T12 — Documentación, contrato de la API y OpenAPI
