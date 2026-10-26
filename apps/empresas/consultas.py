@@ -74,7 +74,7 @@ class EmpresaQuerySet(models.QuerySet):
         )
 
     def _combinada(self, resultado, *partes):
-        """Quita la marca y el hint al resultado de combinar si alguna parte no es segura.
+        """Quita la marca y el hint al combinar si alguna parte no es segura.
 
         Si Django devolvió una de las partes tal cual (por ejemplo un `.none()`), se
         respeta: esa parte ya tiene su propio estado.
