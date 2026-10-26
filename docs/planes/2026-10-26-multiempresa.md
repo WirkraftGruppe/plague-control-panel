@@ -472,7 +472,7 @@ commit_base: 0927fcd
 
 | Tarea | Estado |
 |---|---|
-| T1 | verificada (sin integrar); P-multiempresa-8 abierto |
+| T1 | en corrección (P-multiempresa-8) |
 | T2 | pendiente |
 | T3 | pendiente |
 | T4 | pendiente |
@@ -532,6 +532,9 @@ commit_base: 0927fcd
 
 ### Decisiones
 
+- 2026-10-26 — P-multiempresa-8 (slice a la izquierda de `|`/`^`) se cierra en T1 y es el último ciclo de corrección de la guardia dentro de T1: cualquier otra variante que encuentre el auditor queda como pendiente para T11, sin ciclo nuevo; lo que no entre en el presupuesto de T1 va a una subtarea nueva antes de T3, como contrato modificado — decisión del usuario — reemplaza a: (nada)
+- 2026-10-26 — P-multiempresa-9, -10 y -11 van a T11 (contrato modificado e4ada1f): se documenta qué cubre la guardia y qué no (Prefetch reutilizado, `db_manager` con hints), la garantía principal es el test de aislamiento generado, se suma un `[grep-0]` de `db_manager(`/`_add_hints` y los tests de cobertura con una segunda empresa — decisión del usuario — reemplaza a: (nada)
+- 2026-10-26 — El límite del logo (16 MP de entrada, 1000 px de lado mayor) se hace en T5 (contrato modificado e4ada1f: T5 puede tocar `apps/empresas/logos.py` y `tests/test_logos.py`) — decisión del usuario — reemplaza a: 2026-10-26 (el logo usa el límite de las fotos, sin subtarea definida)
 - 2026-10-26 — P-multiempresa-1, -2 y -3 (guardia eludible por `|`/`union`, `aiterator()` e hint `instance` de una instancia no cargada) se corrigen dentro de T1, antes de integrar, sin subir su presupuesto; lo que no entre va a una subtarea nueva antes de T3, como contrato modificado — la ola 3 se apoya en la guardia — decisión del usuario — reemplaza a: (nada)
 - 2026-10-26 — El logo usa el límite de las fotos: 16 MP de entrada y 1000 px de lado mayor guardado, ajustado en T5 — decisión del usuario — reemplaza a: (nada; el plan decía 512 px de lado en `## Contexto mínimo` y en T1)
 - 2026-10-26 — Multiempresa en una sola base: FK directa a `Empresa` en todos los modelos de dominio, manager por defecto que exige empresa, middleware que fija `request.empresa` y test de aislamiento generado; sin migración de datos — nada está en producción; registra las decisiones del 2026-10-17 que no estaban en `docs/decisiones.md` — decisión del usuario — reemplaza a: (nada)
