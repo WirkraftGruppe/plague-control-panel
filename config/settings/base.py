@@ -92,6 +92,27 @@ CORREO_CONTACTO = (
     env("CORREO_CONTACTO", default="").strip() or "administracion@macontrol.com.ar"
 )
 
+
+def leer_empresa_guardia():
+    """Modo de la guardia de consultas por empresa: `advertir` o `exigir`.
+
+    Provisorio mientras las apps agregan `de_empresa`; el plan multiempresa lo deja
+    siempre en `exigir` y borra el setting.
+    """
+    valor = env("EMPRESA_GUARDIA", default="advertir").strip()
+    if valor not in ("advertir", "exigir"):
+        raise ImproperlyConfigured("EMPRESA_GUARDIA debe ser 'advertir' o 'exigir'.")
+    return valor
+
+
+EMPRESA_GUARDIA = leer_empresa_guardia()
+
+# Correo de la plataforma (soporte a las empresas); el valor por defecto es de
+# desarrollo.
+CORREO_PLATAFORMA = (
+    env("CORREO_PLATAFORMA", default="").strip() or "plataforma@example.com"
+)
+
 # Una revisión o una apertura a más metros del punto (o del sitio, si el punto no
 # tiene coordenadas) marca `incidencia_ubicacion`; nunca se rechaza
 # (plan cierre-puntos).
@@ -115,6 +136,7 @@ INSTALLED_APPS = [
     "drf_spectacular_sidecar",
     "csp",
     "simple_history",
+    "apps.empresas",
     "apps.accounts",
     "apps.clientes",
     "apps.sitios",
@@ -132,6 +154,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "apps.empresas.middleware.EmpresaMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "csp.middleware.CSPMiddleware",
@@ -151,6 +174,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "config.contexto.empresa",
+                "apps.empresas.contexto.empresa_actual",
             ],
         },
     },
@@ -160,6 +184,8 @@ WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
 AUTH_USER_MODEL = "accounts.User"
+
+AUTHENTICATION_BACKENDS = ["apps.empresas.autenticacion.BackendConEmpresa"]
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -211,7 +237,7 @@ DATA_UPLOAD_MAX_NUMBER_FILES = 12
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework_simplejwt.authentication.JWTAuthentication"
+        "apps.empresas.autenticacion.JWTAutenticacionEmpresa"
     ],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
@@ -240,7 +266,7 @@ SPECTACULAR_SETTINGS = {
     "SERVE_INCLUDE_SCHEMA": False,
     "SERVE_PERMISSIONS": ["rest_framework.permissions.IsAuthenticated"],
     "SERVE_AUTHENTICATION": [
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "apps.empresas.autenticacion.JWTAutenticacionEmpresa",
         "rest_framework.authentication.SessionAuthentication",
     ],
     "COMPONENT_SPLIT_REQUEST": True,

@@ -181,6 +181,12 @@ class CargarDemoClienteTests(TestCase):
         self.assertTrue(nombres)
         self.assertTrue(all(nombre.endswith(" (demo)") for nombre in nombres))
 
+    def test_usuario_plataforma_es_superusuario_sin_empresa(self):
+        usuario = User.objects.get(username="demo-plataforma")
+        self.assertTrue(usuario.es_plataforma)
+        self.assertTrue(usuario.is_superuser)
+        self.assertIsNone(usuario.empresa_id)
+
     def test_planillas_validas_contra_su_esquema(self):
         for revision in Revision.objects.all():
             errores = validar_datos(revision.esquema_planilla, revision.datos)

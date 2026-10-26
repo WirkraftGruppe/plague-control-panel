@@ -13,6 +13,7 @@ APPS = [
     "visitas",
     "informes",
     "accounts",
+    "empresas",
 ]
 
 

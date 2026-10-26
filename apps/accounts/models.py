@@ -9,11 +9,21 @@ class User(AbstractUser):
     class Rol(models.TextChoices):
         ADMINISTRADOR = "administrador", "Administrador"
         EMPLEADO = "empleado", "Empleado"
+        PLATAFORMA = "plataforma", "Plataforma"
 
     rol = models.CharField(
         "rol", max_length=15, choices=Rol.choices, default=Rol.EMPLEADO
     )
     telefono = models.CharField("teléfono", max_length=30, blank=True)
+    # Nula solo para el rol plataforma, que no pertenece a ninguna empresa.
+    empresa = models.ForeignKey(
+        "empresas.Empresa",
+        verbose_name="empresa",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="usuarios",
+    )
 
     history = HistoricalRecords(excluded_fields=["password", "last_login"])
 
@@ -28,6 +38,10 @@ class User(AbstractUser):
     @property
     def es_empleado(self):
         return self.rol == self.Rol.EMPLEADO
+
+    @property
+    def es_plataforma(self):
+        return self.rol == self.Rol.PLATAFORMA
 
     def save(self, *args, **kwargs):
         """Guarda sin historial cuando solo se actualiza `last_login` (cada login)."""
