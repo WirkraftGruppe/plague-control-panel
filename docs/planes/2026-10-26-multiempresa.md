@@ -1,0 +1,521 @@
+# Plan: Multiempresa — aislamiento por empresa en una sola base
+
+- **slug**: `multiempresa`
+- **fecha**: 2026-10-26
+- **commit_base**: el commit cuyo asunto empieza con `docs(plan): multiempresa`. No se escribe acá: el hash se anota en `## Registro de verificación`.
+- **objetivo**: cada empresa ve y opera solo sus datos en el panel y la API, el operador de plataforma administra empresas y usuarios desde `/admin/`, y el nombre y el logo de la empresa salen de `Empresa`, no del entorno.
+- **fuera de alcance**: subdominios por empresa, alta pública de empresas, cobro o planes; acceso de soporte del operador al panel de una empresa; datos legales del certificado (P-separacion-web-1, plan `informes`); plantilla de catálogo para empresas nuevas; pendientes de `robustez-listados`; los pendientes `[despliegue]` abiertos.
+- **áreas**: panel | api | dominio (modelos y servicios) | infraestructura
+- **seguridad**: sí — el riesgo principal del producto es que una empresa vea datos de otra. Toca autenticación (JWT, login del panel y del admin), roles (rol nuevo `plataforma`), todos los `get_queryset` del panel y la API, servido de fotos, planos, QR y logos, resolución de QR, subida de imágenes, settings de producción y datos personales. `auditor-seguridad` corre sobre T1, T2, T4, T5, T6, T7, T8, T9, T10 (`config/settings/prod.py`), T11, T12 (despliegue, `.env.example` y reglas de la skill) y T14 y en el cierre.
+
+## Contexto mínimo
+
+- Hoy no hay ningún filtro por empresa: solo rol (`apps/accounts/mixins.py`, `apps/accounts/permisos.py`) e `is_superuser` en `/admin/` (`config/admin.py:22`). 14 modelos en 6 apps, sin managers propios; cada app tiene un único `0001_initial.py` (decisión 2026-10-20).
+- Puntos donde se filtra mal o nada: vistas con `model = X` y `get_object_or_404(Model, …)` en todas las apps; querysets de clase en `apps/sitios/serializers.py:141`, `apps/sitios/panel_forms.py:109,117`, `apps/visitas/panel_forms.py:90,159,212`; contadores del menú (`apps/panel/templatetags/panel_ui.py:40`, `apps/visitas/templatetags/visitas_ui.py:20`); `TipoServicio.slug` único global (`apps/servicios/models.py:11,34`); `_duplicada` por `cliente_uuid` global (`apps/visitas/services.py:583`); `FotoView` da 403 y no 404 (`apps/visitas/api_views.py:330`).
+- `AccesoTests` (`apps/panel/tests/test_acceso.py:143`) ya recorre todas las rutas de `/panel/` y falla si una ruta con parámetro no tiene objeto real (`_rutas_con_objetos_reales`, :226): T11 lo reutiliza para el recorrido entre empresas. En la API no hay recorrido; `test_contrato_doc` (`apps/api/tests/test_contrato_doc.py:22`) enumera `/api/v1/`.
+- Diseño del filtro (validado contra Django 5.2 del venv): `EmpresaQuerySet` con `de_empresa(empresa)` que marca el queryset; las evaluaciones (`_fetch_all`, `_iterator`, `count`, `exists`, `aggregate`, `update`, `delete`, `explain`) lanzan `ConsultaSinEmpresa` si no está marcado, salvo `.none()`, querysets de un manager relacionado o de `prefetch_related` (hint `instance`) y el contexto `sin_filtro_empresa()` (admin, `validate_unique`/`validate_constraints`, comandos). Base abstracta `ModeloDeEmpresa` con `objects` primero (manager por defecto) y `todos = models.Manager()`. `User` queda fuera de la guardia: simplejwt lo carga con `User.objects` antes de conocer la empresa; sus vistas filtran por empresa a mano.
+- Despliegue gradual de la guardia: `EMPRESA_GUARDIA` (`advertir` | `exigir`, del entorno, por defecto `advertir`) mientras la ola 3 agrega `de_empresa` app por app; T11 la deja siempre en `exigir` y T13 borra el setting.
+- `request.empresa`: middleware después de `AuthenticationMiddleware` para la sesión; en la API, una subclase de `JWTAuthentication` que da 401 con la empresa inactiva y fija `request.empresa`.
+- Reglas para todo el código desde T2 en adelante (la de `empresa_id` vale también para `models.py` de T2 y T14):
+  - Las vistas de la API obtienen la empresa con `empresa_de(request)` (`apps/empresas/consultas.py`, de T1: la de `request.user` si está autenticado, o `None`), no con `request.empresa`: los tests con `force_authenticate` (21 llamadas en 6 archivos, por ejemplo `apps/sitios/tests/test_api_resolver_servicio.py:55`) reemplazan los autenticadores, así que `JWTAutenticacionEmpresa` no corre y `request.empresa` queda en `None`. El panel puede usar `request.empresa`.
+  - Las comparaciones de empresa usan `empresa_id`, no `obj.empresa`: con `null=False` (T14), leer `obj.empresa` en una instancia sin empresa lanza `RelatedObjectDoesNotExist`.
+  - Toda `ModelForm` que crea un objeto de una empresa (incluido `UsuarioAltaForm` de `apps/accounts/panel_forms.py`) fija `instance.empresa` antes de validar (en `__init__` o antes de `is_valid()`), no en `form_valid` ni en `save()`: `_post_clean` corre `full_clean()` y desde T14 `User.clean()` exige la empresa. Como `empresa` no es campo del formulario, Django la excluye de la validación de restricciones (`UniqueConstraint.validate` sale sin validar, `django/db/models/constraints.py:316-317`): los formularios con `UniqueConstraint(empresa, …)` sacan `empresa` de las exclusiones (`_get_validation_exclusions`) para que el duplicado dé error de formulario y no `IntegrityError`.
+  - Serializers y formularios que leen el request (`self.context["request"]`) contemplan que no haya request: drf-spectacular instancia los serializers sin `context` al generar el esquema (`drf_spectacular/plumbing.py:121`). Sin request, el queryset acotado es `Modelo.objects.none()` (que la guardia no mira); nunca `empresa_de(None)` ni `de_empresa(None)`, que lanzan.
+- Subida de logo: mismo criterio que `apps/sitios/planos.py:80-106` (`_abrir_imagen`: solo JPEG/PNG, `info = {}`) y nombre `uuid4().hex` como `ruta_plano` (`apps/sitios/models.py:137`), pero con proceso propio en `apps/empresas/logos.py` (2 MB, lado máximo 512 px) para que `empresas` no dependa de `sitios`. Tampoco sirve `procesar_imagen` de `apps/visitas/imagenes.py:25`: devuelve JPEG RGB (`imagenes.py:68`) y el logo se guarda como PNG con transparencia; además `empresas` tampoco depende de `visitas`.
+- Docs: `docs/01-modelo-y-arquitectura.md` §1, §2, §3 (Empresa nueva; FK en 3.1–3.11), §4.2, §6, §7.
+
+## Olas
+
+Migraciones rehechas (decisión del usuario de hoy, como el 2026-10-20): T2 regenera un `0001_initial.py` por app; las bases locales se recrean con `migrate` + `cargar_demo`. La FK `empresa` entra en dos fases (decisión del usuario): T2 la agrega nula y sin `CheckConstraint`, para que las altas del panel sigan funcionando mientras la ola 3 hace que vistas, formularios, admin, demo y tests asignen la empresa; T14, al final, la vuelve no nula y agrega el `CheckConstraint` de rol y empresa en `User`, regenerando otra vez los `0001_initial.py`. T1, T2 y T14 son transversales y corren sin ninguna subtarea en paralelo; la ola 3 separa por app el filtrado de vistas y formularios, con la guardia en `advertir`.
+
+| Ola | Subtareas | Apps (migraciones) |
+|---|---|---|
+| 1 | T1, T3 paso 1 (integración) | empresas (0001), accounts (0002 provisoria, la absorbe T2) |
+| 2 | T2, T3 paso 2 (integración) | todas (rehace cada 0001, FK nula) |
+| 3 | T4, T5, T6, T7, T8, T9, T10 (integración) | ninguna |
+| 4 | T11, T14, T12, T13 (integración), en ese orden y sin paralelo | todas en T14 (rehace cada 0001, FK no nula) |
+
+Nota: la integración de la ola 1 es T3 y también integra T2 (ola 2), porque T2 ramifica de `plan/multiempresa` después de integrar T1; T3 tiene dos pasos con sus criterios.
+
+Orden dentro de las olas 3 y 4 (una flecha `A → B` dice que B ramifica de `plan/multiempresa` después de integrar A):
+- Ola 3: T4, T5 y T6 en paralelo desde el commit de integración de T3; T4 → T8 (T4 pasa a `plataforma` los tests de admin de `visitas`); T4 → T7 y T5 → T7 (T4 pasa a `plataforma` los tests de admin de `sitios`; la página de `/q/` extiende `templates/base.html`, que cambia T5); T7 → T9 (T7 es dueña de `apps/panel/tests/test_rutas.py`, y T9 no lo toca).
+- Ola 4: T11 → T14 → T12 (T14 corre sola, con todas las altas ya asignando empresa; el OpenAPI de T12 se genera con el código que dejan T11 y T14).
+
+## Subtareas
+
+### T1 — App `empresas`: modelo, guardia de consultas, logo, middleware y JWT
+
+- **Ola**: 1
+- **Depende de**: —
+- **Puede tocar**: `apps/empresas/**` (nueva), `apps/accounts/models.py`, `apps/accounts/migrations/0002_*.py`, `config/settings/base.py`, `apps/panel/urls.py` (una línea: `path("empresa/", include("apps.empresas.panel_urls"))`, que da el prefijo `/panel/empresa/` que usa T5), `apps/panel/tests/test_routers.py`, `apps/panel/management/commands/cargar_demo.py`, `apps/panel/demo*.py`, `apps/panel/tests/test_cargar_demo.py`
+- **No puede tocar**: `docs/planes/`, `config/settings/prod.py`, `config/admin.py`, el resto de `apps/accounts/**`, las demás apps, `templates/**`
+- **Skill a leer antes**: `.claude/skills/convenciones-proyecto/SKILL.md`; `.agents/skills/` de Django (modelos, managers, middleware) si existe
+- **Worktree**: sí
+- **Ruta**: delegada · Evidencia: … · Commit: …
+- **Presupuesto**: 900 líneas agregadas
+- **Qué hacer**:
+  - Única subtarea de su ola: el principal le delega `config/settings/base.py` y la línea de `apps/panel/urls.py` (no corren en paralelo con nada). Por la excepción de propiedad de `### Decisiones`, también es dueña de `cargar_demo` y de `apps/panel/tests/test_cargar_demo.py` en esta ola: `cargar_demo` crea el usuario `demo-plataforma` (rol `plataforma`, superusuario, sin empresa) para que `test_crea_los_conteos_esperados` (`test_cargar_demo.py:169`, un usuario por cada valor de `User.Rol`) siga en verde.
+  - `apps/empresas/models.py`: `Empresa` (`nombre`, `logo` opcional con `upload_to` aleatorio `empresas/logos/<uuid4hex>.png`, `correo_contacto` opcional, `activo`, `creado`, `modificado`); base abstracta `ModeloDeEmpresa` (FK `empresa` `PROTECT`, `objects = EmpresaQuerySet.as_manager()` primero, `todos = models.Manager()`, `validate_unique` y `validate_constraints` dentro de `sin_filtro_empresa()`). Migración `0001_initial`.
+  - `apps/empresas/consultas.py`: `ConsultaSinEmpresa`, `ConsultaSinEmpresaAdvertencia`, `EmpresaQuerySet` (ver Contexto; `de_empresa(None)` lanza), `sin_filtro_empresa()` con `ContextVar`, `empresa_de(request)` (la empresa de `request.user` autenticado, o `None`). `EMPRESA_GUARDIA` se lee en cada evaluación.
+  - Tests de la guardia: los de los criterios prueban comportamiento que sigue vigente al cierre. `test_consulta_sin_empresa_lanza` fija en T1 `override_settings(EMPRESA_GUARDIA="exigir")`; T11, que borra la lectura del setting, reescribe ese test sin depender de él (al cierre el manager siempre exige empresa) y conserva el nombre. El test del modo `advertir` se escribe, pero no es criterio: T11 lo borra junto con esa rama.
+  - Modelos de prueba de la guardia: en T1 ningún modelo concreto hereda de `ModeloDeEmpresa` (heredan en T2). Los tests de `test_consultas.py` declaran sus modelos (uno raíz y un hijo con FK, para el manager relacionado y `prefetch_related`) dentro del test con `django.test.utils.isolate_apps("apps.empresas")` y crean sus tablas con `connection.schema_editor()` en el `setUpClass` (con `TransactionTestCase` si SQLite lo exige). No se registran en `apps.get_models()`, así que no entran en los recorridos de T11 ni de T14.
+  - `apps/empresas/logos.py`: `procesar_logo(archivo)` → PNG sin metadatos, máx. 512 px de lado; rechaza no imagen y más de 2 MB con `ValidationError`.
+  - `apps/empresas/middleware.py`: fija `request.empresa` (la del usuario autenticado, o `None`). `apps/empresas/autenticacion.py`: `JWTAutenticacionEmpresa` (401 `empresa_inactiva` si la empresa del usuario no está activa; fija `request.empresa`; su `get_user` carga el usuario con `select_related("empresa")`) y `BackendConEmpresa` (subclase de `ModelBackend` cuyo `get_user` usa `select_related("empresa")`, en `AUTHENTICATION_BACKENDS`). Leer la empresa no agrega consultas: los `assertNumQueries` existentes (`apps/panel/tests/test_estado.py:80`, `apps/panel/tests/test_mapa.py:142`, "sesión, usuario, …") siguen con el mismo número en T1, T2 y T4. `apps/empresas/contexto.py`: procesador que pone `empresa_actual`. `apps/empresas/admin.py`: `EmpresaAdmin` y `AdminTodosMixin` (usa `todos` en `get_queryset` y en los FK cuando el modelo lo tiene, y `_default_manager` cuando no, como `User`, que queda fuera de la guardia y lo usa T4 en `CuentaAdmin`). `apps/empresas/pruebas.py`: `crear_empresa(nombre=…)` para los tests. `apps/empresas/esquema.py`: `OpenApiAuthenticationExtension` de drf-spectacular para `JWTAutenticacionEmpresa` con el mismo nombre `jwtAuth` y el mismo esquema bearer que hoy (`docs/api/openapi-v1.yaml:12`), importada en `EmpresasConfig.ready()`: `SimpleJWTScheme` solo reconoce la clase exacta de simplejwt (`match_subclasses = False`), y sin la extensión el OpenAPI perdería la autenticación. `panel_urls.py` con `app_name = "empresas"` y `urlpatterns = []`.
+  - `User`: rol `PLATAFORMA = "plataforma"` con la propiedad `es_plataforma` (como `es_administrador`, `apps/accounts/models.py:25`), y FK `empresa` nula (la obligatoriedad por rol la pone T14); migración `0002` provisoria.
+  - `base.py`: `apps.empresas` en `INSTALLED_APPS`, middleware, procesador, `JWTAutenticacionEmpresa` en `DEFAULT_AUTHENTICATION_CLASSES`, `AUTHENTICATION_BACKENDS = ["apps.empresas.autenticacion.BackendConEmpresa"]`, `SPECTACULAR_SETTINGS["SERVE_AUTHENTICATION"]` con `JWTAutenticacionEmpresa` en lugar del `JWTAuthentication` original (`base.py:242-245`), para que `/api/v1/schema/` tampoco acepte tokens de una empresa inactiva, `EMPRESA_GUARDIA = env("EMPRESA_GUARDIA", default="advertir")`, `CORREO_PLATAFORMA` (opcional, valor por defecto de desarrollo). No quita `NOMBRE_EMPRESA` ni `CORREO_CONTACTO` (T10).
+- **Criterios**:
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_consultas.GuardiaTests.test_consulta_sin_empresa_lanza --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_consultas.GuardiaTests.test_de_empresa_none_lanza --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_consultas.GuardiaTests.test_none_relacionados_y_sin_filtro_no_lanzan --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_logos.LogoTests.test_rechaza_archivo_que_no_es_imagen --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_logos.LogoTests.test_rechaza_mas_de_2_mb --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_logos.LogoTests.test_guarda_png_sin_exif_con_nombre_aleatorio --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_middleware.EmpresaMiddlewareTests.test_fija_la_empresa_del_usuario --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_middleware.EmpresaMiddlewareTests.test_anonimo_y_plataforma_sin_empresa --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_middleware.EmpresaMiddlewareTests.test_la_empresa_llega_con_el_usuario_sin_consulta_extra --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_autenticacion.JWTEmpresaTests.test_jwt_carga_la_empresa_con_el_usuario_sin_consulta_extra --keepdb`
+  - `[grep-1]` `grep -n "apps.empresas.autenticacion.BackendConEmpresa" config/settings/base.py`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_autenticacion.JWTEmpresaTests.test_token_vigente_con_empresa_inactiva_da_401 --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_autenticacion.JWTEmpresaTests.test_token_con_empresa_activa_fija_request_empresa --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_autenticacion.JWTEmpresaTests.test_esquema_openapi_conserva_jwt_auth --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_autenticacion.JWTEmpresaTests.test_schema_con_token_de_empresa_inactiva_da_401 --keepdb`
+  - `[cmd]` `f=$(mktemp) && PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py spectacular --validate --file "$f" && diff --strip-trailing-cr "$f" docs/api/openapi-v1.yaml`
+  - `[grep-1]` `grep -n "apps.empresas.autenticacion.JWTAutenticacionEmpresa" config/settings/base.py`
+  - `[grep-1]` `grep -n "apps.empresas.middleware" config/settings/base.py`
+  - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py makemigrations --check --dry-run`
+  - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test --keepdb`
+  - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 900 --subtarea T1`
+
+### T2 — FK `empresa` nula en todos los modelos de dominio y migraciones rehechas
+
+- **Ola**: 2
+- **Depende de**: T1 (ramifica de `plan/multiempresa` después del paso 1 de T3)
+- **Puede tocar**: `apps/*/models.py`, `apps/*/migrations/**`, `apps/*/tests/**` (solo para pasar `empresa` al crear objetos raíz, hijos por `bulk_create` y usuarios administrador y empleado, y los tests nuevos de abajo), producción que crea objetos (`apps/*/services.py`, `apps/panel/demo*.py`, `apps/panel/management/commands/cargar_demo.py`, `apps/accounts/management/commands/crear_usuario.py`, `apps/visitas/management/commands/*.py`), `apps/servicios/fixtures/`
+- **No puede tocar**: `docs/planes/`, `config/`, `templates/**`, vistas, formularios, serializers y admin de cualquier app (los toca la ola 3), `apps/empresas/consultas.py`
+- **Skill a leer antes**: `.claude/skills/convenciones-proyecto/SKILL.md` (prohibición de migraciones a mano; reglas de dominio)
+- **Worktree**: sí
+- **Ruta**: delegada · Evidencia: … · Commit: …
+- **Presupuesto**: 2200 líneas agregadas (incluye las ~700 de las migraciones regeneradas, el ajuste de ~260 creaciones de objetos en tests y el de los usuarios de los tests)
+- **Qué hacer**:
+  - Los 13 modelos de dominio heredan de `ModeloDeEmpresa`. En esta fase la FK `empresa` es **nula** (`null=True, blank=True`), sin `CheckConstraint`: las altas del panel, que recién asignan empresa en la ola 3, siguen funcionando. T14 la vuelve no nula.
+  - Los hijos copian la empresa del padre en `save()` si falta (comparando y asignando por `empresa_id`, no por `empresa`, regla de Contexto mínimo) (Sitio←Cliente, Plano/PuntoControl←Sitio, Visita←Sitio, ItemTurno/Revision←Visita, Foto/ProductoAplicado←Revision, MovimientoStock←Producto, CampoPlanilla←TipoServicio) y lanzan `ValueError` si las dos están fijadas y difieren; `clean()` rechaza referencias cruzadas (servicio, plano, responsable, empleado, producto de otra empresa) cuando las dos empresas están fijadas.
+  - `TipoServicio`: `UniqueConstraint(empresa, slug)` y `_slug_libre` por empresa. `Revision.cliente_uuid`: deja de ser `unique=True` y pasa a `UniqueConstraint(empresa, cliente_uuid)`, para que T8 pueda aceptar con 201 el mismo `cliente_uuid` en otra empresa (`services.py:659-664` relanza el `IntegrityError` del índice global). `qr_codigo` y `Foto.codigo` siguen únicos globales.
+  - Consultas internas de los modelos: las que el propio modelo hace sobre su tabla pasan a `todos`, porque con la guardia en `exigir` (T11) lanzarían `ConsultaSinEmpresa` y T11 no puede tocar `models.py`. Hoy son `Plano.save` (`apps/sitios/models.py:179`), `PuntoControl.save` (`apps/sitios/models.py:312`), `Foto.save` (`apps/visitas/models.py:272`) y `TipoServicio._slug_libre` (`apps/servicios/models.py:34`, que pasa a `todos.filter(empresa_id=self.empresa_id, slug=…)`). `objects.create` (`apps/sitios/models.py:118`) no evalúa consultas y queda.
+  - `bulk_create` no llama a `save()`, así que no copia la empresa del padre: toda alta por `bulk_create` de un hijo fija `empresa` explícita. Hoy son `ItemTurno` en `apps/visitas/services.py:341` (`crear_turno`) y `:913` (carga manual), y `Plano` en `apps/sitios/tests/test_admin.py:233` y `apps/sitios/tests/test_models.py:127`. Sin esto, T14 da `IntegrityError` en todo test que crea un turno o un plano.
+  - `User`: `create_superuser` crea `plataforma` cuando no recibe `rol`; si recibe un `rol` explícito lo respeta (hoy `apps/sitios/tests/test_admin.py:15,76,225` usa `create_superuser(rol=ADMINISTRADOR)` y `apps/accounts/tests/test_panel.py:169` exige que quede administrador; T4 los pasa a `plataforma` después). La regla rol ⇔ empresa (`CheckConstraint` y `clean()`) la agrega T14.
+  - Se borra `apps/servicios/fixtures/tipos_servicio.json` (una empresa nueva arranca con el catálogo vacío); `cargar_demo` crea sus servicios. `cargar_demo` queda con una sola empresa (T9 suma la segunda). Los tests que cargan esa fixture (`apps/servicios/tests/test_sin_descripcion.py:12-14`, `apps/servicios/tests/test_models.py:32`) pasan a crear sus servicios en el test.
+  - `apps/visitas/tests/test_admin.py:233-239` (`test_form_de_visita_declara_campos`) compara `VisitaAdmin.fields` con todos los campos editables de `Visita`: T2 lo ajusta para excluir `empresa`, que el admin de los hijos no muestra (regla de T6/T7/T8). Por la excepción de propiedad, T2 puede hacer en `apps/*/tests/**` estos ajustes, que la FK nueva vuelve necesarios, además de pasar `empresa`.
+  - Se borran todos los `0001_initial.py` y la `0002` de T1 y se regeneran con `makemigrations`. `crear_usuario` recibe `--empresa`.
+  - Usuarios de los tests: todo usuario administrador o empleado que crean los tests de `apps/*/tests/**` recibe una empresa (la misma que los objetos raíz del test), aunque la FK todavía sea nula. Así, cuando T4 exige `request.empresa` en el panel y T6/T7/T8/T9 filtran con `de_empresa(request.empresa)`, los tests de las demás apps (por ejemplo `apps/panel/tests/test_acceso.py:50,70` y `apps/api/tests/test_flujo.py:62,93`) ya tienen la empresa fijada y la suite completa que corre `worktree-integrar.sh` al integrar cada subtarea sigue verde. Quedan sin empresa solo los usuarios `plataforma` y los tests que prueban a propósito un usuario sin empresa.
+  - La suite queda verde con la guardia en `advertir`.
+- **Criterios**:
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_herencia.HerenciaEmpresaTests.test_hijos_heredan_la_empresa_del_padre --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_herencia.HerenciaEmpresaTests.test_hijo_con_empresa_distinta_del_padre_lanza --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_herencia.HerenciaEmpresaTests.test_referencias_de_otra_empresa_no_validan --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_herencia.HerenciaEmpresaTests.test_items_de_turno_creados_por_bulk_create_tienen_empresa --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_herencia.HerenciaEmpresaTests.test_mismo_cliente_uuid_en_dos_empresas --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.servicios.tests.test_slug_empresa.SlugPorEmpresaTests.test_mismo_slug_en_dos_empresas --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.servicios.tests.test_slug_empresa.SlugPorEmpresaTests.test_mismo_nombre_en_una_empresa_da_slugs_distintos --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.accounts.tests.test_empresa_usuario.EmpresaDeUsuarioTests.test_createsuperuser_crea_plataforma --keepdb`
+  - `[grep-0]` `git grep -n "(models.Model)" -- apps/clientes/models.py apps/servicios/models.py apps/productos/models.py apps/sitios/models.py apps/visitas/models.py`
+  - `[grep-0]` `git grep -n "objects\.filter\|objects\.get\|objects\.exclude\|objects\.all" -- apps/clientes/models.py apps/servicios/models.py apps/productos/models.py apps/sitios/models.py apps/visitas/models.py`
+  - `[no-existe]` `apps/servicios/fixtures/tipos_servicio.json`
+  - `[cmd]` `test "$(ls apps/*/migrations/0*.py | grep -cv '/0001_initial.py$')" -eq 0`
+  - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py makemigrations --check --dry-run`
+  - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test --keepdb`
+  - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 2200 --subtarea T2`
+
+### T3 — Integración (principal)
+
+- **Alcance**: integra las olas 1 y 2
+- **Ola**: 1 y 2
+- **Depende de**: T1, T2
+- **Pasos**:
+  1. Revisar `bash .claude/hooks/cambios.sh . plan/multiempresa` de T1; desde la raíz, `bash .claude/hooks/worktree-integrar.sh multiempresa T1 plan/multiempresa apps/empresas apps/accounts/models.py apps/accounts/migrations config/settings/base.py apps/panel/urls.py apps/panel/tests/test_routers.py apps/panel/management/commands/cargar_demo.py apps/panel/demo.py apps/panel/demo_datos.py apps/panel/demo_historia.py apps/panel/demo_imagenes.py apps/panel/tests/test_cargar_demo.py`.
+  2. `bash .claude/hooks/worktree-crear.sh multiempresa T2 plan/multiempresa`; con T2 verificada, revisar `bash .claude/hooks/cambios.sh . plan/multiempresa` de T2, borrar `db.sqlite3` de la raíz (tiene aplicados los `0001` viejos y no `empresas.0001`; con ella, el `makemigrations --check` de `worktree-integrar.sh` lanza `InconsistentMigrationHistory` y deshace el merge) e integrar desde la raíz con `bash .claude/hooks/worktree-integrar.sh multiempresa T2 plan/multiempresa apps` (T2 es transversal: el prefijo `apps` cubre sus modelos, migraciones, servicios, comandos, fixtures y tests nuevos en todas las apps; lo que T2 no puede tocar dentro de `apps` lo controla el último criterio `[cmd]` de abajo, sobre el diff del merge de T2 contra su primer padre). Después de integrar, `migrate` + `cargar_demo`.
+  3. Crear los worktrees de T4, T5 y T6 desde `plan/multiempresa`. T7, T8 y T9 se crean en T10 según el orden de la sección Olas.
+- **Presupuesto**: no aplica (solo merges y commits `registro:`). T3 no hace commits de código: si al integrar hace falta un ajuste, va a una subtarea nueva con su propio número, criterios y auditor, agregada como contrato modificado.
+- **Criterios**:
+  - `[cmd]` `git log --oneline plan/multiempresa | grep -q "T1: integra multiempresa-T1"`
+  - `[cmd]` `git log --oneline plan/multiempresa | grep -q "T2: integra multiempresa-T2"`
+  - `[cmd]` `m=$(git log --merges --format=%H --grep="^T2: integra multiempresa-T2" plan/multiempresa -1) && test -n "$m" && ! git diff --name-only "$m^1" "$m" | grep -E "^(config|templates)/|(^|/)(views|panel_views|api_views|panel_forms|forms|serializers|admin|consultas|estado|mapa|listados|mixins)\.py$|/templatetags/"`
+
+### T4 — Usuarios por empresa, acceso al panel y admin solo para plataforma
+
+- **Ola**: 3
+- **Depende de**: T3
+- **Puede tocar**: `apps/accounts/**` (salvo `models.py` y `migrations/`), `config/admin.py`, `config/tests/test_admin_site.py`, `apps/sitios/tests/test_admin.py`, `apps/visitas/tests/test_admin.py`, `apps/sitios/admin.py` (solo la compuerta `_es_administrador_activo`, líneas 22-25, y sus dos llamadas, `:55` y `:147`)
+- **No puede tocar**: `docs/planes/`, `config/settings/`, `apps/panel/**`, `templates/**`, las demás apps
+- **Skill a leer antes**: `.claude/skills/convenciones-proyecto/SKILL.md` (roles, prohibiciones)
+- **Worktree**: sí
+- **Ruta**: delegada · Evidencia: … · Commit: …
+- **Presupuesto**: 700 líneas agregadas
+- **Qué hacer**:
+  - Ni el alta ni la edición (`UsuarioEdicionForm`, que hoy ofrece `rol` con `CAMPOS`, `apps/accounts/panel_forms.py:8`) ofrecen el rol `plataforma`: un administrador no puede convertir a un usuario de su empresa en `plataforma`. Lo prueba `test_edicion_no_ofrece_rol_plataforma`.
+  - `UsuarioAltaForm` y el formulario de edición fijan `instance.empresa = request.empresa` antes de validar (regla de Contexto mínimo; hoy el alta completa el usuario en `save()`, `apps/accounts/panel_forms.py:47-52`), para que el alta siga válida cuando T14 agregue la regla de rol a `User.clean()`.
+  - `usuarios_gestionables` filtra por `request.empresa`; alta, edición, baja, reactivación y contraseña de otra empresa dan 404; el alta fija la empresa del administrador y no ofrece el rol `plataforma`.
+  - `AdministradorRequeridoMixin`: exige `request.empresa` activa (sin ella, cierra la sesión y redirige al login); un usuario `plataforma` autenticado es redirigido a `/admin/`.
+  - `config/admin.py`: `has_permission` = activo, rol `plataforma` e `is_superuser`; `admin_view` envuelve cada vista en `sin_filtro_empresa()` y, si la respuesta es un `TemplateResponse` sin renderizar, la renderiza (`response.render()`) dentro del mismo contexto: los widgets del admin consultan al renderizar con `_default_manager` (por ejemplo `ForeignKeyRawIdWidget.label_and_url_for_value` para `VisitaAdmin.raw_id_fields`, `apps/visitas/admin.py:124`), y fuera del contexto la guardia en `exigir` (T11) los haría lanzar. Lo prueba `test_change_de_visita_con_raw_id_no_consulta_fuera_del_contexto`, con `override_settings(EMPRESA_GUARDIA="exigir")` (sigue pasando cuando T11 borra la lectura del setting, porque desde entonces la guardia siempre exige).
+  - `CuentaAdmin`: campo `empresa`, validación por rol en el formulario del admin (`plataforma` sin empresa, los demás con empresa; T14 suma la misma regla en `User.clean`), sin `NOMBRE_EMPRESA` en el título de la sección (se actualiza `apps/accounts/tests/test_admin_marca.py`); usa `AdminTodosMixin`.
+  - Tests de admin: por la excepción de propiedad de `### Decisiones`, T4 es dueña de `config/tests/test_admin_site.py`, `apps/sitios/tests/test_admin.py` y `apps/visitas/tests/test_admin.py`, que hoy entran a `/admin/` con `create_superuser(rol=ADMINISTRADOR)`. Los pasa a un usuario `plataforma` con un helper común, `crear_plataforma()`, en `apps/accounts/pruebas.py`. T7 y T8 ramifican después de integrar T4 y no tocan esos archivos.
+  - Acciones del admin: `suprimir_datos` (Ley 25.326) y `regenerar_qr` exigen hoy `request.user.es_administrador` (`apps/sitios/admin.py:22-25`, `:55`, `:147`), y desde T4 ese rol ya no entra a `/admin/`. T4 cambia la compuerta a `_es_plataforma_activo` (`is_active` y `es_plataforma`), en el mismo commit que pasa los tests a `plataforma`, para que `test_suprimir_datos_pide_confirmacion`, `test_suprimir_datos_borra_sitio_e_historial`, `test_accion_regenerar_qr_cambia_el_codigo` y `test_regenerar_qr_pide_confirmacion` sigan en verde. T7 ramifica después y no la toca. Como T11 y T14 corren la suite completa sin poder tocar `config/`, T4 los escribe ya compatibles con el estado final: toda consulta directa de los tests va dentro de `sin_filtro_empresa()` o usa `todos`, y todo usuario cumple la regla de rol (`plataforma` sin empresa; administrador y empleado con empresa), y todo objeto raíz que creen (por ejemplo Cliente → Sitio → Visita en `test_change_de_visita_con_raw_id_no_consulta_fuera_del_contexto`) lleva `empresa`, porque T14 no puede tocar `config/`.
+- **Criterios**:
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.accounts.tests.test_panel_empresa.UsuariosPorEmpresaTests.test_listado_muestra_solo_usuarios_de_la_empresa --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.accounts.tests.test_panel_empresa.UsuariosPorEmpresaTests.test_rutas_de_usuario_de_otra_empresa_dan_404 --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.accounts.tests.test_panel_empresa.UsuariosPorEmpresaTests.test_alta_asigna_la_empresa_del_administrador --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.accounts.tests.test_panel_empresa.UsuariosPorEmpresaTests.test_alta_no_ofrece_rol_plataforma --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.accounts.tests.test_panel_empresa.UsuariosPorEmpresaTests.test_edicion_no_ofrece_rol_plataforma --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.accounts.tests.test_acceso_empresa.AccesoEmpresaTests.test_plataforma_en_panel_redirige_a_admin --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.accounts.tests.test_acceso_empresa.AccesoEmpresaTests.test_sesion_con_empresa_inactiva_pierde_el_panel --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_admin.AccionesAdminPlataformaTests.test_solo_plataforma_ve_suprimir_datos_y_regenerar_qr --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test config.tests.test_admin_site.AdminPlataformaTests.test_superusuario_con_rol_administrador_no_entra_al_admin --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test config.tests.test_admin_site.AdminPlataformaTests.test_alta_de_usuario_exige_empresa_segun_rol --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test config.tests.test_admin_site.AdminPlataformaTests.test_change_de_visita_con_raw_id_no_consulta_fuera_del_contexto --keepdb`
+  - `[grep-0]` `git grep -n "NOMBRE_EMPRESA" -- apps/accounts ':!*/tests/*'`
+  - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.accounts config.tests.test_admin_site apps.sitios.tests.test_admin apps.visitas.tests.test_admin --keepdb`
+  - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 700 --subtarea T4`
+
+### T5 — Pantalla "Empresa", logo en la barra lateral y plantillas sin `NOMBRE_EMPRESA`
+
+- **Ola**: 3
+- **Depende de**: T3
+- **Puede tocar**: `apps/empresas/panel_views.py`, `apps/empresas/panel_urls.py`, `apps/empresas/panel_forms.py`, `apps/empresas/templates/**`, `apps/empresas/tests/test_panel.py`, `templates/**`, `static/css/panel.css`, `apps/panel/tests/test_plantilla_base.py`, `apps/panel/tests/test_menu.py`
+- **No puede tocar**: `docs/planes/`, `config/`, `apps/empresas/models.py`, `apps/empresas/consultas.py`, `apps/empresas/logos.py`, el resto de `apps/panel/**`, las demás apps
+- **Skill a leer antes**: `.claude/skills/convenciones-proyecto/SKILL.md`; `docs/02-diseno.md` (tokens y barra lateral)
+- **Worktree**: sí
+- **Ruta**: delegada · Evidencia: … · Commit: …
+- **Presupuesto**: 600 líneas agregadas
+- **Qué hacer**:
+  - Ruta `panel:empresas:editar` (`/panel/empresa/`, solo administrador): edita nombre, logo (`procesar_logo`) y correo de contacto de `request.empresa`. Ruta `panel:empresas:logo`: exige rol administrador, como el resto del panel (un empleado recibe 403 y `apps/panel/tests/test_acceso.py:193` sigue exigiéndolo en todas las rutas); sirve el logo de `request.empresa` con `Cache-Control: private, no-store` y `nosniff`; sin logo, 404.
+  - `templates/panel/base.html`: ítem "Empresa" en el grupo Administración; la barra lateral muestra el logo (por `panel:empresas:logo`) o, sin logo, el nombre de `empresa_actual`. `templates/base.html` y `templates/panel/ingresar.html`: "Detach", sin `NOMBRE_EMPRESA` ni el logo de una empresa.
+  - `apps/panel/tests/test_plantilla_base.py` y `apps/panel/tests/test_menu.py` comprueban el `alt` de las plantillas que cambia esta subtarea y dejan de leer `settings.NOMBRE_EMPRESA` (`test_menu.py:95`, `test_plantilla_base.py:15,19`), porque T10 borra el setting y no es dueña de esos archivos: son de T5 por excepción de propiedad (ver `### Decisiones`) y T9 no los toca.
+  - `IngresoTests.test_login_no_muestra_el_nombre_de_ninguna_empresa`: crea dos empresas y, con `override_settings(NOMBRE_EMPRESA=<nombre de una de ellas>)` (la fuente que usa hoy `ingresar.html:6`), exige que `/panel/ingresar/` muestre "Detach" y ninguno de los dos nombres. Antes de T5 falla por ese `alt`. T10, que borra `NOMBRE_EMPRESA`, saca ese `override_settings` y es dueña del archivo desde entonces.
+- **Criterios**:
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_panel.PanelEmpresaTests.test_administrador_edita_nombre_logo_y_correo --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_panel.PanelEmpresaTests.test_logo_que_no_es_imagen_o_de_mas_de_2_mb_da_error_de_formulario --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_panel.PanelEmpresaTests.test_logo_se_sirve_solo_al_administrador_de_la_empresa --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_panel.PanelEmpresaTests.test_empleado_no_entra --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_panel.BarraLateralTests.test_muestra_el_logo_de_la_empresa --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_panel.BarraLateralTests.test_sin_logo_muestra_el_nombre --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_panel.BarraLateralTests.test_menu_administracion_tiene_empresa --keepdb`
+  - `[grep-0]` `git grep -n "NOMBRE_EMPRESA" -- templates ':!*/tests/*'`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_panel.IngresoTests.test_login_no_muestra_el_nombre_de_ninguna_empresa --keepdb`
+  - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas apps.panel --keepdb`
+  - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 600 --subtarea T5`
+
+### T6 — Clientes, servicios y productos por empresa
+
+- **Ola**: 3
+- **Depende de**: T3
+- **Puede tocar**: `apps/clientes/**`, `apps/servicios/**`, `apps/productos/**` (salvo `models.py` y `migrations/`)
+- **No puede tocar**: `docs/planes/`, `config/`, `templates/**`, `apps/panel/**`, `apps/api/**`, las demás apps
+- **Skill a leer antes**: `.claude/skills/convenciones-proyecto/SKILL.md`
+- **Worktree**: sí
+- **Ruta**: delegada · Evidencia: … · Commit: …
+- **Presupuesto**: 700 líneas agregadas
+- **Qué hacer**:
+  - Todo listado, ficha, edición, baja y alta resuelve por `request.empresa` (`get_queryset` con `de_empresa`; `get_object_or_404` sobre un queryset de la empresa); las altas fijan la empresa; los formularios reciben la empresa y acotan sus `queryset`. Base de formulario que fija `instance.empresa` antes de validar y saca `empresa` de las exclusiones de validación, para que `UniqueConstraint(empresa, slug)` dé error de formulario (regla de Contexto mínimo).
+  - `CatalogoView` de la API filtra con `empresa_de(request)` (regla de Contexto mínimo: `apps/productos/tests/test_api.py:37,59,85` usa `force_authenticate`, con el que `request.empresa` queda en `None`). Los `admin.py` usan `AdminTodosMixin`.
+  - Los tests de admin de T6, T7 y T8 (`test_admin_empresa.py`) no entran a `/admin/`: inspeccionan el formulario con `ModelAdmin.get_form(request)` sobre un `RequestFactory` con un usuario `plataforma` creado en el test (sin el helper de T4, que T6 no ve), para no depender de la compuerta que cambia T4.
+  - Regla de `empresa` en el admin (la misma en T6, T7 y T8): solo los modelos raíz (`Cliente`, `TipoServicio`, `Producto`) muestran `empresa` en el formulario del admin, como campo obligatorio del formulario (`required=True` en el form, porque la FK tiene `blank=True` en las dos fases). Los hijos (`CampoPlanilla`, `MovimientoStock` y sus inlines) la excluyen, porque `save()` la copia del padre. Así los formularios con `fields = "__all__"` o sin `fields` no cambian cuando T14 vuelve no nula la FK.
+- **Criterios**:
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.clientes.tests.test_panel_empresa.ClientesPorEmpresaTests.test_listado_solo_de_la_empresa --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.clientes.tests.test_panel_empresa.ClientesPorEmpresaTests.test_rutas_de_cliente_de_otra_empresa_dan_404 --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.clientes.tests.test_panel_empresa.ClientesPorEmpresaTests.test_alta_asigna_la_empresa --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.servicios.tests.test_panel_empresa.ServiciosPorEmpresaTests.test_listado_solo_de_la_empresa --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.servicios.tests.test_panel_empresa.ServiciosPorEmpresaTests.test_rutas_de_servicio_y_campo_de_otra_empresa_dan_404 --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.servicios.tests.test_panel_empresa.ServiciosPorEmpresaTests.test_alta_con_el_nombre_de_un_servicio_de_otra_empresa_queda_en_la_empresa_del_administrador --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.productos.tests.test_panel_empresa.ProductosPorEmpresaTests.test_listado_solo_de_la_empresa --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.productos.tests.test_panel_empresa.ProductosPorEmpresaTests.test_rutas_de_producto_de_otra_empresa_dan_404 --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.productos.tests.test_api_empresa.CatalogoPorEmpresaTests.test_catalogo_solo_de_la_empresa_del_operario --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.clientes.tests.test_admin_empresa.AdminEmpresaTests.test_raices_piden_empresa_e_hijos_no --keepdb`
+  - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.clientes apps.servicios apps.productos --keepdb`
+  - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 700 --subtarea T6`
+
+### T7 — Sitios, puntos, planos y QR por empresa
+
+- **Ola**: 3
+- **Depende de**: T3, T4, T5 (ramifica de `plan/multiempresa` después de integrar T4 y T5)
+- **Puede tocar**: `apps/sitios/**` (salvo `models.py`, `migrations/` y `tests/test_admin.py`), `apps/panel/tests/test_rutas.py`
+- **No puede tocar**: `docs/planes/`, `config/`, `templates/**`, el resto de `apps/panel/**`, `apps/api/**`, las demás apps
+- **Skill a leer antes**: `.claude/skills/convenciones-proyecto/SKILL.md` (QR, planos, fotos)
+- **Worktree**: sí
+- **Ruta**: delegada · Evidencia: … · Commit: …
+- **Presupuesto**: 900 líneas agregadas
+- **Qué hacer**:
+  - Panel: inicio, listado, ficha, edición, puntos, planos, QR PNG, programación y posición resuelven por `request.empresa`; formularios con clientes, responsables, planos y servicios de la empresa.
+  - `test_mis_puntos_solo_de_la_empresa` (y `test_mis_visitas_e_historial_solo_de_la_empresa` de T8) arman por ORM el caso cruzado que hoy pasa el filtro por `empleado=request.user`: un objeto de la empresa A asignado al empleado de B (`save()` no lo impide). Así fallan antes de la subtarea.
+  - API: `ResolverQRView` agrega la empresa del usuario al filtro (mismo 404 y mismo mensaje que un QR inexistente); `PlanoImagenView`, `AltaPuntoView`, `UbicacionPuntoView` y `MisPuntosView` por empresa; `AltaSitioSerializer` acota `cliente` en `__init__` con `empresa_de(request)` si `self.context.get("request")` existe, y con `Cliente.objects.none()` si no (generación del esquema, regla de Contexto mínimo); todas las vistas de API de `sitios` toman la empresa con `empresa_de(request)`, no con `request.empresa` (`apps/sitios/tests/test_api.py` usa `force_authenticate` 13 veces).
+  - `/q/<uuid>/`: página neutra de Detach, sin nombre ni logo de ninguna empresa. `test_pagina_del_qr_no_muestra_datos_de_ninguna_empresa` crea dos empresas y, con `override_settings(NOMBRE_EMPRESA=<nombre de una de ellas>)` (la fuente que usa hoy `qr.html:4,10,11`), exige que la página no muestre ninguno de los dos nombres: antes de T7 falla. `geocodificacion.user_agent()` usa `CORREO_PLATAFORMA`. `admin.py` con `AdminTodosMixin`.
+  - Regla de `empresa` en el admin (ver T6): `Sitio`, `Plano` y `PuntoControl` son hijos y excluyen `empresa` de sus formularios del admin, incluido `PuntoControlAdminForm` (`apps/sitios/admin.py:91`, `fields = "__all__"`). Así `_datos_cambio` de `apps/sitios/tests/test_admin.py:131` (de T4) sigue válido sin `empresa`, también después de T14.
+  - `apps/panel/tests/test_rutas.py`: T7 es el único dueño del test de `/q/` (`test_q_uuid_lo_sirve_sitios`, hoy con `assertContains(respuesta, settings.NOMBRE_EMPRESA)` en `test_rutas.py:28`) y lo cambia a "Detach" sin nombre de empresa en el mismo commit que neutraliza la página, para que la suite no falle al integrar. T9 ramifica después de integrar T7 y no toca el archivo.
+- **Criterios**:
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_panel_empresa.SitiosPorEmpresaTests.test_inicio_y_listado_solo_de_la_empresa --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_panel_empresa.SitiosPorEmpresaTests.test_rutas_de_sitio_punto_y_plano_de_otra_empresa_dan_404 --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_panel_empresa.SitiosPorEmpresaTests.test_formularios_ofrecen_solo_opciones_de_la_empresa --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_api_empresa.ApiSitiosPorEmpresaTests.test_qr_de_otra_empresa_da_el_mismo_404_que_uno_inexistente --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_api_empresa.ApiSitiosPorEmpresaTests.test_plano_punto_y_ubicacion_de_otra_empresa_dan_404 --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_api_empresa.ApiSitiosPorEmpresaTests.test_alta_de_sitio_con_cliente_de_otra_empresa_da_400 --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_api_empresa.ApiSitiosPorEmpresaTests.test_mis_puntos_solo_de_la_empresa --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_publico.PublicoSinEmpresaTests.test_pagina_del_qr_no_muestra_datos_de_ninguna_empresa --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_geocodificacion.UserAgentPlataformaTests.test_user_agent_usa_el_correo_de_plataforma --keepdb`
+  - `[grep-0]` `git grep -n "NOMBRE_EMPRESA\|CORREO_CONTACTO" -- apps/sitios ':!*/tests/*'`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_admin_empresa.AdminEmpresaSitiosTests.test_formularios_del_admin_no_piden_empresa --keepdb`
+  - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api.tests.test_schema --keepdb`
+  - `[cmd]` `f=$(mktemp) && PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py spectacular --validate --file "$f" 2>&1 >/dev/null | grep -q "^Warnings: 1 (1 unique)$"`
+  - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios --keepdb`
+  - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 900 --subtarea T7`
+
+### T8 — Visitas, turnos, revisiones y fotos por empresa
+
+- **Ola**: 3
+- **Depende de**: T3, T4 (ramifica de `plan/multiempresa` después de integrar T4)
+- **Puede tocar**: `apps/visitas/**` (salvo `models.py`, `migrations/` y `tests/test_admin.py`)
+- **No puede tocar**: `docs/planes/`, `config/`, `templates/**`, `apps/panel/**`, `apps/api/**`, las demás apps
+- **Skill a leer antes**: `.claude/skills/convenciones-proyecto/SKILL.md` (reglas de dominio, orden de bloqueo Sitio → Visita → PuntoControl)
+- **Worktree**: sí
+- **Ruta**: delegada · Evidencia: … · Commit: …
+- **Presupuesto**: 1000 líneas agregadas
+- **Qué hacer**:
+  - Servicios: `abrir_visita` busca el punto en la empresa del empleado (un QR de otra empresa da el mismo 400 que uno inexistente); `_duplicada` por `cliente_uuid` dentro de la empresa (el mismo `cliente_uuid` en otra empresa crea la revisión con 201, sobre la `UniqueConstraint(empresa, cliente_uuid)` de T2; en la misma empresa sigue el 409); productos aplicados del catálogo de la empresa; `crear_turno` y la carga manual rechazan puntos, servicios o empleados de otra empresa. Sin cambiar el orden de bloqueo.
+  - Panel: listado, ficha, revisar incidencia, foto, nuevo turno y carga por `request.empresa`; formularios con empleados, productos y servicios de la empresa; `incidencias_sin_revisar` cuenta la empresa del request.
+  - API (todas las vistas toman la empresa con `empresa_de(request)`, regla de Contexto mínimo): `FotoView` da 404 para una foto de otra empresa (sigue el 403 para la de otro empleado de la misma empresa); `MisVisitasView` e `HistorialView` por empresa. `cerrar_visitas_abiertas` recorre con `sin_filtro_empresa()`. `admin.py` con `AdminTodosMixin`; todos los modelos de `visitas` son hijos y excluyen `empresa` de sus formularios del admin y de sus inlines (regla de T6).
+- **Criterios**:
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_empresa.VisitasPorEmpresaTests.test_listado_solo_de_la_empresa --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_empresa.VisitasPorEmpresaTests.test_rutas_de_visita_foto_y_turno_de_otra_empresa_dan_404 --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_empresa.VisitasPorEmpresaTests.test_formularios_ofrecen_solo_opciones_de_la_empresa --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_empresa.VisitasPorEmpresaTests.test_contador_de_incidencias_cuenta_solo_la_empresa --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_empresa.ApiVisitasPorEmpresaTests.test_abrir_con_qr_de_otra_empresa_da_el_mismo_400_que_uno_inexistente --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_empresa.ApiVisitasPorEmpresaTests.test_foto_de_otra_empresa_da_404 --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_empresa.ApiVisitasPorEmpresaTests.test_producto_de_otra_empresa_en_la_revision_da_400 --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_empresa.ApiVisitasPorEmpresaTests.test_cliente_uuid_de_otra_empresa_crea_la_revision_con_201 --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_empresa.ApiVisitasPorEmpresaTests.test_mis_visitas_e_historial_solo_de_la_empresa --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_services_empresa.TurnosPorEmpresaTests.test_crear_turno_rechaza_punto_o_empleado_de_otra_empresa --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_admin_empresa.AdminEmpresaVisitasTests.test_formularios_del_admin_no_piden_empresa --keepdb`
+  - `[cmd]` `f=$(mktemp) && PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py spectacular --validate --file "$f" 2>&1 >/dev/null | grep -q "^Warnings: 1 (1 unique)$"`
+  - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas --keepdb`
+  - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 1000 --subtarea T8`
+
+### T9 — Panel y API transversales: mapa, contadores, login y demo con dos empresas
+
+- **Ola**: 3
+- **Depende de**: T3, T7 (ramifica de `plan/multiempresa` después de integrar T7, y por lo tanto T5)
+- **Puede tocar**: `apps/panel/**` (salvo `urls.py`, `tests/test_plantilla_base.py`, `tests/test_menu.py`, `tests/test_rutas.py` y `tests/test_errores.py`), `apps/api/**` (salvo `urls.py`)
+- **No puede tocar**: `docs/planes/`, `config/`, `templates/**`, `apps/empresas/**`, las apps de dominio
+- **Skill a leer antes**: `.claude/skills/convenciones-proyecto/SKILL.md`
+- **Worktree**: sí
+- **Ruta**: delegada · Evidencia: … · Commit: …
+- **Presupuesto**: 1000 líneas agregadas
+- **Qué hacer**:
+  - `estado.py`, `mapa.py`, `MapaView` y `sitios_vencidos` por `request.empresa`. `FormularioIngreso` rechaza un administrador con empresa inactiva y a un `plataforma`, a este con un mensaje propio que remite a `/admin/` (hoy `apps/panel/forms.py:17` ya lo rechaza con el mensaje genérico; `test_login_de_plataforma_remite_al_admin` comprueba el mensaje nuevo y el enlace a `/admin/`). En la API, toda vista de `apps/api/**` toma la empresa con `empresa_de(request)`. `ObtenerToken` y `RenovarToken` rechazan usuarios con empresa inactiva.
+  - `cargar_demo`: dos empresas con datos propios (demo-admin y demo-empleado en la primera; demo-admin-b y demo-empleado-b en la segunda) y el usuario `demo-plataforma`, que ya crea T1; sigue exigiendo SQLite.
+- **Criterios**:
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.panel.tests.test_empresa.PanelTransversalTests.test_mapa_solo_sitios_de_la_empresa --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.panel.tests.test_empresa.PanelTransversalTests.test_estado_de_sitio_de_otra_empresa_da_404 --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.panel.tests.test_empresa.PanelTransversalTests.test_contador_de_sitios_vencidos_cuenta_solo_la_empresa --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.panel.tests.test_empresa.PanelTransversalTests.test_login_con_empresa_inactiva_falla --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.panel.tests.test_empresa.PanelTransversalTests.test_login_de_plataforma_remite_al_admin --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api.tests.test_empresa.TokenEmpresaTests.test_token_con_empresa_inactiva_no_se_emite --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api.tests.test_empresa.TokenEmpresaTests.test_renovacion_con_empresa_inactiva_da_401 --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.panel.tests.test_cargar_demo.DosEmpresasDemoTests.test_crea_dos_empresas_con_datos_separados --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.panel.tests.test_cargar_demo.DosEmpresasDemoTests.test_crea_los_usuarios_de_cada_empresa_y_el_de_plataforma --keepdb`
+  - `[cmd]` `f=$(mktemp) && PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py spectacular --validate --file "$f" 2>&1 >/dev/null | grep -q "^Warnings: 1 (1 unique)$"`
+  - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.panel apps.api --keepdb`
+  - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 1000 --subtarea T9`
+
+### T10 — Integración (principal)
+
+- **Alcance**: integra la ola 3 y limpia `config`
+- **Ola**: 3 (después de verificar T4 a T9)
+- **Depende de**: T4, T5, T6, T7, T8, T9
+- **Pasos**:
+  1. Revisar `bash .claude/hooks/cambios.sh . plan/multiempresa` de cada subtarea; desde la raíz, `worktree-integrar.sh` con sus rutas en este orden: T4, T5 y T6 a medida que se verifican; con T4 integrada, crear el worktree de T8 e integrarla al verificarla; con T4 y T5 integradas, crear el worktree de T7 e integrarla al verificarla; con T7 integrada, crear el worktree de T9 e integrarla al verificarla. Cablear nada nuevo en `apps/panel/urls.py` salvo lo que haga falta.
+  2. Ajuste de `config` (ruta delegada a un `implementador` sobre el worktree de `plan/multiempresa`, commits `T10:`): quitar `NOMBRE_EMPRESA` y `CORREO_CONTACTO` de `base.py`, la exigencia de `prod.py` y `config/contexto.py` con su procesador; `DESCRIPTION` de la API sin nombre de empresa; actualizar `config/tests/test_empresa.py` y `config/tests/test_settings.py`. En el mismo commit que borra la variable, `apps/panel/tests/test_errores.py:28` deja de leer `settings.NOMBRE_EMPRESA` (comprueba que la página no muestre el nombre de ninguna `Empresa` creada en el test): T10 es su único dueño, T9 ya está integrada y no lo toca. En el mismo commit, `IngresoTests` de `apps/empresas/tests/test_panel.py` deja el `override_settings(NOMBRE_EMPRESA=…)` (T10 pasa a ser dueña de ese archivo; T5 ya está integrada), y lo mismo `apps/sitios/tests/test_publico.py` (T10 pasa a ser dueña; T7 ya está integrada).
+  3. Crear el worktree de T11 (los de T14 y T12 se crean en T13: T14 después de integrar T11, y T12 después de integrar T14).
+- **Presupuesto**: `bash .claude/hooks/presupuesto.sh . '<commit_base>' 300 --subtarea T10`
+- **Criterios**:
+  - `[cmd]` `git log --oneline plan/multiempresa | grep -q "T4: integra multiempresa-T4"`
+  - `[cmd]` `git log --oneline plan/multiempresa | grep -q "T5: integra multiempresa-T5"`
+  - `[cmd]` `git log --oneline plan/multiempresa | grep -q "T6: integra multiempresa-T6"`
+  - `[cmd]` `git log --oneline plan/multiempresa | grep -q "T7: integra multiempresa-T7"`
+  - `[cmd]` `git log --oneline plan/multiempresa | grep -q "T8: integra multiempresa-T8"`
+  - `[cmd]` `git log --oneline plan/multiempresa | grep -q "T9: integra multiempresa-T9"`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test config.tests.test_settings.ProduccionSinEmpresaTests.test_produccion_arranca_sin_nombre_empresa --keepdb`
+  - `[no-existe]` `config/contexto.py`
+  - `[grep-0]` `git grep -n "NOMBRE_EMPRESA\|CORREO_CONTACTO" -- config apps templates ':!*/tests/*'`
+  - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test --keepdb`
+  - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 300 --subtarea T10`
+
+### T11 — Guardia siempre activa y tests generados de aislamiento
+
+- **Ola**: 4
+- **Depende de**: T10 (y por lo tanto T9: ramifica de `plan/multiempresa` con la ola 3 integrada)
+- **Puede tocar**: `apps/**` (salvo `models.py` y `migrations/` de cada app, `apps/panel/urls.py` y `apps/api/urls.py`), solo para los tests de abajo, `apps/empresas/consultas.py` y las consultas que la guardia en `exigir` encuentre sin empresa
+- **No puede tocar**: `docs/planes/`, `config/`, `templates/**`, `docs/**`, `apps/*/serializers.py` en lo que cambie el esquema de la API
+- **Skill a leer antes**: `.claude/skills/convenciones-proyecto/SKILL.md`
+- **Worktree**: sí
+- **Ruta**: delegada · Evidencia: … · Commit: …
+- **Presupuesto**: 1400 líneas agregadas (incluye ~270 consultas directas con `objects` en ~40 archivos de tests, que con la guardia en `exigir` pasan a `de_empresa` o a `sin_filtro_empresa()`)
+- **Qué hacer**:
+  - Única subtarea de código de la ola 4: escribe en `apps/panel/**` y `apps/api/**` con T9 ya integrada, sin dueño en paralelo.
+  - `consultas.py`: la guardia siempre lanza; se borran la rama `advertir`, la advertencia, la lectura de `EMPRESA_GUARDIA` y el test del modo `advertir` de T1. T11 es dueña de `apps/empresas/tests/test_consultas.py` y reescribe `test_consulta_sin_empresa_lanza` sin `override_settings(EMPRESA_GUARDIA=…)`, con el mismo nombre. Se corrige toda consulta que la suite encuentre sin empresa (con `de_empresa`, nunca con `todos` en panel o API).
+  - `apps/empresas/tests/test_guardia.py`: recorre `apps.get_models()` y exige que `objects.all()` lance en cada subclase de `ModeloDeEmpresa`; busca `.todos` en `panel_views.py`, `api_views.py`, `serializers.py`, `panel_forms.py`, `templatetags/` y `apps/panel`, `apps/api`.
+  - `apps/panel/tests/test_aislamiento.py`: con `AccesoTests` como base (mapa ruta → objeto), crea los objetos en la empresa A y recorre con el administrador de B todas las rutas de `/panel/` con identificador: en cada ruta, cada método que la vista implementa (`_allowed_methods()` en las vistas de clase; los métodos que acepta en las de función), salvo `OPTIONS`, da 404. `OPTIONS` (que `View.options()` y `APIView.options()` responden con 200 y el encabezado `Allow` sin buscar el objeto) y los métodos que la vista no acepta (405 antes de resolver el objeto) no se prueban. `apps/api/tests/test_aislamiento.py`: lo mismo con `/api/v1/` (rutas de `get_resolver()` bajo `api/v1/` con identificador en la URL; las que reciben el `qr_codigo` en el cuerpo, como `/visitas/abrir/` y `/revisiones/`, las cubren los tests de 400 de T8), con cada usuario de B que pasa el permiso de la vista (administrador de B en las de `EsAdministrador`, como `AltaPuntoView` y `UbicacionPuntoView`; operario de B en las de `EsEmpleado`; los dos en las de `EsEmpleado | EsAdministrador`, como `PlanoImagenView` y `FotoView`, porque el administrador se saltea el filtro por empleado), y solo con los métodos que la vista acepta. Un 403 de permiso o un 405 no cuentan como aislamiento: el test exige 404. Los dos fallan si aparece una ruta con parámetro sin objeto en el mapa.
+- **Criterios**:
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_guardia.GuardiaModelosTests.test_objects_all_sin_empresa_lanza_en_todos_los_modelos --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_guardia.GuardiaModelosTests.test_panel_y_api_no_usan_el_manager_sin_filtro --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.panel.tests.test_aislamiento.AislamientoPanelTests.test_rutas_con_objeto_de_otra_empresa_dan_404 --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.panel.tests.test_aislamiento.AislamientoPanelTests.test_ruta_sin_objeto_en_el_mapa_hace_fallar_el_recorrido --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api.tests.test_aislamiento.AislamientoApiTests.test_rutas_con_objeto_de_otra_empresa_dan_404 --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api.tests.test_aislamiento.AislamientoApiTests.test_ruta_sin_objeto_en_el_mapa_hace_fallar_el_recorrido --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api.tests.test_aislamiento.AislamientoApiTests.test_listados_de_la_api_solo_de_la_empresa --keepdb`
+  - `[grep-0]` `git grep -n "EMPRESA_GUARDIA\|advertir" -- apps/empresas ':!*/tests/*'`
+  - `[grep-0]` `git grep -n "EMPRESA_GUARDIA" -- apps/empresas/tests/test_consultas.py`
+  - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test --keepdb`
+  - `[cmd]` `f=$(mktemp) && PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py spectacular --validate --file "$f" 2>&1 >/dev/null | grep -q "^Warnings: 1 (1 unique)$"`
+  - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 1400 --subtarea T11`
+
+### T12 — Documentación, contrato de la API y OpenAPI
+
+- **Ola**: 4
+- **Depende de**: T10, T11, T14 (ramifica de `plan/multiempresa` después de integrar T14)
+- **Puede tocar**: `docs/01-modelo-y-arquitectura.md`, `docs/02-diseno.md`, `docs/contrato-api.md`, `docs/api/openapi-v1.yaml`, `docs/despliegue.md`, `README.md`, `.env.example`, `CLAUDE.md` (regla 7), `.claude/skills/convenciones-proyecto/SKILL.md`, `.claude/agents/auditor-seguridad.md`, `.claude/agents/implementador.md`, `.claude/agents/verificador.md`, `.claude/agents/verificador-b.md` (solo las líneas que dicen que el nombre sale de `NOMBRE_EMPRESA`: `02-diseno.md:9`, `auditor-seguridad.md:98`, `implementador.md:62`, `verificador.md:128`, `verificador-b.md:128`)
+- **No puede tocar**: `docs/planes/`, `docs/bitacora.md`, `docs/decisiones.md`, código
+- **Skill a leer antes**: `.claude/skills/convenciones-proyecto/SKILL.md`; `writing-for-agents` para `CLAUDE.md` y la skill
+- **Worktree**: sí
+- **Ruta**: delegada · Evidencia: … · Commit: …
+- **Presupuesto**: 500 líneas agregadas
+- **Qué hacer**: doc 01 (Empresa en §3, FK en las entidades, unicidad por empresa de `slug` y `cliente_uuid` (hoy :67 y :105), catálogo inicial vacío en vez de la carga de la fixture (:67), rol `plataforma` en §2, flujos de alta en §4.2, guardia y `request.empresa` en §6); contrato (401 por empresa inactiva, 404 entre empresas); despliegue, README y `.env.example` sin `NOMBRE_EMPRESA`/`CORREO_CONTACTO`, con `CORREO_PLATAFORMA` y el alta de la primera empresa y del usuario `plataforma`; regla 7 y `convenciones-proyecto` (roles, `/admin/`, variables, prohibición de `todos` en panel y API); OpenAPI regenerado.
+- **Criterios**:
+  - `[grep-0]` `git grep -n "NOMBRE_EMPRESA\|CORREO_CONTACTO" -- README.md .env.example docs/despliegue.md docs/contrato-api.md docs/01-modelo-y-arquitectura.md docs/02-diseno.md CLAUDE.md .claude/skills/convenciones-proyecto/SKILL.md .claude/agents/`
+  - `[grep-1]` `grep -n "plataforma" docs/01-modelo-y-arquitectura.md`
+  - `[grep-1]` `grep -n "CORREO_PLATAFORMA" .env.example`
+  - `[cmd]` `f=$(mktemp) && PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py spectacular --validate --file "$f" && diff --strip-trailing-cr "$f" docs/api/openapi-v1.yaml`
+  - `[cmd]` `f=$(mktemp) && PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py spectacular --validate --file "$f" 2>&1 >/dev/null | grep -q "^Warnings: 1 (1 unique)$"`
+  - `[cmd]` `test "$(grep -c jwtAuth docs/api/openapi-v1.yaml)" -ge 15`
+  - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api.tests.test_contrato_doc --keepdb`
+  - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 500 --subtarea T12`
+
+### T14 — FK `empresa` no nula y restricción de rol en `User`
+
+- **Ola**: 4
+- **Depende de**: T10, T11 (ramifica de `plan/multiempresa` después de integrar T11: todas las vistas, formularios, admin, demo y tests ya asignan empresa)
+- **Puede tocar**: `apps/*/models.py`, `apps/*/migrations/**`, `apps/accounts/models.py`, `apps/empresas/tests/test_no_nula.py`, `apps/accounts/tests/test_empresa_usuario.py`, y los tests de `apps/*/tests/**` que todavía creen objetos sin empresa (solo para pasarla; T2 y la ola 3 ya la asignan a los objetos raíz, a los hijos por `bulk_create` y a los usuarios, así que deberían ser pocos o ninguno)
+- **No puede tocar**: `docs/planes/`, `config/`, `templates/**`, vistas, formularios, serializers y admin de cualquier app, `apps/empresas/consultas.py`
+- **Skill a leer antes**: `.claude/skills/convenciones-proyecto/SKILL.md` (prohibición de migraciones a mano)
+- **Worktree**: sí
+- **Ruta**: delegada · Evidencia: … · Commit: …
+- **Presupuesto**: 600 líneas agregadas (incluye las migraciones regeneradas)
+- **Qué hacer**:
+  - Transversal por la excepción de propiedad de `### Decisiones`: corre sola, sin subtareas en paralelo (T12 ramifica después de integrarla).
+  - `ModeloDeEmpresa.empresa` pasa a `null=False` en los 13 modelos de dominio y **conserva `blank=True`**: la base la exige, pero `full_clean()` no, porque hay altas de hijos que validan antes de que `save()` copie la empresa del padre (`apps/visitas/services.py:166-167`, donde `ProductoAplicado` todavía no tiene `revision`; `apps/panel/demo_historia.py:91` y `:127`). Ningún formulario de panel ni de API ofrece `empresa`; en el admin, los modelos raíz la piden como campo obligatorio del formulario (regla de T6). `User`: `CheckConstraint` (rol `plataforma` ⇔ `empresa` nula) y `clean()` con mensajes en español.
+  - Se borran los `0001_initial.py` y se regeneran con `makemigrations` (decisión de rehacer los `0001`); las bases locales se recrean en T13.
+  - `test_no_nula.py`: recorre las subclases de `ModeloDeEmpresa` (`apps.get_models()`) y, para cada una, un alta sin empresa con los demás campos válidos falla con `IntegrityError`, sin pasar por la copia del padre de `save()`.
+- **Criterios**:
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_no_nula.EmpresaObligatoriaTests.test_guardar_sin_empresa_falla_en_cada_modelo --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.accounts.tests.test_empresa_usuario.EmpresaDeUsuarioTests.test_administrador_y_empleado_exigen_empresa --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.accounts.tests.test_empresa_usuario.EmpresaDeUsuarioTests.test_plataforma_con_empresa_se_rechaza --keepdb`
+  - `[cmd]` `test "$(ls apps/*/migrations/0*.py | grep -cv '/0001_initial.py$')" -eq 0`
+  - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py makemigrations --check --dry-run`
+  - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test --keepdb`
+  - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 600 --subtarea T14`
+
+### T13 — Integración (principal)
+
+- **Alcance**: integración final
+- **Ola**: 4 (después de verificar T11, T14 y T12)
+- **Depende de**: T11, T14, T12
+- **Pasos**:
+  1. Revisar `cambios.sh` e integrar desde la raíz, en orden: T11 al verificarla; con T11 integrada, crear el worktree de T14 e integrarla al verificarla (antes de `worktree-integrar.sh`, borrar `db.sqlite3` de la raíz: T14 regenera los `0001` y `makemigrations --check` falla con `InconsistentMigrationHistory` contra una base con los `0001` viejos aplicados); con T14 integrada, crear el worktree de T12 e integrarla al verificarla.
+  2. Commit `T13:` que borra `EMPRESA_GUARDIA` de `config/settings/base.py`.
+  3. Recrear la base local (`migrate` + `cargar_demo`), prueba manual con las dos empresas, cierre global y verificación `TODO` con `verificador`, `verificador-b` y `auditor-seguridad`.
+- **Presupuesto**: `bash .claude/hooks/presupuesto.sh . '<commit_base>' 50 --subtarea T13`
+- **Criterios**:
+  - `[cmd]` `git log --oneline plan/multiempresa | grep -q "T11: integra multiempresa-T11"`
+  - `[cmd]` `git log --oneline plan/multiempresa | grep -q "T12: integra multiempresa-T12"`
+  - `[cmd]` `git log --oneline plan/multiempresa | grep -q "T14: integra multiempresa-T14"`
+  - `[grep-0]` `git grep -n "EMPRESA_GUARDIA" -- config apps templates ':!*/tests/*'`
+  - `[grep-0]` `git grep -n "NOMBRE_EMPRESA\|CORREO_CONTACTO" -- config apps templates ':!*/tests/*'`
+  - `[cmd]` `f=$(mktemp) && PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py spectacular --validate --file "$f" && diff --strip-trailing-cr "$f" docs/api/openapi-v1.yaml`
+  - `[cmd]` `f=$(mktemp) && PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py spectacular --validate --file "$f" 2>&1 >/dev/null | grep -q "^Warnings: 1 (1 unique)$"`
+  - `[cmd]` `test "$(grep -c jwtAuth docs/api/openapi-v1.yaml)" -ge 15`
+  - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 50 --subtarea T13`
+
+## Criterios de cierre global
+
+- `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py check`
+- `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py makemigrations --check --dry-run`
+- `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test --keepdb`
+- `[cmd]` `./venv/Scripts/python.exe -m ruff check .`
+- `[cmd]` `test "$(git status --porcelain | grep -v '^??' | wc -l)" -eq 0`
+- `[cmd]` `bash .claude/hooks/congelado.sh docs/planes/2026-10-26-multiempresa.md multiempresa`
+
+## Registro de verificación
+
+commit_base: <hash del commit docs(plan): multiempresa>
+
+### Estado de subtareas
+
+| Tarea | Estado |
+|---|---|
+| T1 | pendiente |
+| T2 | pendiente |
+| T3 | pendiente |
+| T4 | pendiente |
+| T5 | pendiente |
+| T6 | pendiente |
+| T7 | pendiente |
+| T8 | pendiente |
+| T9 | pendiente |
+| T10 | pendiente |
+| T11 | pendiente |
+| T12 | pendiente |
+| T13 | pendiente |
+| T14 | pendiente |
+
+### Corridas
+
+| Fecha/hora | Alcance | HEAD verificado | Veredicto | Notas |
+|---|---|---|---|---|
+| | T1 | | | |
+| | T2 | | | |
+| | T3 | | | |
+| | T4–T9 | | | |
+| | T10 | | | |
+| | T11 | | | |
+| | T14 | | | |
+| | T12 | | | |
+| | T13 | | | |
+| | TODO | | | |
+
+### Decisiones del plan
+
+- T1 — `User` dentro o fuera de la guardia — guardarlo o dejarlo con `UserManager` — fuera, con filtro explícito en `usuarios_gestionables` — simplejwt carga el usuario con `User.objects` antes de conocer la empresa — autónoma — sumar `User` a la guardia con un manager propio para simplejwt — decidida por Claude, revisable
+- T1 — despliegue de la guardia — encendida desde T1, interruptor sí/no, o `advertir`/`exigir` — `advertir`/`exigir` hasta T11 — permite la ola 3 en paralelo sin esconder lo que falta (las advertencias lo muestran) — autónoma — encenderla en T1 y serializar la ola 3 — decidida por Claude, revisable
+- T2 — empresa de los hijos — explícita en cada alta o copiada del padre — copiada del padre si falta, error si difiere — menos cambios en las altas y una sola regla — autónoma — exigirla explícita en cada `create` — decidida por Claude, revisable
+- T2 — `plataforma` y superusuario — rol independiente o atado a `is_superuser` — `plataforma` es superusuario y sin empresa; `/admin/` exige ambos — el admin de Django pide permisos por modelo — autónoma — permisos por grupo para `plataforma` — decidida por Claude, revisable
+- T1 — validación del logo — reutilizar `_abrir_imagen` de `apps/sitios/planos.py:80` o `procesar_imagen` de `apps/visitas/imagenes.py:25`, o un proceso propio — proceso propio en `apps/empresas/logos.py` — `empresas` no depende de `sitios` ni de `visitas`, y `procesar_imagen` devuelve JPEG RGB mientras el logo es PNG con transparencia — autónoma — extraer un módulo común de imágenes en un plan aparte — decidida por Claude, revisable
+- T1 — carga de la empresa del usuario — consulta aparte o `select_related` — `select_related("empresa")` en `BackendConEmpresa.get_user` y en `JWTAutenticacionEmpresa.get_user` — no cambia el número de consultas que fijan `test_estado.py:80` y `test_mapa.py:142` — autónoma — ajustar esos `assertNumQueries` — decidida por Claude, revisable
+- T6/T7/T8 — `empresa` en los formularios del admin — editable en todos, en ninguno o solo en raíces — solo en raíces (`Cliente`, `TipoServicio`, `Producto`); los hijos la copian del padre — los formularios con `__all__` no cambian cuando T14 vuelve no nula la FK — autónoma — hacerla editable en todos con validación de consistencia — decidida por Claude, revisable
+- T1 — nombre del usuario de plataforma de la demo — `demo-plataforma` — sigue el patrón `demo-*` — autónoma — renombrar en `cargar_demo` — decidida por Claude, revisable
+
+## Pendientes que deja este plan
+
+### Problemas
+
+### Decisiones
+
+- 2026-10-26 — Multiempresa en una sola base: FK directa a `Empresa` en todos los modelos de dominio, manager por defecto que exige empresa, middleware que fija `request.empresa` y test de aislamiento generado; sin migración de datos — nada está en producción; registra las decisiones del 2026-10-17 que no estaban en `docs/decisiones.md` — decisión del usuario — reemplaza a: (nada)
+- 2026-10-26 — Un usuario pertenece a una sola empresa; los nombres de usuario siguen únicos globales; rol nuevo `plataforma` sin empresa, único con acceso a `/admin/` y a sus acciones de supresión de datos (Ley 25.326) y regeneración de QR — decisión del usuario — reemplaza a: 2026-09-29 (dos roles: administrador y empleado), 2026-10-02 (la supresión de datos es solo para rol administrador), 2026-10-02 (invalidar QR o suprimir datos exigen rol administrador)
+- 2026-10-26 — Cada empresa crea sus servicios y productos: una empresa nueva arranca con el catálogo vacío y se borra la fixture `tipos_servicio.json` — decisión del usuario — reemplaza a: 2026-10-02 (la fixture `tipos_servicio` lleva 9 servicios), 2026-10-07 (`contenido_inicial.json` repite la fixture; el archivo ya no existe), 2026-10-18 (`cargar_demo` carga `tipos_servicio`)
+- 2026-10-26 — `TipoServicio.slug` y `Revision.cliente_uuid` pasan a ser únicos por empresa (`UniqueConstraint(empresa, …)`); `qr_codigo` y `Foto.codigo` siguen únicos globales — el mismo servicio o el mismo reintento de la app pueden existir en dos empresas sin chocar ni revelar datos de la otra — decidida por Claude, revisable — reemplaza a: (nada)
+- 2026-10-26 — Las empresas se dan de alta a mano desde `/admin/`; los operarios los carga el administrador de su empresa desde el panel o el operador desde `/admin/` — decisión del usuario — reemplaza a: (nada)
+- 2026-10-26 — Se rehacen los `0001_initial` de todas las apps con la FK `empresa`; las bases locales se recrean con `migrate` + `cargar_demo` — nada está en producción — decisión del usuario — reemplaza a: (nada)
+- 2026-10-26 — `NOMBRE_EMPRESA` y `CORREO_CONTACTO` dejan de existir; el nombre, el logo y el correo salen de `Empresa`; título y login dicen "Detach"; `/q/<uuid>/` no muestra datos de ninguna empresa — decisión del usuario — reemplaza a: 2026-10-18 (`NOMBRE_EMPRESA` en `DESCRIPTION`, admin, `alt` y QR), 2026-10-18 (`/q/` con `NOMBRE_EMPRESA`), 2026-10-18 (`NOMBRE_EMPRESA` obligatoria en producción), 2026-10-18 (`.strip()` de `NOMBRE_EMPRESA` y `CORREO_CONTACTO`), 2026-10-18 (`CuentaAdmin.get_fieldsets` con `NOMBRE_EMPRESA`), 2026-10-19 (`CORREO_CONTACTO` opcional)
+- 2026-10-26 — La FK `empresa` entra en dos fases: T2 la agrega nula y sin `CheckConstraint`; T14, cuando vistas, formularios, admin, demo y tests ya asignan empresa, la vuelve no nula y agrega el `CheckConstraint` de rol y empresa en `User` — la suite queda verde en cada subtarea sin que T2 tenga que tocar vistas y formularios de la ola 3 — decisión del usuario — reemplaza a: (nada)
+- 2026-10-26 — Excepción a la tabla de propiedad: T1, T2 y T14 son transversales por naturaleza (T1 cablea `empresas` en `config/settings/base.py`, `apps/panel/urls.py` y `User`, y crea el usuario `plataforma` en `cargar_demo` con `apps/panel/tests/test_cargar_demo.py`; la FK de T2 y de T14 va en todas las apps, sus migraciones y los tests que crean objetos) y pueden tocar archivos de otros dueños, con la condición de que cada una corra sin ninguna subtarea en paralelo (T1 sola en la ola 1, T2 sola en la ola 2, T14 entre T11 y T12 en la ola 4), de modo que ningún archivo tenga dos dueños a la vez. La misma condición cubre a T11, que escribe en `apps/**` (salvo `models.py`, `migrations/` y los `urls.py` del principal) y corre sola en la ola 4, antes de T14; y a T5, dueña en la ola 3 del código de panel de `apps/empresas/` (`panel_views.py`, `panel_forms.py`, `panel_urls.py`, `templates/`, `tests/test_panel.py`, que T1 deja creado) y de `templates/**` y `static/css/panel.css` (hace de subtarea "diseño" del plan): ninguna otra subtarea de la ola 3 escribe en esos archivos — la FK rompe a la vez la creación de objetos en todas las apps — decisión del usuario — reemplaza a: (nada)
+- 2026-10-26 — Excepción a la tabla de propiedad en las olas 3 y 4: `apps/panel/tests/test_plantilla_base.py` y `apps/panel/tests/test_menu.py` son de T5 (comprueban las plantillas que cambia T5); `apps/panel/tests/test_rutas.py` es de T7 (comprueba `/q/`, que neutraliza T7); `config/tests/test_admin_site.py`, `apps/sitios/tests/test_admin.py` y `apps/visitas/tests/test_admin.py` son de T4 (entran a `/admin/`, que T4 restringe a `plataforma`), lo mismo que la compuerta `_es_administrador_activo` de `apps/sitios/admin.py`, con T4 → T7 y T4 → T8; `apps/panel/tests/test_errores.py`, `apps/empresas/tests/test_panel.py` y `apps/sitios/tests/test_publico.py` pasan a T10 (leen o fijan `NOMBRE_EMPRESA`, que borra T10); `apps/empresas/tests/test_consultas.py` pasa a T11 (fija `EMPRESA_GUARDIA`, cuya lectura borra T11). T9, la transversal de `apps/panel/**`, excluye los de `apps/panel/tests/` y ramifica después de T7 (orden T5 → T7 → T9) — cada test cambia en el mismo commit que el comportamiento que comprueba, con un solo dueño por archivo a la vez — decisión del usuario — reemplaza a: (nada)
+- 2026-10-26 — Los criterios `[grep-0]` usan `git grep -n "<patrón>" -- <rutas> ':!*/tests/*'`: no recorren `__pycache__` ni los `override_settings` de los tests — decisión del usuario — reemplaza a: (nada)
+- 2026-10-26 — El User-Agent de Nominatim usa `CORREO_PLATAFORMA` (contacto del operador de Detach, opcional, con valor por defecto en desarrollo) — Nominatim identifica a la instancia, no a cada empresa — decisión del usuario — reemplaza a: 2026-10-08 (el User-Agent de Nominatim lleva `SITE_URL` y un correo fijo), 2026-10-18 (`CORREO_CONTACTO` en el User-Agent, `docs/decisiones.md:224` y `:231`)
+
+### Cierra
