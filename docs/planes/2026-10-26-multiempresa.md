@@ -458,7 +458,7 @@ commit_base: 0927fcd
 
 | Tarea | Estado |
 |---|---|
-| T1 | en corrección (P-multiempresa-1 a 3) |
+| T1 | verificada (sin integrar); P-multiempresa-8 abierto |
 | T2 | pendiente |
 | T3 | pendiente |
 | T4 | pendiente |
@@ -478,6 +478,7 @@ commit_base: 0927fcd
 | Fecha/hora | Alcance | HEAD verificado | Veredicto | Notas |
 |---|---|---|---|---|
 | 2026-10-26 17:45 | T1 | edf757c | PASA (verificador 21/21, verificador-b 21/21) | auditor-seguridad: 0 bloqueantes, 1 importante, 2 menores (P-multiempresa-1 a 3); falta integrar (T3 paso 1) |
+| 2026-10-26 19:35 | T1 (corrección 57f9c11, 930b715) | 930b715 | PASA (verificador 21/21, verificador-b 21/21) | auditor-seguridad: P-multiempresa-2 cerrado; -1 y -3 parcialmente (P-multiempresa-8 a 10); presupuesto 873/900 |
 | | T2 | | | |
 | | T3 | | | |
 | | T4–T9 | | | |
@@ -510,6 +511,10 @@ commit_base: 0927fcd
 - P-multiempresa-5 [observación] `MAX_PIXELES = 25_000_000` en `apps/empresas/logos.py:12` permite ~125 MB transitorios por subida; para un logo de 512 px alcanza con ~16,7 M. Para T5: el `ModelForm` del logo no debe usar `forms.ImageField` (abre con todos los plugins de Pillow) y el servido de `empresas/logos/` sigue el criterio de los planos. Destino (usuario, 2026-10-26): bajar el límite al de las fotos (16 MP de entrada, 1000 px de lado mayor guardado) dentro de T5; ojo: el `No puede tocar` de T5 incluye `apps/empresas/logos.py`. Origen: auditor-seguridad sobre T1.
 - P-multiempresa-6 [observación] `SERVE_AUTHENTICATION` incluye `SessionAuthentication`: una sesión de empresa inactiva sigue leyendo `/api/v1/schema/` (sin datos de empresa). Destino (usuario, 2026-10-26): pendiente para el plan `robustez-listados`. Origen: auditor-seguridad sobre T1.
 - P-multiempresa-7 [observación] `demo-plataforma` es el primer usuario demo con `/admin/` completo y contraseña publicada; sugerencia: system check en `prod.py` (T10) que falle si existe `username__startswith="demo-"`. `JWTAutenticacionEmpresa.get_user` copia el de simplejwt 5.5.1 y no hereda arreglos futuros. Comprobado el 2026-10-26: `cargar_demo` ya se niega con `DJANGO_ENV=production` (`exigir_entorno_demo`, `apps/panel/demo.py:31`; test `test_rechaza_entorno_que_no_es_development`, `apps/panel/tests/test_cargar_demo.py:75`, que además comprueba que no crea usuarios). Origen: auditor-seguridad sobre T1.
+- P-multiempresa-8 [importante] Variante de P-multiempresa-1 no cubierta: con slice a la izquierda, `|` y `^` arman el resultado con `self.model._base_manager` (`QuerySet` común, sin guardia): `de_empresa(a)[:5] | objects.all()` y hasta `all()[:5] | all()` devuelven filas de todas las empresas sin lanzar en `exigir` (`apps/empresas/consultas.py:76-101`). Corrección propuesta: en `_combinada`, si el resultado no es `EmpresaQuerySet`, volver a envolverlo. Origen: auditor-seguridad sobre la corrección de T1.
+- P-multiempresa-9 [menor] Un queryset pasado a `Prefetch(queryset=…)` recibe el hint `instance` (`get_prefetch_querysets` llama a `_add_hints`) y queda exento si después se reutiliza solo (`consultas.py:69-74`). Hoy no hay `Prefetch(` fuera de tests. Es una decisión de diseño: documentar la regla o atar la exención al manager relacionado. Origen: auditor-seguridad sobre la corrección de T1.
+- P-multiempresa-10 [menor] `db_manager(hints={"instance": x})` o `_add_hints(instance=x)` con cualquier `x` cargada, incluso de otro modelo, eximen todo el modelo (`consultas.py:69-74`). Mínimo: exigir que `x` sea de un modelo relacionado con `self.model`, y un `[grep-0]` de `db_manager(`/`_add_hints` fuera de tests en T11. `_state.adding`/`from_db` se pueden falsificar a propósito (observación). Origen: auditor-seguridad sobre la corrección de T1.
+- P-multiempresa-11 [observación] Los tests nuevos de la guardia no cubren `^`, `intersection`, `difference`, el orden inverso, las cadenas ni el slice; `setUpTestData` usa una sola empresa, así que `len(propia | propia) == 1` no distingue "acotado" de "trae todo". Origen: auditor-seguridad sobre la corrección de T1.
 
 ### Decisiones
 
