@@ -56,7 +56,8 @@ class Command(BaseCommand):
         "'[demo]', productos con sufijo ' (demo)' y el formato viejo 'Cliente Demo "
         "N'); no toca nada sin marca. Regenera los QR de los puntos demo. Solo corre "
         "con DEBUG, DJANGO_ENV=development y SQLite (sin DATABASE_URL). Crea "
-        "demo-admin (administrador) y demo-empleado (empleado) con la contraseña "
+        "demo-admin (administrador), demo-empleado (empleado) y "
+        "demo-plataforma (plataforma, superusuario, sin empresa) con la contraseña "
         f"{CLAVE_DEMO}: existen solo en desarrollo."
     )
 
@@ -88,16 +89,23 @@ class Command(BaseCommand):
     def _usuarios(self):
         """Crea los usuarios demo y devuelve (administrador, empleado).
 
+        `demo-plataforma` también se crea, pero la historia no lo usa.
+
         Uno que ya existía con otro rol u otra contraseña no se modifica: se avisa
         por stderr y la contraseña solo se informa de los recién creados.
         """
         usuarios = []
-        for nombre, rol in (
-            ("demo-admin", User.Rol.ADMINISTRADOR),
-            ("demo-empleado", User.Rol.EMPLEADO),
+        for nombre, rol, extra in (
+            ("demo-admin", User.Rol.ADMINISTRADOR, {}),
+            ("demo-empleado", User.Rol.EMPLEADO, {}),
+            (
+                "demo-plataforma",
+                User.Rol.PLATAFORMA,
+                {"is_staff": True, "is_superuser": True},
+            ),
         ):
             usuario, creado = User.objects.get_or_create(
-                username=nombre, defaults={"rol": rol}
+                username=nombre, defaults={"rol": rol, **extra}
             )
             if creado:
                 usuario.set_password(CLAVE_DEMO)
@@ -109,7 +117,7 @@ class Command(BaseCommand):
                     "contraseña: no se modificó."
                 )
             usuarios.append(usuario)
-        return tuple(usuarios)
+        return tuple(usuarios[:2])
 
     def _crear_sitios(self):
         """Clientes de la Carta, sus sitios y puntos; el primer sitio lleva plano."""
