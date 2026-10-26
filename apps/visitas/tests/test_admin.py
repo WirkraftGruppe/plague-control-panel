@@ -11,6 +11,7 @@ from django.utils import timezone
 from PIL import Image
 
 from apps.accounts.models import User
+from apps.empresas.tests.ayudas import una_empresa
 from apps.visitas.admin import (
     CAMPOS_EVIDENCIA,
     FotoInline,
@@ -58,7 +59,10 @@ class VisitaAdminTests(TestCase):
 
     def setUp(self):
         self.administrador = User.objects.create_superuser(
-            username="root", password="x", rol=User.Rol.ADMINISTRADOR
+            username="root",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
 
     def test_changelist_responde_200(self):
@@ -235,7 +239,8 @@ class FormVisitaTests(TestCase):
         editables = {
             f.name for f in Visita._meta.get_fields() if getattr(f, "editable", False)
         }
-        editables -= {"id"}
+        # El admin de los hijos no muestra `empresa`: se hereda de su padre.
+        editables -= {"id", "empresa"}
         self.assertEqual(set(modeladmin.fields), editables)
         self.assertIn("incidencia_asignacion", modeladmin.readonly_fields)
 
@@ -245,7 +250,10 @@ class AdminPendienteTests(TestCase):
     def test_post_forjado_sobre_pendiente_no_cierra_ni_carga_datos(self):
         pendiente = crear_visita()
         administrador = User.objects.create_superuser(
-            username="root-pend", password="x", rol=User.Rol.ADMINISTRADOR
+            username="root-pend",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         self.client.force_login(administrador)
         url = reverse("admin:visitas_visita_change", args=[pendiente.pk])
@@ -271,7 +279,10 @@ class AdminPendienteTests(TestCase):
         pendiente = crear_visita()
         crear_revision(pendiente)
         administrador = User.objects.create_superuser(
-            username="root-rech", password="x", rol=User.Rol.ADMINISTRADOR
+            username="root-rech",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         self.client.force_login(administrador)
         url = reverse("admin:visitas_visita_change", args=[pendiente.pk])
@@ -290,7 +301,10 @@ class AdminPendienteTests(TestCase):
 
     def test_pendiente_no_asignable_a_administrador(self):
         administrador = User.objects.create_superuser(
-            username="root-asig", password="x", rol=User.Rol.ADMINISTRADOR
+            username="root-asig",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         base = crear_visita()
         empleado = base.empleado

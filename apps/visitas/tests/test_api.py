@@ -17,6 +17,7 @@ from rest_framework.test import APIClient
 
 from apps.accounts.models import User
 from apps.clientes.models import Cliente
+from apps.empresas.tests.ayudas import una_empresa
 from apps.productos.models import Producto
 from apps.servicios.models import CampoPlanilla, TipoServicio
 from apps.sitios.models import PuntoControl, Sitio
@@ -40,7 +41,7 @@ class BaseApiTests(TestCase):
 
     def setUp(self):
         cache.clear()
-        cliente = Cliente.objects.create(razon_social="ACME")
+        cliente = Cliente.objects.create(razon_social="ACME", empresa=una_empresa())
         self.sitio = Sitio.objects.create(
             cliente=cliente,
             nombre="Planta 1",
@@ -49,7 +50,9 @@ class BaseApiTests(TestCase):
             latitud="-36.100000",
             longitud="-57.800000",
         )
-        self.tipo = TipoServicio.objects.create(nombre="Desratización", slug="desrat")
+        self.tipo = TipoServicio.objects.create(
+            nombre="Desratización", slug="desrat", empresa=una_empresa()
+        )
         CampoPlanilla.objects.create(
             tipo_servicio=self.tipo,
             orden=1,
@@ -67,7 +70,9 @@ class BaseApiTests(TestCase):
         self.api = self._api(self.empleado)
 
     def _usuario(self, nombre, rol):
-        return User.objects.create_user(username=nombre, password="x", rol=rol)
+        return User.objects.create_user(
+            username=nombre, password="x", rol=rol, empresa=una_empresa()
+        )
 
     def _api(self, usuario):
         api = APIClient()
@@ -106,7 +111,9 @@ class ApiVisitasBase(BaseApiTests):
 
     def setUp(self):
         super().setUp()
-        self.producto = Producto.objects.create(nombre_comercial="Cebo X")
+        self.producto = Producto.objects.create(
+            nombre_comercial="Cebo X", empresa=una_empresa()
+        )
 
     def _abierta(self, empleado=None, **extra):
         extra.setdefault("origen", Visita.Origen.APP)

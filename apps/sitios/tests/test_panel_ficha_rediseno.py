@@ -16,6 +16,7 @@ from PIL import Image
 
 from apps.accounts.models import User
 from apps.clientes.models import Cliente
+from apps.empresas.tests.ayudas import una_empresa
 from apps.servicios.models import TipoServicio
 from apps.sitios.models import Plano, PuntoControl, Sitio
 from apps.visitas.models import ItemTurno, Visita
@@ -40,13 +41,22 @@ class FichaRedisenoTests(TestCase):
     def setUpTestData(cls):
         cls.hoy = timezone.localdate()
         cls.admin = User.objects.create_user(
-            "adm-rediseno", password="x", rol=User.Rol.ADMINISTRADOR
+            "adm-rediseno",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         cls.empleado = User.objects.create_user(
-            "emp-rediseno", password="x", rol=User.Rol.EMPLEADO, first_name="Ana"
+            "emp-rediseno",
+            password="x",
+            rol=User.Rol.EMPLEADO,
+            first_name="Ana",
+            empresa=una_empresa(),
         )
-        cls.cliente = Cliente.objects.create(razon_social="ACME")
-        cls.servicio = TipoServicio.objects.create(nombre="Roedores", slug="roedores-r")
+        cls.cliente = Cliente.objects.create(razon_social="ACME", empresa=una_empresa())
+        cls.servicio = TipoServicio.objects.create(
+            nombre="Roedores", slug="roedores-r", empresa=una_empresa()
+        )
         cls.sitio = Sitio.objects.create(
             cliente=cls.cliente,
             nombre="Planta Sur",
@@ -58,6 +68,7 @@ class FichaRedisenoTests(TestCase):
                 rol=User.Rol.ADMINISTRADOR,
                 first_name="Rosa",
                 last_name="Gómez",
+                empresa=una_empresa(),
             ),
             contacto_en_sitio="Luis Pérez",
             telefono_en_sitio="221-555-0101",

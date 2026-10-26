@@ -339,7 +339,12 @@ def crear_turno(*, sitio, empleado, programada_para, items, asignada_por):
             asignada_por=asignada_por,
         )
         ItemTurno.objects.bulk_create(
-            ItemTurno(visita=visita, punto=punto, servicio=servicio)
+            ItemTurno(
+                visita=visita,
+                punto=punto,
+                servicio=servicio,
+                empresa_id=visita.empresa_id,
+            )
             for punto, servicio in items
         )
     return visita
@@ -911,7 +916,12 @@ def registrar_visita_manual(
         visita.save()
         if pendiente is None:
             ItemTurno.objects.bulk_create(
-                ItemTurno(visita=visita, punto=punto, servicio=servicio)
+                ItemTurno(
+                    visita=visita,
+                    punto=punto,
+                    servicio=servicio,
+                    empresa_id=visita.empresa_id,
+                )
                 for punto, servicio in items
             )
         con_item = set(visita.items.values_list("punto_id", flat=True))

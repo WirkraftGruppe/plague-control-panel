@@ -5,6 +5,7 @@ from decimal import Decimal
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 
+from apps.empresas.tests.ayudas import una_empresa
 from apps.productos.models import MovimientoStock, Producto
 from apps.productos.services import registrar_ingreso, stock
 from apps.visitas.models import ProductoAplicado, Revision
@@ -19,6 +20,7 @@ class StockRevisionApiTests(ApiVisitasBase):
             nombre_comercial="Concentrado en galones",
             unidad_base="gal",
             modo_unidad="equivalentes",
+            empresa=una_empresa(),
         )
         registrar_ingreso(self.galones, Decimal("10"), False, self.empleado)
 
@@ -63,7 +65,10 @@ class StockRevisionApiTests(ApiVisitasBase):
 
     def test_modo_unica_con_otra_unidad_da_400_en_el_producto(self):
         unica = Producto.objects.create(
-            nombre_comercial="Solo litros", unidad_base="l", modo_unidad="unica"
+            nombre_comercial="Solo litros",
+            unidad_base="l",
+            modo_unidad="unica",
+            empresa=una_empresa(),
         )
         self._comprobar_400_en_unidad(unica, "ml")
 

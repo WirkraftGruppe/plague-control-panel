@@ -10,6 +10,7 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.clientes.models import Cliente
+from apps.empresas.tests.ayudas import una_empresa
 from apps.sitios.models import Plano, PuntoControl, Sitio
 
 
@@ -17,10 +18,17 @@ class EstadoSitioTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.admin = User.objects.create_user(
-            "adm", password="clave-segura-123", rol=User.Rol.ADMINISTRADOR
+            "adm",
+            password="clave-segura-123",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
-        cls.empleado = User.objects.create_user("emp", password="clave-segura-123")
-        cliente = Cliente.objects.create(razon_social="Cliente SA")
+        cls.empleado = User.objects.create_user(
+            "emp", password="clave-segura-123", empresa=una_empresa()
+        )
+        cliente = Cliente.objects.create(
+            razon_social="Cliente SA", empresa=una_empresa()
+        )
         cls.sitio = Sitio.objects.create(cliente=cliente, nombre="Planta")
         cls.plano = Plano.objects.create(
             sitio=cls.sitio, nombre="Planta baja", imagen="planos/p.png"

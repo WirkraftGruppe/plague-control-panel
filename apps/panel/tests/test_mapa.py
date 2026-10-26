@@ -8,6 +8,7 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.clientes.models import Cliente
+from apps.empresas.tests.ayudas import una_empresa
 from apps.panel.mapa import ORIGEN_TESELAS
 from apps.servicios.models import TipoServicio
 from apps.sitios.models import PuntoControl, Sitio
@@ -19,12 +20,23 @@ class MapaTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.admin = User.objects.create_user(
-            "adm", password="clave-segura-123", rol=User.Rol.ADMINISTRADOR
+            "adm",
+            password="clave-segura-123",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
-        cls.empleado = User.objects.create_user("emp", password="clave-segura-123")
-        cls.cliente = Cliente.objects.create(razon_social="Cliente SA")
-        cls.servicio = TipoServicio.objects.create(nombre="Desinsectación", slug="d")
-        cls.otro_servicio = TipoServicio.objects.create(nombre="Roedores", slug="r")
+        cls.empleado = User.objects.create_user(
+            "emp", password="clave-segura-123", empresa=una_empresa()
+        )
+        cls.cliente = Cliente.objects.create(
+            razon_social="Cliente SA", empresa=una_empresa()
+        )
+        cls.servicio = TipoServicio.objects.create(
+            nombre="Desinsectación", slug="d", empresa=una_empresa()
+        )
+        cls.otro_servicio = TipoServicio.objects.create(
+            nombre="Roedores", slug="r", empresa=una_empresa()
+        )
         cls.hoy = timezone.localdate()
 
     def sitio(self, nombre="Planta", cliente=None, **campos):
@@ -116,7 +128,7 @@ class MapaTests(TestCase):
         )
 
     def test_datos_filtra_por_cliente_servicio_y_estado(self):
-        otro = Cliente.objects.create(razon_social="Otro SA")
+        otro = Cliente.objects.create(razon_social="Otro SA", empresa=una_empresa())
         a = self.sitio("A")
         self.punto(a, -1, servicio=self.servicio)
         b = self.sitio("B", cliente=otro)

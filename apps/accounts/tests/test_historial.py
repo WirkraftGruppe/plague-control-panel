@@ -1,11 +1,14 @@
 from django.test import TestCase
 
 from apps.accounts.models import User
+from apps.empresas.tests.ayudas import una_empresa
 
 
 class HistorialUserTests(TestCase):
     def setUp(self):
-        self.usuario = User.objects.create_user("ana", password="clave-segura-123")
+        self.usuario = User.objects.create_user(
+            "ana", password="clave-segura-123", empresa=una_empresa()
+        )
 
     def test_historial_no_guarda_password_ni_last_login(self):
         campos = {campo.name for campo in User.history.model._meta.get_fields()}

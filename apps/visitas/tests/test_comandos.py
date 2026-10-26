@@ -14,6 +14,7 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from apps.accounts.models import User
+from apps.empresas.tests.ayudas import una_empresa
 from apps.sitios import services as servicios_sitio
 from apps.visitas.models import Revision, Visita
 from apps.visitas.services import cerrar_visita
@@ -63,7 +64,10 @@ class CerrarAbiertasTests(TestCase):
 
     def test_sin_revisiones_vuelve_a_pendiente_o_se_cancela(self):
         asignador = User.objects.create_user(
-            username="adm-cmd", password="x", rol=User.Rol.ADMINISTRADOR
+            username="adm-cmd",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         asignada = abierta_hace(20, asignada_por=asignador)
         propia = abierta_hace(20)

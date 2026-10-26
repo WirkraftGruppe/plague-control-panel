@@ -2,13 +2,16 @@
 
 from django.test import TestCase
 
+from apps.empresas.tests.ayudas import una_empresa
 from apps.servicios.models import CampoPlanilla, TipoServicio
 
 
 class EsquemaTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.tipo = TipoServicio.objects.create(nombre="Esquema", slug="esquema")
+        cls.tipo = TipoServicio.objects.create(
+            nombre="Esquema", slug="esquema", empresa=una_empresa()
+        )
         for orden, clave, activo in ((2, "b", True), (1, "a", True), (3, "c", False)):
             CampoPlanilla.objects.create(
                 tipo_servicio=cls.tipo,

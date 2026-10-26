@@ -12,6 +12,7 @@ from django.dispatch import receiver
 from simple_history.models import HistoricalRecords
 
 from apps.clientes.models import Cliente
+from apps.empresas.models import ModeloDeEmpresa
 from apps.visitas import imagenes
 
 from . import planos
@@ -27,7 +28,7 @@ def _borrar_archivo_al_confirmar(almacenamiento, nombre):
     transaction.on_commit(lambda: almacenamiento.delete(nombre))
 
 
-class Sitio(models.Model):
+class Sitio(ModeloDeEmpresa):
     """Lugar físico de un cliente donde se hacen visitas; los QR son de sus puntos."""
 
     class Sector(models.TextChoices):
@@ -43,6 +44,9 @@ class Sitio(models.Model):
         TRANSPORTE = "transporte", "Transporte"
         HOGAR = "hogar", "Hogar"
         OTRO = "otro", "Otro"
+
+    padre_de_empresa = "cliente"
+    referencias_de_empresa = ("responsable",)
 
     cliente = models.ForeignKey(
         Cliente,
@@ -139,8 +143,10 @@ def ruta_plano(instancia, nombre):
     return f"sitios/planos/{uuid.uuid4().hex}.png"
 
 
-class Plano(models.Model):
+class Plano(ModeloDeEmpresa):
     """Imagen de una planta o zona del sitio donde se ubican los puntos de control."""
+
+    padre_de_empresa = "sitio"
 
     sitio = models.ForeignKey(
         Sitio, verbose_name="sitio", on_delete=models.CASCADE, related_name="planos"
@@ -167,6 +173,7 @@ class Plano(models.Model):
 
     def clean(self):
         """Valida y convierte el archivo nuevo; ``save`` reutiliza el resultado."""
+        super().clean()
         if self._sin_confirmar():
             self._procesado = planos.procesar_plano(self.imagen.file)
 
@@ -176,9 +183,7 @@ class Plano(models.Model):
         campos = kwargs.get("update_fields")
         if self.pk and (campos is None or "imagen" in campos):
             anterior = (
-                Plano.objects.filter(pk=self.pk)
-                .values_list("imagen", flat=True)
-                .first()
+                Plano.todos.filter(pk=self.pk).values_list("imagen", flat=True).first()
             )
         if nuevo:
             procesado = getattr(self, "_procesado", None)
@@ -217,8 +222,11 @@ def ruta_foto_punto(instancia, nombre):
     return f"sitios/puntos/{uuid.uuid4().hex}.jpg"
 
 
-class PuntoControl(models.Model):
+class PuntoControl(ModeloDeEmpresa):
     """Lugar concreto del sitio con su propio QR donde se hace una revisión."""
+
+    padre_de_empresa = "sitio"
+    referencias_de_empresa = ("plano", "servicio", "ubicacion_fijada_por")
 
     sitio = models.ForeignKey(
         Sitio, verbose_name="sitio", on_delete=models.CASCADE, related_name="puntos"
@@ -295,6 +303,7 @@ class PuntoControl(models.Model):
         return f"{self.nombre} ({self.sitio.nombre})"
 
     def clean(self):
+        super().clean()
         errores = {}
         if self.sitio_id and self.activo and not self.sitio.activo:
             errores["activo"] = "Un punto activo necesita un sitio activo."
@@ -309,7 +318,7 @@ class PuntoControl(models.Model):
         campos = kwargs.get("update_fields")
         if self.pk and (campos is None or "foto" in campos):
             anterior = (
-                PuntoControl.objects.filter(pk=self.pk)
+                PuntoControl.todos.filter(pk=self.pk)
                 .values_list("foto", flat=True)
                 .first()
             )

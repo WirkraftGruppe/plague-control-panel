@@ -4,6 +4,7 @@ from datetime import date
 
 from django.utils import timezone
 
+from apps.empresas.tests.ayudas import una_empresa
 from apps.servicios.models import TipoServicio
 from apps.sitios.models import PuntoControl
 from apps.visitas.models import Revision, Visita
@@ -14,7 +15,9 @@ from apps.visitas.tests.test_api import ApiVisitasBase
 class MisTurnosApiTests(ApiVisitasBase):
     def setUp(self):
         super().setUp()
-        self.fumiga = TipoServicio.objects.create(nombre="Fumigación", slug="fumiga")
+        self.fumiga = TipoServicio.objects.create(
+            nombre="Fumigación", slug="fumiga", empresa=una_empresa()
+        )
         self.deposito = PuntoControl.objects.create(
             sitio=self.sitio, nombre="Depósito", sector="Fondo", orden=1
         )

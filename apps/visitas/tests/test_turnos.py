@@ -10,6 +10,7 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.clientes.models import Cliente
+from apps.empresas.tests.ayudas import una_empresa
 from apps.productos.models import MovimientoStock, Producto
 from apps.servicios.models import CampoPlanilla, TipoServicio
 from apps.sitios.models import PuntoControl, Sitio
@@ -33,10 +34,14 @@ class BaseTurnoTests(SinArchivosMixin, TestCase):
     """Un sitio con tres puntos y dos servicios; el General es de `roedores`."""
 
     def setUp(self):
-        cliente = Cliente.objects.create(razon_social="ACME")
+        cliente = Cliente.objects.create(razon_social="ACME", empresa=una_empresa())
         self.sitio = Sitio.objects.create(cliente=cliente, nombre="Planta")
-        self.roedores = TipoServicio.objects.create(nombre="Roedores", slug="roedores")
-        self.insectos = TipoServicio.objects.create(nombre="Insectos", slug="insectos")
+        self.roedores = TipoServicio.objects.create(
+            nombre="Roedores", slug="roedores", empresa=una_empresa()
+        )
+        self.insectos = TipoServicio.objects.create(
+            nombre="Insectos", slug="insectos", empresa=una_empresa()
+        )
         self.general = self.sitio.puntos.get(orden=0)
         self.general.servicio = self.roedores
         self.general.save()
@@ -47,10 +52,10 @@ class BaseTurnoTests(SinArchivosMixin, TestCase):
             sitio=self.sitio, nombre="Techo", orden=2, servicio=self.insectos
         )
         self.empleado = User.objects.create_user(
-            "emp", password="x", rol=User.Rol.EMPLEADO
+            "emp", password="x", rol=User.Rol.EMPLEADO, empresa=una_empresa()
         )
         self.admin = User.objects.create_user(
-            "adm", password="x", rol=User.Rol.ADMINISTRADOR
+            "adm", password="x", rol=User.Rol.ADMINISTRADOR, empresa=una_empresa()
         )
 
     def turno(self, items, **extra):
@@ -248,7 +253,9 @@ class CerrarTurnoTests(BaseTurnoTests):
         self.assertEqual(self.visita.estado, Visita.Estado.ABIERTA)
 
     def test_servicio_ajeno_a_la_visita_da_error(self):
-        otro = TipoServicio.objects.create(nombre="Aves", slug="aves")
+        otro = TipoServicio.objects.create(
+            nombre="Aves", slug="aves", empresa=una_empresa()
+        )
         with self.assertRaises(ValidationError) as contexto:
             self.cerrar(datos={"roedores": {"resumen": "x"}, otro.slug: {}})
         self.assertIn("aves: El servicio", contexto.exception.message_dict["datos"][0])
@@ -262,7 +269,10 @@ class CargaManualTests(BaseTurnoTests):
         )
         self.sitio.refresh_from_db()
         self.producto = Producto.objects.create(
-            nombre_comercial="Concentrado", unidad_base="ml", modo_unidad="equivalentes"
+            nombre_comercial="Concentrado",
+            unidad_base="ml",
+            modo_unidad="equivalentes",
+            empresa=una_empresa(),
         )
 
     def cargar(self, **extra):

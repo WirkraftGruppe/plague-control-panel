@@ -11,6 +11,7 @@ from rest_framework.test import APIClient
 
 from apps.accounts.models import User
 from apps.clientes.models import Cliente
+from apps.empresas.tests.ayudas import una_empresa
 from apps.servicios.models import CampoPlanilla, TipoServicio
 from apps.sitios.models import Sitio
 from apps.visitas.models import Revision, Visita
@@ -24,11 +25,16 @@ class BaseResolverTests(TestCase):
     def setUp(self):
         cache.clear()
         self.sitio = Sitio.objects.create(
-            cliente=Cliente.objects.create(razon_social="ACME"), nombre="Planta 1"
+            cliente=Cliente.objects.create(razon_social="ACME", empresa=una_empresa()),
+            nombre="Planta 1",
         )
         self.punto = self.sitio.puntos.get()
-        self.desrat = TipoServicio.objects.create(nombre="Desratización", slug="desrat")
-        self.fumiga = TipoServicio.objects.create(nombre="Fumigación", slug="fumiga")
+        self.desrat = TipoServicio.objects.create(
+            nombre="Desratización", slug="desrat", empresa=una_empresa()
+        )
+        self.fumiga = TipoServicio.objects.create(
+            nombre="Fumigación", slug="fumiga", empresa=una_empresa()
+        )
         CampoPlanilla.objects.create(
             tipo_servicio=self.desrat,
             orden=1,
@@ -46,10 +52,13 @@ class BaseResolverTests(TestCase):
             ambito=CampoPlanilla.Ambito.VISITA,
         )
         self.empleado = User.objects.create_user(
-            username="emp", password="x", rol=User.Rol.EMPLEADO
+            username="emp", password="x", rol=User.Rol.EMPLEADO, empresa=una_empresa()
         )
         self.admin = User.objects.create_user(
-            username="adm", password="x", rol=User.Rol.ADMINISTRADOR
+            username="adm",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         self.api = APIClient()
         self.api.force_authenticate(self.empleado)
@@ -80,7 +89,9 @@ class ResolverServicioTests(BaseResolverTests):
         self.assertEqual(cuerpo["punto"]["servicio"]["slug"], "fumiga")
         self.assertEqual(cuerpo["visita_pendiente_propia"], turno.id)
         # Un turno ajeno no cuenta.
-        ajeno = User.objects.create_user(username="otro", password="x")
+        ajeno = User.objects.create_user(
+            username="otro", password="x", empresa=una_empresa()
+        )
         Visita.objects.filter(pk=turno.pk).update(empleado=ajeno)
         punto = self._resolver()["punto"]
         self.assertFalse(punto["en_turno"])

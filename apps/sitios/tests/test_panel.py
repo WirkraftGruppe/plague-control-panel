@@ -12,6 +12,7 @@ from django.utils import timezone
 from PIL import Image
 
 from apps.clientes.models import Cliente
+from apps.empresas.tests.ayudas import una_empresa
 from apps.sitios import qr
 from apps.sitios.models import Plano, PuntoControl, Sitio
 
@@ -37,10 +38,15 @@ def _pdf():
 class SitioPanelTests(TestCase):
     def setUp(self):
         self.admin = User.objects.create_user(
-            "adm", password="clave-segura-123", rol=User.Rol.ADMINISTRADOR
+            "adm",
+            password="clave-segura-123",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         self.client.force_login(self.admin)
-        self.cliente = Cliente.objects.create(razon_social="ACME")
+        self.cliente = Cliente.objects.create(
+            razon_social="ACME", empresa=una_empresa()
+        )
         self.sitio = Sitio.objects.create(cliente=self.cliente, nombre="Planta Ñandú 1")
 
     def _datos(self, **extra):
@@ -163,7 +169,7 @@ class SitioPanelTests(TestCase):
         )
 
     def test_listado_filtra_y_exige_administrador(self):
-        otro = Cliente.objects.create(razon_social="Otra")
+        otro = Cliente.objects.create(razon_social="Otra", empresa=una_empresa())
         Sitio.objects.create(cliente=otro, nombre="Silo", activo=False)
         url = reverse("panel:sitios:listado")
         r = self.client.get(url, {"cliente": otro.pk, "activo": "0"})
@@ -171,7 +177,9 @@ class SitioPanelTests(TestCase):
         self.assertNotContains(r, "Planta")
         self.assertEqual(self.client.get(url, {"q": "Planta"}).status_code, 200)
         self.client.force_login(
-            User.objects.create_user("emp", password="clave-segura-123")
+            User.objects.create_user(
+                "emp", password="clave-segura-123", empresa=una_empresa()
+            )
         )
         self.assertEqual(self.client.get(url).status_code, 403)
 
@@ -186,16 +194,23 @@ class SitioPanelTests(TestCase):
 class _BaseAdminTests(TestCase):
     def setUp(self):
         self.admin = User.objects.create_user(
-            "adm", password="clave-segura-123", rol=User.Rol.ADMINISTRADOR
+            "adm",
+            password="clave-segura-123",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         self.client.force_login(self.admin)
-        self.cliente = Cliente.objects.create(razon_social="ACME")
+        self.cliente = Cliente.objects.create(
+            razon_social="ACME", empresa=una_empresa()
+        )
         self.sitio = Sitio.objects.create(cliente=self.cliente, nombre="Planta 1")
         self.general = self.sitio.puntos.get()
 
     def _entrar_como_empleado(self):
         self.client.force_login(
-            User.objects.create_user("emp", password="clave-segura-123")
+            User.objects.create_user(
+                "emp", password="clave-segura-123", empresa=una_empresa()
+            )
         )
 
 

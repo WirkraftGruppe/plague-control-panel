@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError
 from django.test import TestCase
 
 from apps.accounts.models import User
+from apps.empresas.tests.ayudas import una_empresa
 from apps.productos import services
 from apps.productos.models import MovimientoStock, Producto
 
@@ -14,7 +15,10 @@ class StockTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.usuario = User.objects.create_user(
-            username="admin-stock", password="x", rol=User.Rol.ADMINISTRADOR
+            username="admin-stock",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
 
     def crear_producto(self, **kwargs):
@@ -24,7 +28,7 @@ class StockTests(TestCase):
             "contenido_por_envase": Decimal("5"),
         }
         datos.update(kwargs)
-        return Producto.objects.create(**datos)
+        return Producto.objects.create(**datos, empresa=una_empresa())
 
     def test_ingreso_de_3_envases_de_5_l_suma_15_l(self):
         producto = self.crear_producto()

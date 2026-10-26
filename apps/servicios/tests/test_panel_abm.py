@@ -4,6 +4,7 @@ from django.test import TestCase
 from django.urls import NoReverseMatch, reverse
 
 from apps.accounts.models import User
+from apps.empresas.tests.ayudas import una_empresa
 from apps.servicios.models import TipoServicio
 
 
@@ -11,10 +12,16 @@ class TipoServicioAbmTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.admin = User.objects.create_user(
-            username="admin-abm", password="x", rol=User.Rol.ADMINISTRADOR
+            username="admin-abm",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         cls.empleado = User.objects.create_user(
-            username="emp-abm", password="x", rol=User.Rol.EMPLEADO
+            username="emp-abm",
+            password="x",
+            rol=User.Rol.EMPLEADO,
+            empresa=una_empresa(),
         )
 
     def setUp(self):
@@ -44,7 +51,7 @@ class TipoServicioAbmTests(TestCase):
         )
 
     def test_edicion_no_cambia_el_slug(self):
-        servicio = TipoServicio.objects.create(nombre="Roedores")
+        servicio = TipoServicio.objects.create(nombre="Roedores", empresa=una_empresa())
         respuesta = self.client.post(
             reverse("panel:servicios:servicio_editar", args=[servicio.pk]),
             {"nombre": "Roedores y aves", "activo": "on"},
@@ -55,7 +62,7 @@ class TipoServicioAbmTests(TestCase):
         self.assertEqual(servicio.slug, "roedores")
 
     def test_desactivar_desde_la_edicion(self):
-        servicio = TipoServicio.objects.create(nombre="Roedores")
+        servicio = TipoServicio.objects.create(nombre="Roedores", empresa=una_empresa())
         self.client.post(
             reverse("panel:servicios:servicio_editar", args=[servicio.pk]),
             {"nombre": "Roedores"},
@@ -64,7 +71,7 @@ class TipoServicioAbmTests(TestCase):
         self.assertFalse(servicio.activo)
 
     def test_empleado_no_accede_a_alta_ni_edicion(self):
-        servicio = TipoServicio.objects.create(nombre="Roedores")
+        servicio = TipoServicio.objects.create(nombre="Roedores", empresa=una_empresa())
         self.client.force_login(self.empleado)
         rutas = [
             reverse("panel:servicios:servicio_alta"),
@@ -77,7 +84,7 @@ class TipoServicioAbmTests(TestCase):
         self.assertEqual(TipoServicio.objects.count(), 1)
 
     def test_no_hay_ruta_de_borrado_de_servicio(self):
-        servicio = TipoServicio.objects.create(nombre="Roedores")
+        servicio = TipoServicio.objects.create(nombre="Roedores", empresa=una_empresa())
         for nombre in ("servicio_borrar", "servicio_eliminar"):
             with self.assertRaises(NoReverseMatch):
                 reverse(f"panel:servicios:{nombre}", args=[servicio.pk])
@@ -86,7 +93,7 @@ class TipoServicioAbmTests(TestCase):
             self.assertEqual(self.client.post(ruta).status_code, 404)
 
     def test_el_listado_enlaza_a_editar_y_a_nuevo(self):
-        servicio = TipoServicio.objects.create(nombre="Roedores")
+        servicio = TipoServicio.objects.create(nombre="Roedores", empresa=una_empresa())
         respuesta = self.client.get(reverse("panel:servicios:listado"))
         self.assertContains(
             respuesta, reverse("panel:servicios:servicio_editar", args=[servicio.pk])

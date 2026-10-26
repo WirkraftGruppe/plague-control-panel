@@ -4,15 +4,19 @@ from django.test import TestCase
 from django.urls import reverse
 
 from apps.accounts.models import User
+from apps.empresas.tests.ayudas import una_empresa
 from apps.productos.models import Producto
 
 
 class CatalogoProductosTests(TestCase):
     def test_listado_muestra_pestanas_con_productos_activa_y_stock(self):
         admin = User.objects.create_user(
-            username="admin-cat-p", password="x", rol=User.Rol.ADMINISTRADOR
+            username="admin-cat-p",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
-        Producto.objects.create(nombre_comercial="Raticida Cat")
+        Producto.objects.create(nombre_comercial="Raticida Cat", empresa=una_empresa())
         self.client.force_login(admin)
         respuesta = self.client.get(reverse("panel:productos:listado"))
         self.assertContains(respuesta, '<nav class="pestanas" aria-label="Catálogo">')

@@ -7,6 +7,7 @@ from django.contrib.auth import get_user_model
 from django.template.loader import render_to_string
 from django.test import RequestFactory, TestCase
 
+from apps.empresas.tests.ayudas import una_empresa
 from apps.panel.listados import ListadoPanelMixin
 from apps.panel.templatetags.panel_ui import tono_estado
 
@@ -71,8 +72,8 @@ class DisenoTests(TestCase):
         self.assertEqual(vista.paginate_by, 25)
 
     def test_orden_fuera_de_la_lista_blanca_se_ignora(self):
-        User.objects.create_user(username="b", password="x")
-        User.objects.create_user(username="a", password="x")
+        User.objects.create_user(username="b", password="x", empresa=una_empresa())
+        User.objects.create_user(username="a", password="x", empresa=una_empresa())
         vista = self._vista("/?orden=password")
         self.assertEqual(vista.get_orden(), "")
         self.assertFalse(vista.get_queryset().query.order_by)

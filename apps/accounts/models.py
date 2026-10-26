@@ -1,6 +1,17 @@
 from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import UserManager as UserManagerBase
 from django.db import models
 from simple_history.models import HistoricalRecords
+
+
+class UserManager(UserManagerBase):
+    """`create_superuser` crea `plataforma` salvo que reciba un `rol` explícito."""
+
+    use_in_migrations = False
+
+    def create_superuser(self, username, email=None, password=None, **extra_fields):
+        extra_fields.setdefault("rol", "plataforma")
+        return super().create_superuser(username, email, password, **extra_fields)
 
 
 class User(AbstractUser):
@@ -24,6 +35,8 @@ class User(AbstractUser):
         blank=True,
         related_name="usuarios",
     )
+
+    objects = UserManager()
 
     history = HistoricalRecords(excluded_fields=["password", "last_login"])
 

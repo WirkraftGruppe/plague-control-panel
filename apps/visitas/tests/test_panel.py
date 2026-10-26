@@ -19,6 +19,7 @@ from django.utils import timezone
 from PIL import Image
 
 from apps.accounts.models import User
+from apps.empresas.tests.ayudas import una_empresa
 from apps.productos.models import MovimientoStock, Producto
 from apps.servicios.models import CampoPlanilla
 from apps.sitios.models import PuntoControl, Sitio
@@ -52,7 +53,7 @@ class BaseTests(TestCase):
         cls.sitio = cls.visita.sitio
         cls.empleado = cls.visita.empleado
         cls.admin = User.objects.create_user(
-            "adm-pv", password="x", rol=User.Rol.ADMINISTRADOR
+            "adm-pv", password="x", rol=User.Rol.ADMINISTRADOR, empresa=una_empresa()
         )
 
     def setUp(self):
@@ -262,7 +263,9 @@ class FichaVisitaTests(BaseTests):
         sala = PuntoControl.objects.create(
             sitio=self.sitio, nombre="Sala de máquinas", orden=1
         )
-        producto = Producto.objects.create(nombre_comercial="Cebo Z")
+        producto = Producto.objects.create(
+            nombre_comercial="Cebo Z", empresa=una_empresa()
+        )
         esquema = [{"clave": "cebos", "etiqueta": "Cebos repuestos", "tipo": "numero"}]
         self.revision.esquema_planilla = esquema
         self.revision.datos = {"cebos": 4}
@@ -378,7 +381,11 @@ class NuevoTurnoTests(BaseTests):
     def test_rechaza_administrador_inactivo_y_fecha_pasada(self):
         ayer = timezone.localdate() - timedelta(days=1)
         inactivo = User.objects.create_user(
-            "emp-off", password="x", rol=User.Rol.EMPLEADO, is_active=False
+            "emp-off",
+            password="x",
+            rol=User.Rol.EMPLEADO,
+            is_active=False,
+            empresa=una_empresa(),
         )
         for cambios in (
             {"empleado": self.admin.pk},
@@ -430,7 +437,9 @@ class CargarVisitaTests(BaseTests):
     def setUp(self):
         super().setUp()
         self.url = reverse("panel:visitas:cargar", args=[self.sitio.pk])
-        self.producto = Producto.objects.create(nombre_comercial="Cebo")
+        self.producto = Producto.objects.create(
+            nombre_comercial="Cebo", empresa=una_empresa()
+        )
         self.tipo = self.visita.tipo
         # Las cargas atrasadas son anteriores a hoy: el sitio ya existía.
         Sitio.objects.filter(pk=self.sitio.pk).update(
@@ -654,7 +663,7 @@ class CargarVisitaTests(BaseTests):
 
     def test_reasignar_deja_motivo_en_historial(self):
         otro = User.objects.create_user(
-            "emp-reasig", password="x", rol=User.Rol.EMPLEADO
+            "emp-reasig", password="x", rol=User.Rol.EMPLEADO, empresa=una_empresa()
         )
         propia = self._pendiente()
         ajena = self._pendiente()

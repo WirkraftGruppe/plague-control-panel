@@ -6,6 +6,7 @@ from django.db import IntegrityError
 from django.test import TestCase
 
 from apps.accounts.models import User
+from apps.empresas.tests.ayudas import una_empresa
 
 GETPASS = "apps.accounts.management.commands.crear_usuario.getpass"
 
@@ -21,6 +22,17 @@ class CrearUsuarioTests(TestCase):
         self.assertFalse(usuario.is_superuser)
         self.assertTrue(usuario.check_password("clave-segura-123"))
 
+    def test_crea_usuario_en_la_empresa_indicada(self):
+        empresa = una_empresa()
+        with mock.patch(GETPASS, return_value="clave-segura-123"):
+            call_command("crear_usuario", "ana", rol="empleado", empresa=empresa.pk)
+        self.assertEqual(User.objects.get(username="ana").empresa_id, empresa.pk)
+
+    def test_rechaza_empresa_inexistente(self):
+        with mock.patch(GETPASS, return_value="clave-segura-123"):
+            with self.assertRaises(CommandError):
+                call_command("crear_usuario", "ana", rol="empleado", empresa=9999)
+
     def test_rechaza_contrasena_de_11_caracteres(self):
         with mock.patch(GETPASS, return_value="clave-corta"):
             with self.assertRaises(CommandError):
@@ -28,7 +40,9 @@ class CrearUsuarioTests(TestCase):
         self.assertFalse(User.objects.filter(username="ana").exists())
 
     def test_rechaza_usuario_existente(self):
-        User.objects.create_user("ana", password="clave-segura-123")
+        User.objects.create_user(
+            "ana", password="clave-segura-123", empresa=una_empresa()
+        )
         with mock.patch(GETPASS, return_value="clave-segura-123"):
             with self.assertRaises(CommandError):
                 call_command("crear_usuario", "ana", rol="empleado")
@@ -44,7 +58,9 @@ class CrearUsuarioTests(TestCase):
         self.assertTrue(User.objects.filter(username="ana").exists())
 
     def test_rechaza_variante_unicode_de_usuario_existente(self):
-        User.objects.create_user("ana", password="clave-segura-123")
+        User.objects.create_user(
+            "ana", password="clave-segura-123", empresa=una_empresa()
+        )
         with mock.patch(GETPASS, return_value="clave-segura-123"):
             with self.assertRaises(CommandError):
                 call_command("crear_usuario", "ＡNA", rol="empleado")

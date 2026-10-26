@@ -9,13 +9,16 @@ from django.test import TestCase, override_settings
 from PIL import Image
 
 from apps.clientes.models import Cliente
+from apps.empresas.tests.ayudas import una_empresa
 from apps.sitios import services
 from apps.sitios.models import Plano, PuntoControl, Sitio
 
 
 class SitioTests(TestCase):
     def setUp(self):
-        self.cliente = Cliente.objects.create(razon_social="ACME")
+        self.cliente = Cliente.objects.create(
+            razon_social="ACME", empresa=una_empresa()
+        )
 
     def _sitio(self, nombre, **extra):
         return Sitio.objects.create(cliente=self.cliente, nombre=nombre, **extra)
@@ -41,7 +44,9 @@ class SitioTests(TestCase):
 
 class PuntoControlTests(TestCase):
     def setUp(self):
-        self.cliente = Cliente.objects.create(razon_social="ACME")
+        self.cliente = Cliente.objects.create(
+            razon_social="ACME", empresa=una_empresa()
+        )
         self.sitio = Sitio.objects.create(cliente=self.cliente, nombre="Planta 1")
 
     def test_qr_unico_y_sitio_inactivo_desactiva_puntos(self):
@@ -122,7 +127,7 @@ class PuntoControlTests(TestCase):
 
     def test_clean_rechaza_activo_en_sitio_inactivo_y_plano_ajeno(self):
         otro = Sitio.objects.create(cliente=self.cliente, nombre="Planta 2")
-        plano = Plano(sitio=otro, nombre="Planta baja")
+        plano = Plano(sitio=otro, nombre="Planta baja", empresa_id=otro.empresa_id)
         plano.ancho_px = plano.alto_px = 10
         Plano.objects.bulk_create([plano])
         punto = PuntoControl(sitio=self.sitio, nombre="Techo", plano=plano)

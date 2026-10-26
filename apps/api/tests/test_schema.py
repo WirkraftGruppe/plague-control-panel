@@ -8,6 +8,7 @@ from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
 from apps.accounts.models import User
+from apps.empresas.tests.ayudas import una_empresa
 
 RUTAS_DE_DOMINIO = (
     "/api/v1/productos/",
@@ -42,7 +43,10 @@ class SchemaTests(TestCase):
         self.assertEqual(APIClient().get("/api/v1/schema/").status_code, 401)
 
         usuario = User.objects.create_user(
-            "emp", password="clave-segura-123", rol=User.Rol.EMPLEADO
+            "emp",
+            password="clave-segura-123",
+            rol=User.Rol.EMPLEADO,
+            empresa=una_empresa(),
         )
         api = APIClient()
         api.force_authenticate(usuario)
@@ -55,7 +59,10 @@ class SchemaTests(TestCase):
     def test_token_documenta_cuerpo_y_415(self):
         """El token declara 200 con sus tokens, 401, 415 y 429; la renovación, 415."""
         usuario = User.objects.create_user(
-            "emp", password="clave-segura-123", rol=User.Rol.EMPLEADO
+            "emp",
+            password="clave-segura-123",
+            rol=User.Rol.EMPLEADO,
+            empresa=una_empresa(),
         )
         api = APIClient()
         api.force_authenticate(usuario)

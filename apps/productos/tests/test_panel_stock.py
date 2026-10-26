@@ -6,6 +6,7 @@ from django.test import TestCase
 from django.urls import NoReverseMatch, reverse
 
 from apps.accounts.models import User
+from apps.empresas.tests.ayudas import una_empresa
 from apps.productos import services
 from apps.productos.models import MovimientoStock, Producto
 
@@ -14,15 +15,22 @@ class FichaProductoTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.admin = User.objects.create_user(
-            username="admin-ficha", password="x", rol=User.Rol.ADMINISTRADOR
+            username="admin-ficha",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         cls.empleado = User.objects.create_user(
-            username="emp-ficha", password="x", rol=User.Rol.EMPLEADO
+            username="emp-ficha",
+            password="x",
+            rol=User.Rol.EMPLEADO,
+            empresa=una_empresa(),
         )
         cls.producto = Producto.objects.create(
             nombre_comercial="Cebo",
             unidad_base="l",
             contenido_por_envase=Decimal("5"),
+            empresa=una_empresa(),
         )
 
     def test_ficha_muestra_3_envases(self):
@@ -72,6 +80,7 @@ class FichaProductoTests(TestCase):
             nombre_comercial="Concentrado",
             unidad_base="l",
             contenido_por_envase=Decimal("5000"),
+            empresa=una_empresa(),
         )
         self.client.force_login(self.admin)
         respuesta = self.client.post(

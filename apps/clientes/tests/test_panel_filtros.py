@@ -6,12 +6,16 @@ from django.test import TestCase
 from django.urls import reverse
 
 from apps.accounts.models import User
+from apps.empresas.tests.ayudas import una_empresa
 
 
 class FiltrosClientesTests(TestCase):
     def setUp(self):
         admin = User.objects.create_user(
-            "adm-filtros", password="x", rol=User.Rol.ADMINISTRADOR
+            "adm-filtros",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         self.client.force_login(admin)
 
