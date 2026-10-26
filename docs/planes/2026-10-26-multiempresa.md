@@ -473,7 +473,7 @@ commit_base: 0927fcd
 | Tarea | Estado |
 |---|---|
 | T1 | hecha |
-| T2 | pendiente |
+| T2 | verificada (sin integrar); P-multiempresa-15 y -16 a decidir |
 | T3 | paso 1 hecho (b9c7118); paso 2 pendiente (T2) |
 | T4 | pendiente |
 | T5 | pendiente |
@@ -494,7 +494,7 @@ commit_base: 0927fcd
 | 2026-10-26 17:45 | T1 | edf757c | PASA (verificador 21/21, verificador-b 21/21) | auditor-seguridad: 0 bloqueantes, 1 importante, 2 menores (P-multiempresa-1 a 3); falta integrar (T3 paso 1) |
 | 2026-10-26 19:35 | T1 (corrección 57f9c11, 930b715) | 930b715 | PASA (verificador 21/21, verificador-b 21/21) | auditor-seguridad: P-multiempresa-2 cerrado; -1 y -3 parcialmente (P-multiempresa-8 a 10); presupuesto 873/900 |
 | 2026-10-26 19:50 | T1 (corrección ee96c52) | ee96c52 | PASA (verificador 21/21, verificador-b 21/21) | auditor-seguridad sobre el slice: P-multiempresa-8 cerrado, 0 bloqueantes (P-multiempresa-12 a 14); presupuesto 893/900; integrada en b9c7118 (818 tests OK) |
-| | T2 | | | |
+| 2026-10-26 21:00 | T2 | 4f98237 | criterios 15/15 PASA (verificador y verificador-b); veredicto global FALLA solo por CONTRATO MODIFICADO (e4ada1f, aprobado por el usuario) | auditor-seguridad: 0 bloqueantes, 2 importantes (P-multiempresa-15, -16), 1 menor (-17); presupuesto 1361/2200 |
 | | T3 | | | |
 | | T4–T9 | | | |
 | | T10 | | | |
@@ -533,6 +533,11 @@ commit_base: 0927fcd
 - P-multiempresa-12 [menor] En `_combinada` (`apps/empresas/consultas.py:82-94`) el re-envoltorio corre antes del chequeo de identidad: `objects.none() | todos.values("pk")` o `objects.none().union(todos.all())` ahora lanzan con `exigir` (antes devolvían la parte de `todos`), y dentro de `sin_filtro_empresa()` devuelven instancias en lugar de dicts y pierden `prefetch_related`. Más estricto, no más laxo. Corrección: mover el chequeo de identidad antes del re-envoltorio. Para T11. Origen: auditor-seguridad sobre ee96c52.
 - P-multiempresa-13 [observación] El re-envoltorio pierde `_known_related_objects` (`consultas.py:85-90`): una consulta extra al leer `hijo.raiz` en `rel[:5] | rel`. Corrección: copiarlo al envoltorio. Para T11. Origen: auditor-seguridad sobre ee96c52.
 - P-multiempresa-14 [observación] Un queryset sin `de_empresa` usado como subconsulta (`filter(pk__in=Modelo.objects.all())`, `Subquery`) se compila como SQL y no pasa por la guardia; el test del slice cubre 3 variantes (faltan `^`, el manager relacionado y el slice a la derecha, que ya lanzan). Para T11 (junto con P-multiempresa-11). Origen: auditor-seguridad sobre ee96c52.
+- P-multiempresa-15 [importante] `ModeloDeEmpresa.clean()` (`apps/empresas/models.py:84-99`) sale sin revisar nada si `empresa_id is None`, y en el alta de un hijo la empresa se copia del padre recién en `save()`: `PuntoControl(sitio=sitio_A, servicio=servicio_B).full_clean(); save()` guarda un punto de A con servicio de B, y lo mismo una `Visita` con empleado de B. Escenario: alta de un hijo en `/admin/` (el formulario no muestra `empresa` y `AdminTodosMixin` ofrece FKs de todas las empresas). El padre de otra empresa sale como `ValueError` en `save()` (500), no como error de validación. Corrección: `clean()` usa la empresa efectiva (la propia o la del padre) e incluye al padre en la comparación; test con un hijo nuevo sin `empresa`. Origen: auditor-seguridad sobre T2.
+- P-multiempresa-16 [importante] Cambiar la empresa de una raíz o mover un hijo de padre deja a sus descendientes en la empresa anterior (`apps/empresas/models.py:76-82` no compara con el valor guardado): `cliente_A.empresa = B; save()` deja sus sitios en A. Escenario: `plataforma` corrige en `/admin/` la empresa de un `Cliente` (editable en raíces, decisión de T6/T7/T8). Corrección: `empresa` inmutable después del alta en el modelo (`models.py`, que solo tocan T2 y T14) y `readonly` al editar en el admin de las raíces (T6). Origen: auditor-seguridad sobre T2.
+- P-multiempresa-17 [menor] `ProductoAplicado.referencias_de_empresa` no incluye `movimiento` (`apps/visitas/models.py:321-322`, `OneToOneField` de :348): un `ProductoAplicado` de A puede apuntar a un `MovimientoStock` de B por `full_clean`. Hoy el servicio lo crea del mismo producto. Origen: auditor-seguridad sobre T2.
+- P-multiempresa-18 [observación] Con `empresa` nula, `UniqueConstraint(empresa, slug)` y `(empresa, cliente_uuid)` no imponen nada (dos filas con `empresa=None` conviven); la idempotencia de `cliente_uuid` en una carrera depende de `_duplicada`, que busca solo por `cliente_uuid` y ya no tiene índice que empiece por esa columna (`apps/visitas/services.py:583`). Lo resuelven T8 (filtrar por empresa) y T14 (no nula). Origen: auditor-seguridad sobre T2.
+- P-multiempresa-19 [observación] Para la ola 3 y T14 (auditor-seguridad sobre T2): `update()`/`bulk_update()`/`bulk_create()` saltean `save()` y `clean()` (T11: regla de revisión o `[grep-0]`); T8: `crear_turno` y `registrar_visita_manual` no comprueban que empleado y servicio sean de la empresa del sitio, `_duplicada` es global, `cerrar_visitas_abiertas` usa `objects`; T9: `limpiar_datos_demo` y `registrar_revision_demo` consultan `objects` en todas las empresas, `Empresa.objects.get_or_create(nombre=EMPRESA_DEMO)` (`cargar_demo.py:71`) da `MultipleObjectsReturned` con dos empresas del mismo nombre y un `demo-admin` previo sin empresa no se corrige; T14: padre sin empresa con hijo con empresa, `create_superuser(empresa=X)` sin `rol` crea `plataforma` con empresa, y `clean()` acepta un usuario sin empresa como `empleado`/`responsable`/`asignada_por`; `config/tests/test_admin_site.py:9` crea un administrador sin empresa (lo rompe T14; dueña T4). Sin dueño: `crear_usuario` acepta una empresa inactiva.
 
 ### Decisiones
 
