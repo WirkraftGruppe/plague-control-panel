@@ -472,9 +472,9 @@ commit_base: 0927fcd
 
 | Tarea | Estado |
 |---|---|
-| T1 | en corrección (P-multiempresa-8) |
+| T1 | hecha |
 | T2 | pendiente |
-| T3 | pendiente |
+| T3 | paso 1 hecho (b9c7118); paso 2 pendiente (T2) |
 | T4 | pendiente |
 | T5 | pendiente |
 | T6 | pendiente |
@@ -493,6 +493,7 @@ commit_base: 0927fcd
 |---|---|---|---|---|
 | 2026-10-26 17:45 | T1 | edf757c | PASA (verificador 21/21, verificador-b 21/21) | auditor-seguridad: 0 bloqueantes, 1 importante, 2 menores (P-multiempresa-1 a 3); falta integrar (T3 paso 1) |
 | 2026-10-26 19:35 | T1 (corrección 57f9c11, 930b715) | 930b715 | PASA (verificador 21/21, verificador-b 21/21) | auditor-seguridad: P-multiempresa-2 cerrado; -1 y -3 parcialmente (P-multiempresa-8 a 10); presupuesto 873/900 |
+| 2026-10-26 19:50 | T1 (corrección ee96c52) | ee96c52 | PASA (verificador 21/21, verificador-b 21/21) | auditor-seguridad sobre el slice: P-multiempresa-8 cerrado, 0 bloqueantes (P-multiempresa-12 a 14); presupuesto 893/900; integrada en b9c7118 (818 tests OK) |
 | | T2 | | | |
 | | T3 | | | |
 | | T4–T9 | | | |
@@ -529,6 +530,9 @@ commit_base: 0927fcd
 - P-multiempresa-9 [menor] Un queryset pasado a `Prefetch(queryset=…)` recibe el hint `instance` (`get_prefetch_querysets` llama a `_add_hints`) y queda exento si después se reutiliza solo (`consultas.py:69-74`). Hoy no hay `Prefetch(` fuera de tests. Es una decisión de diseño: documentar la regla o atar la exención al manager relacionado. Origen: auditor-seguridad sobre la corrección de T1.
 - P-multiempresa-10 [menor] `db_manager(hints={"instance": x})` o `_add_hints(instance=x)` con cualquier `x` cargada, incluso de otro modelo, eximen todo el modelo (`consultas.py:69-74`). Mínimo: exigir que `x` sea de un modelo relacionado con `self.model`, y un `[grep-0]` de `db_manager(`/`_add_hints` fuera de tests en T11. `_state.adding`/`from_db` se pueden falsificar a propósito (observación). Origen: auditor-seguridad sobre la corrección de T1.
 - P-multiempresa-11 [observación] Los tests nuevos de la guardia no cubren `^`, `intersection`, `difference`, el orden inverso, las cadenas ni el slice; `setUpTestData` usa una sola empresa, así que `len(propia | propia) == 1` no distingue "acotado" de "trae todo". Origen: auditor-seguridad sobre la corrección de T1.
+- P-multiempresa-12 [menor] En `_combinada` (`apps/empresas/consultas.py:82-94`) el re-envoltorio corre antes del chequeo de identidad: `objects.none() | todos.values("pk")` o `objects.none().union(todos.all())` ahora lanzan con `exigir` (antes devolvían la parte de `todos`), y dentro de `sin_filtro_empresa()` devuelven instancias en lugar de dicts y pierden `prefetch_related`. Más estricto, no más laxo. Corrección: mover el chequeo de identidad antes del re-envoltorio. Para T11. Origen: auditor-seguridad sobre ee96c52.
+- P-multiempresa-13 [observación] El re-envoltorio pierde `_known_related_objects` (`consultas.py:85-90`): una consulta extra al leer `hijo.raiz` en `rel[:5] | rel`. Corrección: copiarlo al envoltorio. Para T11. Origen: auditor-seguridad sobre ee96c52.
+- P-multiempresa-14 [observación] Un queryset sin `de_empresa` usado como subconsulta (`filter(pk__in=Modelo.objects.all())`, `Subquery`) se compila como SQL y no pasa por la guardia; el test del slice cubre 3 variantes (faltan `^`, el manager relacionado y el slice a la derecha, que ya lanzan). Para T11 (junto con P-multiempresa-11). Origen: auditor-seguridad sobre ee96c52.
 
 ### Decisiones
 
