@@ -452,7 +452,7 @@ Orden dentro de las olas 3 y 4 (una flecha `A → B` dice que B ramifica de `pla
 
 ## Registro de verificación
 
-commit_base: <hash del commit docs(plan): multiempresa>
+commit_base: 0927fcd
 
 ### Estado de subtareas
 
