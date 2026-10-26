@@ -60,13 +60,57 @@ class EmpresaQuerySet(models.QuerySet):
         consulta._empresa_marcada = True
         return consulta
 
-    def _verificar_empresa(self):
-        if (
+    def _es_segura(self):
+        """True si la consulta ya está acotada a una empresa (o no trae filas).
+
+        El hint `instance` solo vale si la instancia salió de la base: una armada a
+        mano (`Modelo(pk=...)`) no prueba nada sobre su empresa.
+        """
+        instancia = self._hints.get("instance")
+        return (
             self._empresa_marcada
-            or _sin_filtro.get()
             or self.query.is_empty()
-            or self._hints.get("instance") is not None
+            or (instancia is not None and not instancia._state.adding)
+        )
+
+    def _combinada(self, resultado, *partes):
+        """Quita la marca y el hint al resultado de combinar si alguna parte no es segura.
+
+        Si Django devolvió una de las partes tal cual (por ejemplo un `.none()`), se
+        respeta: esa parte ya tiene su propio estado.
+        """
+        if any(resultado is parte for parte in partes):
+            return resultado
+        if not all(
+            isinstance(parte, EmpresaQuerySet) and parte._es_segura()
+            for parte in partes
         ):
+            resultado._empresa_marcada = False
+            # Dict nuevo: `_clone` comparte los hints con el queryset de origen.
+            resultado._hints = {
+                clave: valor
+                for clave, valor in resultado._hints.items()
+                if clave != "instance"
+            }
+        return resultado
+
+    def __or__(self, otro):
+        return self._combinada(super().__or__(otro), self, otro)
+
+    def __xor__(self, otro):
+        return self._combinada(super().__xor__(otro), self, otro)
+
+    def union(self, *otros, all=False):
+        return self._combinada(super().union(*otros, all=all), self, *otros)
+
+    def intersection(self, *otros):
+        return self._combinada(super().intersection(*otros), self, *otros)
+
+    def difference(self, *otros):
+        return self._combinada(super().difference(*otros), self, *otros)
+
+    def _verificar_empresa(self):
+        if _sin_filtro.get() or self._es_segura():
             return
         mensaje = (
             f"Consulta de {self.model.__name__} sin filtrar por empresa: "
@@ -84,6 +128,12 @@ class EmpresaQuerySet(models.QuerySet):
     def _iterator(self, use_chunked_fetch, chunk_size):
         self._verificar_empresa()
         return super()._iterator(use_chunked_fetch, chunk_size)
+
+    async def aiterator(self, chunk_size=2000):
+        # En Django 5.2 no pasa por `_iterator`.
+        self._verificar_empresa()
+        async for objeto in super().aiterator(chunk_size):
+            yield objeto
 
     def count(self):
         if self._result_cache is None:

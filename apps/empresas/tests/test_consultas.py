@@ -1,5 +1,6 @@
 """Guardia de consultas por empresa, con modelos de prueba aislados del registro."""
 
+from asgiref.sync import async_to_sync
 from django.db import connection, models
 from django.test import TestCase, override_settings
 from django.test.utils import isolate_apps
@@ -106,6 +107,40 @@ class GuardiaTests(TestCase):
         repetida.validate_unique()
         with self.assertRaises(Exception):
             repetida.validate_constraints()
+
+    @override_settings(EMPRESA_GUARDIA="exigir")
+    def test_or_con_un_queryset_sin_filtrar_lanza(self):
+        propia = self.Raiz.objects.de_empresa(self.empresa)
+        with self.assertRaises(ConsultaSinEmpresa):
+            list(propia | self.Raiz.objects.all())
+        with self.assertRaises(ConsultaSinEmpresa):
+            list(self.raiz.hijos.all() | self.Hijo.objects.all())
+        # Combinar dos consultas acotadas sigue siendo seguro.
+        self.assertEqual(len(propia | propia), 1)
+
+    @override_settings(EMPRESA_GUARDIA="exigir")
+    def test_union_con_un_queryset_sin_filtrar_lanza(self):
+        propia = self.Raiz.objects.de_empresa(self.empresa)
+        with self.assertRaises(ConsultaSinEmpresa):
+            list(propia.union(self.Raiz.objects.all()))
+        self.assertEqual(len(propia.union(propia)), 1)
+        self.assertEqual(len(propia | self.Raiz.objects.none()), 1)
+
+    @override_settings(EMPRESA_GUARDIA="exigir")
+    def test_aiterator_sin_empresa_lanza(self):
+        async def consumir(consulta):
+            return [objeto async for objeto in consulta.aiterator()]
+
+        with self.assertRaises(ConsultaSinEmpresa):
+            async_to_sync(consumir)(self.Raiz.objects.all())
+
+    @override_settings(EMPRESA_GUARDIA="exigir")
+    def test_instancia_armada_a_mano_no_exime_a_su_manager_relacionado(self):
+        ajena = self.Raiz(pk=self.raiz_pk)
+        with self.assertRaises(ConsultaSinEmpresa):
+            list(ajena.hijos.all())
+        with self.assertRaises(ConsultaSinEmpresa):
+            list(self.Hijo.objects.db_manager(hints={"instance": ajena}).all())
 
     @override_settings(EMPRESA_GUARDIA="advertir")
     def test_modo_advertir_avisa_y_evalua(self):
