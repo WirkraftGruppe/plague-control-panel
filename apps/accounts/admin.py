@@ -18,10 +18,12 @@ class ReglaRolEmpresaMixin:
         else:
             # Empresa de solo lectura: rige la de la instancia.
             empresa = self.instance.empresa_id
+        # Con la empresa de solo lectura el error va al campo del rol.
+        campo = "empresa" if "empresa" in self.fields else "rol"
         if rol == User.Rol.PLATAFORMA and empresa:
-            self.add_error("empresa", "El rol plataforma no pertenece a una empresa.")
+            self.add_error(campo, "El rol plataforma no pertenece a una empresa.")
         elif rol and rol != User.Rol.PLATAFORMA and not empresa:
-            self.add_error("empresa", "Este rol exige una empresa.")
+            self.add_error(campo, "Este rol exige una empresa.")
         return datos
 
 
