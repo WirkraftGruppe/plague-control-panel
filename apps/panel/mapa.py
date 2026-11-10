@@ -22,16 +22,18 @@ def url_ficha(sitio):
     return _url("panel:sitios:ficha", sitio)
 
 
-def sitios_para_mapa(cliente=None, servicio=None, estado=None):
-    """Sitios activos con coordenadas, en un número fijo de consultas.
+def sitios_para_mapa(empresa, cliente=None, servicio=None, estado=None):
+    """Sitios activos de la empresa con coordenadas, en un número fijo de consultas.
 
     El color del sitio es el peor estado por vencimiento de sus puntos activos y
     `vencimiento` la fecha más próxima. `servicio` deja los sitios con algún punto
     activo de ese servicio.
     """
-    sitios = Sitio.objects.filter(
-        activo=True, latitud__isnull=False, longitud__isnull=False
-    ).select_related("cliente")
+    sitios = (
+        Sitio.objects.de_empresa(empresa)
+        .filter(activo=True, latitud__isnull=False, longitud__isnull=False)
+        .select_related("cliente")
+    )
     if cliente:
         sitios = sitios.filter(cliente_id=cliente)
     if servicio:

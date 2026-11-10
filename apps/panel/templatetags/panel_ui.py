@@ -31,13 +31,19 @@ def tono_estado(valor):
 def sitios_vencidos(context):
     """Cantidad de sitios activos con algún punto activo vencido, en una consulta.
 
-    Sin un administrador autenticado en la petición devuelve 0 sin consultar.
+    Cuenta solo los de la empresa de la petición. Sin un administrador autenticado
+    con empresa devuelve 0 sin consultar.
     """
-    usuario = getattr(context.get("request"), "user", None)
+    solicitud = context.get("request")
+    usuario = getattr(solicitud, "user", None)
+    empresa = getattr(solicitud, "empresa", None)
     if not (usuario and usuario.is_authenticated and usuario.es_administrador):
         return 0
+    if empresa is None:
+        return 0
     return (
-        Sitio.objects.filter(
+        Sitio.objects.de_empresa(empresa)
+        .filter(
             activo=True,
             puntos__activo=True,
             puntos__proximo_vencimiento__lt=timezone.localdate(),
