@@ -10,8 +10,7 @@ from django.urls import reverse
 from django.utils import timezone
 from PIL import Image
 
-from apps.accounts.models import User
-from apps.empresas.tests.ayudas import una_empresa
+from apps.accounts.pruebas import crear_plataforma
 from apps.visitas.admin import (
     CAMPOS_EVIDENCIA,
     FotoInline,
@@ -58,12 +57,7 @@ class VisitaAdminTests(TestCase):
         )
 
     def setUp(self):
-        self.administrador = User.objects.create_superuser(
-            username="root",
-            password="x",
-            rol=User.Rol.ADMINISTRADOR,
-            empresa=una_empresa(),
-        )
+        self.administrador = crear_plataforma(username="root")
 
     def test_changelist_responde_200(self):
         self.client.force_login(self.administrador)
@@ -104,9 +98,9 @@ class VisitaAdminTests(TestCase):
             url = reverse(f"admin:visitas_{modelo}_delete", args=[objeto.pk])
             respuesta = self.client.post(url, {"post": "yes"})
             self.assertEqual(respuesta.status_code, 403, modelo)
-        self.assertTrue(Visita.objects.filter(pk=visita.pk).exists())
-        self.assertTrue(Revision.objects.filter(pk=revision.pk).exists())
-        self.assertTrue(Foto.objects.filter(pk=foto.pk).exists())
+        self.assertTrue(Visita.todos.filter(pk=visita.pk).exists())
+        self.assertTrue(Revision.todos.filter(pk=revision.pk).exists())
+        self.assertTrue(Foto.todos.filter(pk=foto.pk).exists())
         request = self._request()
         for modelo in (Visita, Revision, Foto, ProductoAplicado):
             self.assertFalse(
@@ -249,12 +243,7 @@ class FormVisitaTests(TestCase):
 class AdminPendienteTests(TestCase):
     def test_post_forjado_sobre_pendiente_no_cierra_ni_carga_datos(self):
         pendiente = crear_visita()
-        administrador = User.objects.create_superuser(
-            username="root-pend",
-            password="x",
-            rol=User.Rol.ADMINISTRADOR,
-            empresa=una_empresa(),
-        )
+        administrador = crear_plataforma(username="root-pend")
         self.client.force_login(administrador)
         url = reverse("admin:visitas_visita_change", args=[pendiente.pk])
         self.client.post(
@@ -278,12 +267,7 @@ class AdminPendienteTests(TestCase):
     def test_post_forjado_sobre_pendiente_muestra_el_rechazo(self):
         pendiente = crear_visita()
         crear_revision(pendiente)
-        administrador = User.objects.create_superuser(
-            username="root-rech",
-            password="x",
-            rol=User.Rol.ADMINISTRADOR,
-            empresa=una_empresa(),
-        )
+        administrador = crear_plataforma(username="root-rech")
         self.client.force_login(administrador)
         url = reverse("admin:visitas_visita_change", args=[pendiente.pk])
         respuesta = self.client.post(
@@ -300,12 +284,7 @@ class AdminPendienteTests(TestCase):
         self.assertEqual(pendiente.estado, Visita.Estado.PENDIENTE)
 
     def test_pendiente_no_asignable_a_administrador(self):
-        administrador = User.objects.create_superuser(
-            username="root-asig",
-            password="x",
-            rol=User.Rol.ADMINISTRADOR,
-            empresa=una_empresa(),
-        )
+        administrador = crear_plataforma(username="root-asig")
         base = crear_visita()
         empleado = base.empleado
         # El modelo lo rechaza aunque no pase por el admin.
@@ -318,7 +297,7 @@ class AdminPendienteTests(TestCase):
         url = reverse("admin:visitas_visita_add")
         form = self.client.get(url).context["adminform"].form
         self.assertEqual(set(form.fields["empleado"].queryset), {empleado})
-        antes = Visita.objects.count()
+        antes = Visita.todos.count()
         datos = {
             "sitio": base.sitio_id,
             "empleado": administrador.pk,
@@ -327,8 +306,8 @@ class AdminPendienteTests(TestCase):
         respuesta = self.client.post(url, datos)
         self.assertEqual(respuesta.status_code, 200)
         self.assertIn("empleado", respuesta.context["adminform"].form.errors)
-        self.assertEqual(Visita.objects.count(), antes)
+        self.assertEqual(Visita.todos.count(), antes)
         # Con un empleado el mismo alta funciona.
         respuesta = self.client.post(url, {**datos, "empleado": empleado.pk})
         self.assertEqual(respuesta.status_code, 302, respuesta.content[:300])
-        self.assertEqual(Visita.objects.count(), antes + 1)
+        self.assertEqual(Visita.todos.count(), antes + 1)

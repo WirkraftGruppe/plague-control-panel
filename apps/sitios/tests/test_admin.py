@@ -5,6 +5,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from apps.accounts.models import User
+from apps.accounts.pruebas import crear_plataforma
 from apps.clientes.models import Cliente
 from apps.empresas.tests.ayudas import una_empresa
 from apps.sitios import services
@@ -13,12 +14,7 @@ from apps.sitios.models import Plano, PuntoControl, Sitio
 
 class SitioAdminTests(TestCase):
     def setUp(self):
-        self.administrador = User.objects.create_superuser(
-            username="root",
-            password="x",
-            rol=User.Rol.ADMINISTRADOR,
-            empresa=una_empresa(),
-        )
+        self.administrador = crear_plataforma(username="root")
         self.cliente = Cliente.objects.create(
             razon_social="ACME", empresa=una_empresa()
         )
@@ -32,7 +28,7 @@ class SitioAdminTests(TestCase):
         )
         self.assertEqual(respuesta.status_code, 200)
         self.assertTemplateUsed(respuesta, "admin/sitios/sitio/confirmar_accion.html")
-        self.assertTrue(Sitio.objects.filter(pk=self.sitio.pk).exists())
+        self.assertTrue(Sitio.todos.filter(pk=self.sitio.pk).exists())
 
     def test_suprimir_datos_borra_sitio_e_historial(self):
         self.client.force_login(self.administrador)
@@ -42,7 +38,7 @@ class SitioAdminTests(TestCase):
             {"action": "suprimir_datos", "_selected_action": [pk], "confirmado": "si"},
         )
         self.assertEqual(respuesta.status_code, 302)
-        self.assertFalse(Sitio.objects.filter(pk=pk).exists())
+        self.assertFalse(Sitio.todos.filter(pk=pk).exists())
         self.assertEqual(Sitio.history.filter(id=pk).count(), 0)
 
     def test_revertir_sitio_desde_historial_esta_prohibido(self):
@@ -79,12 +75,7 @@ class SitioAdminTests(TestCase):
 
 class PuntoControlAdminTests(TestCase):
     def setUp(self):
-        self.administrador = User.objects.create_superuser(
-            username="root",
-            password="x",
-            rol=User.Rol.ADMINISTRADOR,
-            empresa=una_empresa(),
-        )
+        self.administrador = crear_plataforma(username="root")
         cliente = Cliente.objects.create(razon_social="ACME", empresa=una_empresa())
         self.sitio = Sitio.objects.create(cliente=cliente, nombre="Planta 1")
         self.punto = self.sitio.puntos.get()
@@ -104,7 +95,7 @@ class PuntoControlAdminTests(TestCase):
         self.punto.refresh_from_db()
         self.assertNotEqual(self.punto.qr_codigo, anterior)
 
-    def test_staff_sin_rol_administrador_no_ve_la_accion(self):
+    def test_staff_sin_rol_plataforma_no_ve_la_accion(self):
         usuario = User.objects.create_user(
             username="staff",
             password="x",
@@ -156,7 +147,7 @@ class PuntoControlAdminTests(TestCase):
 
     def test_corregir_coordenadas_limpia_fijada_por_escaneo(self):
         self.client.force_login(self.administrador)
-        PuntoControl.objects.filter(pk=self.punto.pk).update(
+        PuntoControl.todos.filter(pk=self.punto.pk).update(
             latitud="-35.100000",
             longitud="-58.100000",
             ubicacion_fijada_en=timezone.now(),
@@ -194,12 +185,12 @@ class PuntoControlAdminTests(TestCase):
         datos = {"sitio": self.sitio.pk, "nombre": "Cocina", "orden": 1}
         respuesta = self.client.post(url, {**datos, "_save": "Guardar"})
         self.assertEqual(respuesta.status_code, 302)
-        creado = PuntoControl.objects.get(nombre="Cocina")
+        creado = PuntoControl.todos.get(nombre="Cocina")
         self.assertFalse(creado.activo)
 
     def test_alta_en_sitio_inactivo(self):
         self.client.force_login(self.administrador)
-        Sitio.objects.filter(pk=self.sitio.pk).update(activo=False)
+        Sitio.todos.filter(pk=self.sitio.pk).update(activo=False)
         url = reverse("admin:sitios_puntocontrol_add")
         datos = {"sitio": self.sitio.pk, "nombre": "Cocina", "orden": 1}
         respuesta = self.client.post(url, {**datos, "_save": "Guardar"})
@@ -238,12 +229,7 @@ class PuntoControlAdminTests(TestCase):
 
 class PlanoAdminTests(TestCase):
     def test_sitio_de_solo_lectura_al_editar(self):
-        administrador = User.objects.create_superuser(
-            username="root",
-            password="x",
-            rol=User.Rol.ADMINISTRADOR,
-            empresa=una_empresa(),
-        )
+        administrador = crear_plataforma(username="root")
         sitio = Sitio.objects.create(
             cliente=Cliente.objects.create(razon_social="ACME", empresa=una_empresa()),
             nombre="Planta 1",
@@ -252,11 +238,42 @@ class PlanoAdminTests(TestCase):
             sitio=sitio, nombre="PB", imagen="p.png", empresa_id=sitio.empresa_id
         )
         plano.ancho_px = plano.alto_px = 10
-        Plano.objects.bulk_create([plano])
+        Plano.todos.bulk_create([plano])
         modelo_admin = admin.site._registry[Plano]
         request = RequestFactory().get("/")
         request.user = administrador
         self.assertNotIn("sitio", modelo_admin.get_readonly_fields(request))
-        edicion = modelo_admin.get_readonly_fields(request, Plano.objects.get())
+        edicion = modelo_admin.get_readonly_fields(request, Plano.todos.get())
         self.assertIn("sitio", edicion)
         self.assertIn("ancho_px", edicion)
+
+
+class AccionesAdminPlataformaTests(TestCase):
+    """Las acciones destructivas del admin las ve solo el rol `plataforma`."""
+
+    def setUp(self):
+        self.cliente = Cliente.objects.create(
+            razon_social="ACME", empresa=una_empresa()
+        )
+        self.sitio = Sitio.objects.create(cliente=self.cliente, nombre="Planta 1")
+        self.url = reverse("admin:sitios_sitio_changelist")
+
+    def _acciones(self, usuario, modelo):
+        request = RequestFactory().get(self.url)
+        request.user = User.objects.get(pk=usuario.pk)
+        return admin.site._registry[modelo].get_actions(request)
+
+    def test_solo_plataforma_ve_suprimir_datos_y_regenerar_qr(self):
+        plataforma = crear_plataforma(username="plat")
+        administrador = User.objects.create_user(
+            "adm",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            is_staff=True,
+            is_superuser=True,
+            empresa=una_empresa(),
+        )
+        self.assertIn("suprimir_datos", self._acciones(plataforma, Sitio))
+        self.assertIn("regenerar_qr", self._acciones(plataforma, PuntoControl))
+        self.assertNotIn("suprimir_datos", self._acciones(administrador, Sitio))
+        self.assertNotIn("regenerar_qr", self._acciones(administrador, PuntoControl))

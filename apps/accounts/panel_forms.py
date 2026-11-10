@@ -9,11 +9,24 @@ CAMPOS = ["username", "first_name", "last_name", "email", "telefono", "rol"]
 
 
 class UsuarioEdicionForm(forms.ModelForm):
-    """Edición de datos y rol; no toca la contraseña."""
+    """Edición de datos y rol; no toca la contraseña.
+
+    El rol `plataforma` no se ofrece: un administrador no puede crear ni promover
+    cuentas del operador de la plataforma. Si recibe `empresa`, la fija en la
+    instancia antes de validar (la empresa no es un campo del formulario).
+    """
 
     class Meta:
         model = User
         fields = CAMPOS
+
+    def __init__(self, *args, empresa=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if empresa is not None:
+            self.instance.empresa = empresa
+        self.fields["rol"].choices = [
+            opcion for opcion in User.Rol.choices if opcion[0] != User.Rol.PLATAFORMA
+        ]
 
 
 class UsuarioAltaForm(UsuarioEdicionForm):

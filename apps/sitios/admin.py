@@ -19,10 +19,8 @@ class _AdministradorMixin:
             raise PermissionDenied
         return super().history_form_view(request, object_id, version_id, extra_context)
 
-    def _es_administrador_activo(self, request):
-        return request.user.is_active and getattr(
-            request.user, "es_administrador", False
-        )
+    def _es_plataforma_activo(self, request):
+        return request.user.is_active and getattr(request.user, "es_plataforma", False)
 
     def _pedir_confirmacion(self, request, queryset, accion, titulo, consecuencia):
         opts = self.model._meta
@@ -52,7 +50,7 @@ class SitioAdmin(_AdministradorMixin, SimpleHistoryAdmin):
     actions = ["suprimir_datos"]
 
     def has_suprimir_datos_permission(self, request):
-        return self._es_administrador_activo(request) and self.has_delete_permission(
+        return self._es_plataforma_activo(request) and self.has_delete_permission(
             request
         )
 
@@ -144,7 +142,7 @@ class PuntoControlAdmin(_AdministradorMixin, SimpleHistoryAdmin):
             services.desactivar_punto(obj)
 
     def has_regenerar_qr_permission(self, request):
-        return self._es_administrador_activo(request) and self.has_change_permission(
+        return self._es_plataforma_activo(request) and self.has_change_permission(
             request
         )
 
