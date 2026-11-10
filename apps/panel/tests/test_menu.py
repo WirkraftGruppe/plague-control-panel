@@ -3,7 +3,6 @@
 import datetime
 import re
 
-from django.conf import settings
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -20,6 +19,7 @@ ENLACES = {
     "clientes": "panel:clientes:listado",
     "catalogo": "panel:servicios:listado",
     "usuarios": "panel:usuarios:listado",
+    "empresa": "panel:empresas:editar",
 }
 
 
@@ -76,7 +76,15 @@ class MenuActivoTests(TestCase):
         self.assertLess(trabajo, administracion)
         orden = [
             reverse(ENLACES[c])
-            for c in ("sitios", "turnos", "mapa", "clientes", "catalogo", "usuarios")
+            for c in (
+                "sitios",
+                "turnos",
+                "mapa",
+                "clientes",
+                "catalogo",
+                "usuarios",
+                "empresa",
+            )
         ]
         posiciones = [html.index(f'href="{href}"') for href in orden]
         self.assertEqual(posiciones, sorted(posiciones))
@@ -93,10 +101,10 @@ class MenuActivoTests(TestCase):
         self._sitio("Inactivo", activo=False)
         self.assertContains(self.client.get(url), 'contador-vencidos">2<')
 
-    def test_logo_con_alt_nombre_empresa_y_pie_con_salir(self):
+    def test_barra_muestra_el_nombre_de_la_empresa_y_pie_con_salir(self):
         html = self.client.get(reverse("panel:sitios:listado")).content.decode()
-        self.assertIn(f'alt="{settings.NOMBRE_EMPRESA}"', html)
-        self.assertIn("img/logo.png", html)
+        self.assertIn(f'class="panel-logo-nombre">{self.admin.empresa.nombre}<', html)
+        self.assertNotIn("img/logo.png", html)
         pie = html[html.index('class="barra-pie"') :]
         self.assertIn("adm-barra", pie)
         self.assertIn(f'action="{reverse("panel:salir")}"', pie)

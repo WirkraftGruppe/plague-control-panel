@@ -1,4 +1,4 @@
-"""Proceso del logo de una empresa: PNG sin metadatos de hasta 512 px de lado."""
+"""Proceso del logo de una empresa: PNG sin metadatos de hasta 1000 px de lado."""
 
 import warnings
 from io import BytesIO
@@ -8,14 +8,14 @@ from django.core.files.base import ContentFile
 from PIL import Image, ImageOps, UnidentifiedImageError
 
 MAX_BYTES = 2 * 1024 * 1024
-LADO_MAXIMO_PX = 512
-MAX_PIXELES = 25_000_000
+LADO_MAXIMO_PX = 1000
+MAX_PIXELES = 16_000_000
 ERROR_IMAGEN = "El archivo no es una imagen JPG o PNG válida."
 ERROR_TAMANO = "El logo pesa más de 2 MB."
 
 
 def procesar_logo(archivo):
-    """Devuelve el logo como `ContentFile` PNG sin metadatos, a lo sumo de 512 px.
+    """Devuelve el logo como `ContentFile` PNG sin metadatos, a lo sumo de 1000 px.
 
     Acepta solo JPEG y PNG; lanza `ValidationError` con otro formato, un archivo
     ilegible o más de 2 MB. Conserva la transparencia.
