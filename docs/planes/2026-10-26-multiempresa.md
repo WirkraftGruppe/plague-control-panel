@@ -478,8 +478,8 @@ commit_base: 0927fcd
 | T4 | hecha (1089be6; integrada en 2b01cb7, 852 tests OK) |
 | T5 | hecha (e9d615a; integrada en 22c58db, 863 tests OK) |
 | T6 | hecha (c83ac65; integrada en f6a201f, 874 tests OK) |
-| T7 | en curso (worktree desde f6a201f) |
-| T8 | en curso (worktree desde f6a201f) |
+| T7 | verificada (1f3f835; 15/15 x2), integrándose |
+| T8 | verificada (9815485; 14/14 x2), integrándose |
 | T9 | pendiente |
 | T10 | pendiente |
 | T11 | pendiente |
@@ -500,6 +500,7 @@ commit_base: 0927fcd
 | 2026-11-10 11:00 | T4, T5, T6 | dedc3ca, e9d615a, c83ac65 | criterios 40/40 PASA (verificador; verificador-b los enumera los 40 en PASA y suma 38); veredicto global FALLA solo por CONTRATO MODIFICADO (e4ada1f) | auditor-seguridad: 0 bloqueantes, 1 importante (P-multiempresa-35, confirma P-26), 2 menores y observaciones (P-multiempresa-28 a 34); integración de prueba T4→T5→T6 en el scratchpad del auditor: 870 tests OK; presupuestos 423/700, 335/600, 387/700 |
 | 2026-11-10 12:00 | T4 (corrección cd8d3c0) | cd8d3c0 | criterios 14/14 PASA (verificador y verificador-b); veredicto global FALLA solo por CONTRATO MODIFICADO (e4ada1f) | auditor-seguridad: P-multiempresa-35 cerrado; 0 bloqueantes, 1 importante nuevo (P-multiempresa-36), 1 menor (-37); presupuesto 480/700 |
 | 2026-11-10 12:40 | T4 (corrección 1089be6) | 1089be6 | criterios 14/14 PASA (verificador y verificador-b); veredicto global FALLA solo por CONTRATO MODIFICADO (e4ada1f) | auditor-seguridad: P-multiempresa-36 cerrado y -35 sigue cerrado; 0 bloqueantes, 1 observación (P-multiempresa-38); presupuesto 509/700 |
+| 2026-11-10 13:30 | T7, T8 | 1f3f835, 9815485 | criterios 29/29 PASA (verificador y verificador-b); veredicto global FALLA solo por CONTRATO MODIFICADO (e4ada1f) | auditor-seguridad: 0 bloqueantes, 0 importantes, 2 menores y 4 observaciones (P-multiempresa-39 a 44); las 21 pruebas de criterio fallan con el código de b35ac40; integración de prueba T8→T7: 897 tests OK; orden de bloqueo sin cambios; presupuestos 491/900 y 691/1000 |
 | | T4–T9 | | | |
 | | T10 | | | |
 | | T11 | | | |
@@ -561,6 +562,12 @@ commit_base: 0927fcd
 - P-multiempresa-36 [importante] Introducido por la corrección cd8d3c0 de T4: con `empresa` de solo lectura, `ReglaRolEmpresaMixin.clean` (`apps/accounts/admin.py:16-22`) llama a `add_error("empresa", …)` sobre un campo que no está en el formulario y lanza `ValueError` → 500 al pasar a `plataforma` a un usuario con empresa (no guarda nada); por la misma causa, un `plataforma` con empresa no se puede editar en nada en el admin. Corrección: poner el error en `rol` (o como error general) cuando `empresa` no está en el formulario, con un test que hoy falla. Origen: auditor-seguridad sobre la corrección de T4.
 - P-multiempresa-37 [menor] `crear_usuario` (`apps/accounts/management/commands/crear_usuario.py:32-53`) no aplica la regla rol ⇔ empresa: `--rol plataforma --empresa 3` crea un `plataforma` con empresa (que con P-multiempresa-36 queda sin poder editarse en el admin). Lo cierra T14 (`CheckConstraint` y `User.clean`). Origen: auditor-seguridad sobre la corrección de T4.
 - P-multiempresa-38 [observación] Con un `plataforma` que tiene empresa (P-multiempresa-37), cualquier guardado en `CuentaAdmin` da "El rol plataforma no pertenece a una empresa." sobre `rol` (`apps/accounts/admin.py:22-24`) sin decir cómo salir (cambiar el rol a administrador o empleado guarda; dejarlo `plataforma` sin empresa requiere shell). El texto puede sugerir el cambio de rol; la causa la cierra T14. Origen: auditor-seguridad sobre la segunda corrección de T4.
+- P-multiempresa-39 [menor] Listas acotadas por empresa que ningún test protege (mutaciones del auditor que siguen en verde): `SitioListado._incidencias` (`apps/sitios/panel_views.py:197-203`), servicios de la ficha (`:318-322`) y de `PuntoProgramacion._fila` (`:552-554`), planillas de `FormularioManual` (`apps/visitas/panel_forms.py:296-300`). Corrección: tests con datos de B que comprueben `context["incidencias"]`, `context["servicios"]` y `form.servicios`. Para T11. Origen: auditor-seguridad sobre T7 y T8.
+- P-multiempresa-40 [menor] `resumen_de_sitios` (`apps/sitios/estado.py:60-62`) consulta `PuntoControl.objects` sin empresa; sin fuga (los ids llegan acotados desde `apps/panel/mapa.py:43`) pero lanza con la guardia en `exigir`. Para T9 o T11. Origen: implementador de T7 y auditor-seguridad.
+- P-multiempresa-41 [observación] `de_empresa(None)` da 500 a un usuario sin empresa en `abrir_visita`, `registrar_revision`, `ResolverQRView` y demás vistas de API (falla cerrado, como P-multiempresa-32); lo elimina T14. Origen: auditor-seguridad sobre T7 y T8.
+- P-multiempresa-42 [observación] `cerrar_visitas_abiertas` (`apps/visitas/management/commands/cerrar_visitas_abiertas.py:35-43`) corta la corrida entera si una visita tiene `empresa_id` nulo (`ConsultaSinEmpresa` no capturada); posible solo antes de T14. Origen: auditor-seguridad sobre T7 y T8.
+- P-multiempresa-43 [observación] Varios filtros nuevos usan la empresa del propio objeto y no la del pedido (`apps/sitios/services.py:77,134`; `apps/visitas/services.py:261,284,303,476,525,787-791,1037`): satisfacen a la guardia pero dependen de que quien llama ya acote; hoy todos lo hacen. Para la documentación de T11/T12. Origen: auditor-seguridad sobre T7 y T8.
+- P-multiempresa-44 [observación] `apps/sitios/tests/test_publico.py` lo modificó T7 (su criterio `PublicoSinEmpresaTests` vive ahí) aunque la decisión de propiedad lo pasa a T10: T10 parte del cambio de T7, como ya prevé su paso 2. Origen: auditor-seguridad sobre T7 y T8.
 - Orden de integración de la ola 3: T5 y T6 por sí solas dan 500 a un administrador sin empresa; recién `AdministradorRequeridoMixin` de T4 cierra la sesión antes. Integrar T4 antes que T5 y T6 (orden del plan). Origen: auditor-seguridad sobre la ola 3.
 
 ### Decisiones
