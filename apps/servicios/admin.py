@@ -1,5 +1,7 @@
 from django.contrib import admin
 
+from apps.clientes.empresa import AdminHijoMixin, AdminRaizMixin
+
 from .models import CampoPlanilla, TipoServicio
 
 
@@ -19,7 +21,7 @@ class CampoPlanillaInline(admin.TabularInline):
 
 
 @admin.register(TipoServicio)
-class TipoServicioAdmin(admin.ModelAdmin):
+class TipoServicioAdmin(AdminRaizMixin, admin.ModelAdmin):
     list_display = ("nombre", "slug", "activo")
     list_filter = ("activo",)
     search_fields = ("nombre", "slug")
@@ -28,7 +30,7 @@ class TipoServicioAdmin(admin.ModelAdmin):
 
 
 @admin.register(CampoPlanilla)
-class CampoPlanillaAdmin(admin.ModelAdmin):
+class CampoPlanillaAdmin(AdminHijoMixin, admin.ModelAdmin):
     list_display = (
         "etiqueta",
         "clave",

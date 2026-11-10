@@ -9,6 +9,7 @@ from django.utils.functional import cached_property
 from django.views.generic import CreateView, DetailView, FormView, UpdateView
 
 from apps.accounts.mixins import AdministradorRequeridoMixin
+from apps.clientes.empresa import VistaDeEmpresaMixin
 from apps.panel.listados import ListadoPanelMixin
 
 from . import services
@@ -16,7 +17,9 @@ from .models import MovimientoStock, Producto
 from .panel_forms import MovimientoForm, ProductoForm
 
 
-class ProductoListadoView(AdministradorRequeridoMixin, ListadoPanelMixin):
+class ProductoListadoView(
+    VistaDeEmpresaMixin, AdministradorRequeridoMixin, ListadoPanelMixin
+):
     model = Producto
     template_name = "productos/panel/listado.html"
     template_parcial = "productos/panel/_listado.html"
@@ -43,7 +46,7 @@ class ProductoListadoView(AdministradorRequeridoMixin, ListadoPanelMixin):
         return contexto
 
 
-class ProductoFormularioMixin(AdministradorRequeridoMixin):
+class ProductoFormularioMixin(VistaDeEmpresaMixin, AdministradorRequeridoMixin):
     model = Producto
     form_class = ProductoForm
     template_name = "productos/panel/formulario.html"
@@ -62,7 +65,7 @@ class ProductoEditarView(ProductoFormularioMixin, UpdateView):
     titulo = "Editar producto"
 
 
-class ProductoFichaView(AdministradorRequeridoMixin, DetailView):
+class ProductoFichaView(VistaDeEmpresaMixin, AdministradorRequeridoMixin, DetailView):
     """Ficha con stock, envases e historial de movimientos."""
 
     model = Producto
@@ -85,7 +88,9 @@ class MovimientoAltaView(AdministradorRequeridoMixin, FormView):
 
     @cached_property
     def producto(self):
-        return get_object_or_404(Producto, pk=self.kwargs["pk"])
+        return get_object_or_404(
+            Producto.objects.de_empresa(self.request.empresa), pk=self.kwargs["pk"]
+        )
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()

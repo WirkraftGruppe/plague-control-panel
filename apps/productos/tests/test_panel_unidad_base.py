@@ -37,6 +37,7 @@ class UnidadBaseTests(TestCase):
                 "activo": "on",
             },
             instance=self.producto,
+            empresa=self.producto.empresa,
         )
 
     def test_cambiar_unidad_base_con_movimientos_da_error(self):

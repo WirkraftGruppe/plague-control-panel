@@ -7,12 +7,15 @@ from django.views import View
 from django.views.generic import CreateView, DetailView, UpdateView
 
 from apps.accounts.mixins import AdministradorRequeridoMixin
+from apps.clientes.empresa import VistaDeEmpresaMixin
 from apps.clientes.models import Cliente
 from apps.clientes.panel_forms import ClienteForm
 from apps.panel.listados import ListadoPanelMixin
 
 
-class ClienteListadoView(AdministradorRequeridoMixin, ListadoPanelMixin):
+class ClienteListadoView(
+    VistaDeEmpresaMixin, AdministradorRequeridoMixin, ListadoPanelMixin
+):
     """Listado con búsqueda por razón social o CUIT y filtro por activo."""
 
     model = Cliente
@@ -42,7 +45,7 @@ class ClienteListadoView(AdministradorRequeridoMixin, ListadoPanelMixin):
         return contexto
 
 
-class ClienteAltaView(AdministradorRequeridoMixin, CreateView):
+class ClienteAltaView(VistaDeEmpresaMixin, AdministradorRequeridoMixin, CreateView):
     model = Cliente
     form_class = ClienteForm
     template_name = "clientes/panel/formulario.html"
@@ -52,7 +55,7 @@ class ClienteAltaView(AdministradorRequeridoMixin, CreateView):
         return reverse("panel:clientes:ficha", args=[self.object.pk])
 
 
-class ClienteEditarView(AdministradorRequeridoMixin, UpdateView):
+class ClienteEditarView(VistaDeEmpresaMixin, AdministradorRequeridoMixin, UpdateView):
     model = Cliente
     form_class = ClienteForm
     template_name = "clientes/panel/formulario.html"
@@ -62,7 +65,7 @@ class ClienteEditarView(AdministradorRequeridoMixin, UpdateView):
         return reverse("panel:clientes:ficha", args=[self.object.pk])
 
 
-class ClienteFichaView(AdministradorRequeridoMixin, DetailView):
+class ClienteFichaView(VistaDeEmpresaMixin, AdministradorRequeridoMixin, DetailView):
     model = Cliente
     template_name = "clientes/panel/ficha.html"
 
@@ -76,11 +79,11 @@ class ClienteBajaView(AdministradorRequeridoMixin, View):
     """GET pide confirmación; POST da de baja (activo=False) sin borrar."""
 
     def get(self, request, pk):
-        cliente = get_object_or_404(Cliente, pk=pk)
+        cliente = get_object_or_404(Cliente.objects.de_empresa(request.empresa), pk=pk)
         return render(request, "clientes/panel/baja.html", {"cliente": cliente})
 
     def post(self, request, pk):
-        cliente = get_object_or_404(Cliente, pk=pk)
+        cliente = get_object_or_404(Cliente.objects.de_empresa(request.empresa), pk=pk)
         cliente.activo = False
         cliente.save(update_fields=["activo", "actualizado"])
         messages.success(request, "Cliente dado de baja.")
