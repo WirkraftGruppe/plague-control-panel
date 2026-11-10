@@ -77,7 +77,6 @@ class SettingsTests(SimpleTestCase):
             DATABASE_URL="sqlite:///prod-test.sqlite3",
             ALLOWED_HOSTS="macontrol.com.ar",
             SITE_URL="https://ejemplo.test",
-            NOMBRE_EMPRESA="Ejemplo S.R.L.",
         )
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertEqual(r.stdout.strip().splitlines()[-1], "3600 False False")
@@ -102,7 +101,6 @@ class SettingsTests(SimpleTestCase):
             DATABASE_URL="sqlite:///prod-test.sqlite3",
             ALLOWED_HOSTS=" macontrol.com.ar , ,www.macontrol.com.ar",
             SITE_URL="https://ejemplo.test",
-            NOMBRE_EMPRESA="Ejemplo S.R.L.",
         )
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertEqual(
@@ -125,7 +123,6 @@ class CheckDeployTests(SimpleTestCase):
             DATABASE_URL="sqlite:///prod-test.sqlite3",
             ALLOWED_HOSTS="macontrol.com.ar",
             SITE_URL="https://ejemplo.test",
-            NOMBRE_EMPRESA="Ejemplo S.R.L.",
         )
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         ids = set(re.findall(r"security\.W\d+", r.stdout + r.stderr))
@@ -141,7 +138,6 @@ class DespliegueTests(SimpleTestCase):
         "DATABASE_URL": "sqlite:///prod-test.sqlite3",
         "ALLOWED_HOSTS": "demo.up.railway.app",
         "SITE_URL": "https://ejemplo.test",
-        "NOMBRE_EMPRESA": "Ejemplo S.R.L.",
     }
 
     def _leer_prod(self, expresion, **extra):
@@ -193,6 +189,28 @@ class DespliegueTests(SimpleTestCase):
         )
         self.assertIn("CompressedManifestStaticFilesStorage", salida)
         self.assertIn("FileSystemStorage", salida)
+
+
+class ProduccionSinEmpresaTests(SimpleTestCase):
+    """El nombre de la empresa sale de `Empresa`, no del entorno."""
+
+    def test_produccion_arranca_sin_nombre_empresa(self):
+        """Los settings de producción cargan sin NOMBRE_EMPRESA definida."""
+        r = _correr(
+            [
+                "shell",
+                "-c",
+                "from django.conf import settings as s;"
+                " print(hasattr(s, 'NOMBRE_EMPRESA'), hasattr(s, 'CORREO_CONTACTO'))",
+            ],
+            DJANGO_ENV="production",
+            SECRET_KEY="x" * 60,
+            DATABASE_URL="sqlite:///prod-test.sqlite3",
+            ALLOWED_HOSTS="demo.up.railway.app",
+            SITE_URL="https://ejemplo.test",
+        )
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(r.stdout.strip().splitlines()[-1], "False False")
 
 
 class SiteUrlTests(SimpleTestCase):

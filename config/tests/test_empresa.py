@@ -1,11 +1,9 @@
-"""Nombre de la empresa, correo de contacto, SITE_URL y marca Detach del producto."""
+"""SITE_URL y marca Detach del producto (el nombre de la empresa sale de `Empresa`)."""
 
 from django.apps import apps
 from django.conf import settings
-from django.template import engines
-from django.test import RequestFactory, SimpleTestCase, override_settings
+from django.test import SimpleTestCase
 
-from config.contexto import empresa
 from config.tests.test_settings import _correr
 
 _PROD = {
@@ -13,7 +11,6 @@ _PROD = {
     "SECRET_KEY": "x" * 60,
     "DATABASE_URL": "sqlite:///prod-test.sqlite3",
     "ALLOWED_HOSTS": "demo.up.railway.app",
-    "NOMBRE_EMPRESA": "Ejemplo S.R.L.",
 }
 
 
@@ -26,40 +23,6 @@ def _leer(expresion, **entorno):
 
 
 class EmpresaTests(SimpleTestCase):
-    @override_settings(NOMBRE_EMPRESA="Ejemplo S.R.L.")
-    def test_contexto_expone_nombre_empresa(self):
-        """El context processor está registrado y toma el valor de settings."""
-        request = RequestFactory().get("/")
-        self.assertEqual(empresa(request), {"NOMBRE_EMPRESA": "Ejemplo S.R.L."})
-        plantilla = engines["django"].from_string("[{{ NOMBRE_EMPRESA }}]")
-        self.assertEqual(plantilla.render({}, request), "[Ejemplo S.R.L.]")
-
-    def test_nombre_empresa_y_correo_salen_del_entorno(self):
-        """Se leen del entorno; vacíos o con espacios caen al valor por defecto."""
-        r = _leer(
-            "s.NOMBRE_EMPRESA, s.CORREO_CONTACTO",
-            DJANGO_ENV="development",
-            NOMBRE_EMPRESA=" Otra S.A. ",
-            CORREO_CONTACTO="contacto@ejemplo.test",
-        )
-        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        self.assertEqual(
-            r.stdout.strip().splitlines()[-1], "Otra S.A. contacto@ejemplo.test"
-        )
-        for vacio in ("", "   "):
-            with self.subTest(vacio=vacio):
-                r = _leer(
-                    "s.NOMBRE_EMPRESA, s.CORREO_CONTACTO",
-                    DJANGO_ENV="development",
-                    NOMBRE_EMPRESA=vacio,
-                    CORREO_CONTACTO=vacio,
-                )
-                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-                self.assertEqual(
-                    r.stdout.strip().splitlines()[-1],
-                    "MAControl S.A. administracion@macontrol.com.ar",
-                )
-
     def test_site_url_por_defecto_es_local(self):
         """Sin SITE_URL (o vacía), desarrollo usa el origen local."""
         for vacio in ("", "  "):
@@ -82,27 +45,11 @@ class EmpresaTests(SimpleTestCase):
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertEqual(r.stdout.strip().splitlines()[-1], "https://ejemplo.test")
 
-    def test_prod_sin_nombre_empresa_no_arranca(self):
-        """Producción sin NOMBRE_EMPRESA (o vacía) no arranca; con ella, sí."""
-        prod = {**_PROD, "SITE_URL": "https://ejemplo.test"}
-        for vacio in ("", "   "):
-            with self.subTest(vacio=vacio):
-                r = _leer("s.NOMBRE_EMPRESA", **{**prod, "NOMBRE_EMPRESA": vacio})
-                self.assertNotEqual(r.returncode, 0)
-                self.assertIn("NOMBRE_EMPRESA", r.stdout + r.stderr)
-                self.assertIn("ImproperlyConfigured", r.stdout + r.stderr)
-        r = _leer("s.NOMBRE_EMPRESA", **prod)
-        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        self.assertEqual(r.stdout.strip().splitlines()[-1], "Ejemplo S.R.L.")
-
     def test_admin_y_api_se_llaman_detach(self):
-        """El admin usa AdminDetachConfig y la API se titula Detach con la empresa."""
+        """El admin usa AdminDetachConfig y la API se titula Detach."""
         self.assertEqual(
             type(apps.get_app_config("admin")).__name__, "AdminDetachConfig"
         )
         self.assertEqual(settings.SPECTACULAR_SETTINGS["TITLE"], "API de Detach")
-        self.assertIn(
-            settings.NOMBRE_EMPRESA, settings.SPECTACULAR_SETTINGS["DESCRIPTION"]
-        )
         self.assertNotIn("MAControl", settings.SPECTACULAR_SETTINGS["TITLE"])
         self.assertNotIn("..", settings.SPECTACULAR_SETTINGS["DESCRIPTION"])

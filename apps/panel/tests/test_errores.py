@@ -1,7 +1,8 @@
-from django.conf import settings
 from django.template.loader import render_to_string
 from django.test import RequestFactory, TestCase
 from django.views.defaults import server_error
+
+from apps.empresas.models import Empresa
 
 
 class ErroresTests(TestCase):
@@ -19,13 +20,14 @@ class ErroresTests(TestCase):
 
     def test_404_y_500_sin_marca(self):
         """Ni logo ni nombre de empresa: son autónomas y neutras."""
+        empresa = Empresa.objects.create(nombre="Fumigaciones Sur")
         html_404 = self.client.get("/no-existe/").content.decode()
         html_500 = server_error(RequestFactory().get("/boom/")).content.decode()
         for html in (html_404, html_500):
             self.assertIn("pagina-error", html)
             self.assertIn("noindex", html)
             self.assertIn("Detach", html)
-            self.assertNotIn(settings.NOMBRE_EMPRESA.lower(), html.lower())
+            self.assertNotIn(empresa.nombre.lower(), html.lower())
             self.assertNotIn("logo", html)
             self.assertNotIn("<img", html)
 
