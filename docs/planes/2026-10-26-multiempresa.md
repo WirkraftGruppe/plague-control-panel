@@ -475,7 +475,7 @@ commit_base: 0927fcd
 | T1 | hecha |
 | T2 | hecha (8332abb; integrada en 8aa5856) |
 | T3 | hecha (T1 en b9c7118, T2 en 8aa5856 con 836 tests OK; `migrate` + `cargar_demo` OK; worktrees de T4, T5 y T6 creados desde 8aa5856) |
-| T4 | en corrección (P-multiempresa-35), sin integrar |
+| T4 | verificada tras la corrección cd8d3c0 (14/14 x2); P-multiempresa-36 a decidir; sin integrar |
 | T5 | verificada (e9d615a; 14/14 x2), sin integrar |
 | T6 | verificada (c83ac65; 12/12 x2), sin integrar |
 | T7 | pendiente |
@@ -498,6 +498,7 @@ commit_base: 0927fcd
 | 2026-11-10 09:45 | T2 (corrección 8332abb) | 8332abb | criterios 15/15 PASA (verificador y verificador-b, suite 836 OK); veredicto global FALLA solo por CONTRATO MODIFICADO (e4ada1f) | auditor-seguridad: P-multiempresa-15, -16 (modelo) y -17 cerrados; 0 bloqueantes, 0 importantes, 3 menores y 5 observaciones (P-multiempresa-20 a 27); el cuerpo del test criterio `test_referencias_de_otra_empresa_no_validan` cambió en su última línea (llamada sin aserción que afirmaba el defecto P-15), confirmado por los dos verificadores y el auditor como no debilitado; presupuesto 1510/2200 |
 | 2026-11-10 10:10 | T3 | 8aa5856 | criterios 3/3 PASA (principal; los verifica el verificador al cierre de la ola 3) | `worktree-integrar.sh` de T2: 836 tests OK; `db.sqlite3` borrada y recreada con `migrate` + `cargar_demo` |
 | 2026-11-10 11:00 | T4, T5, T6 | dedc3ca, e9d615a, c83ac65 | criterios 40/40 PASA (verificador; verificador-b los enumera los 40 en PASA y suma 38); veredicto global FALLA solo por CONTRATO MODIFICADO (e4ada1f) | auditor-seguridad: 0 bloqueantes, 1 importante (P-multiempresa-35, confirma P-26), 2 menores y observaciones (P-multiempresa-28 a 34); integración de prueba T4→T5→T6 en el scratchpad del auditor: 870 tests OK; presupuestos 423/700, 335/600, 387/700 |
+| 2026-11-10 12:00 | T4 (corrección cd8d3c0) | cd8d3c0 | criterios 14/14 PASA (verificador y verificador-b); veredicto global FALLA solo por CONTRATO MODIFICADO (e4ada1f) | auditor-seguridad: P-multiempresa-35 cerrado; 0 bloqueantes, 1 importante nuevo (P-multiempresa-36), 1 menor (-37); presupuesto 480/700 |
 | | T4–T9 | | | |
 | | T10 | | | |
 | | T11 | | | |
@@ -556,6 +557,8 @@ commit_base: 0927fcd
 - P-multiempresa-33 [observación] La barra lateral pide `/panel/empresa/logo/` con `no-store` en cada página (se descarga siempre); rendimiento, no seguridad. Sin dueño. Origen: auditor-seguridad sobre la ola 3.
 - P-multiempresa-34 [menor] El docstring de `_AdministradorMixin` (`apps/sitios/admin.py:14`) sigue diciendo "rol administrador" (T4 solo podía tocar la compuerta): para T7. Y cuando un administrador pierde la sesión por empresa inactiva, el login no explica el motivo (observación, sin dueño). Origen: implementador de T4.
 - P-multiempresa-35 [importante] Confirma P-multiempresa-26 sobre T4: `CuentaAdmin` (`apps/accounts/admin.py:46-48`) deja cambiar la empresa de un usuario existente (sonda: 302 y el empleado de A queda en B); sus visitas de A quedan apuntando a un usuario de B, su `full_clean()` falla y el historial de A queda atribuido a otra empresa. Solo `plataforma`. Decisión del usuario pendiente: si la inmutabilidad del 2026-11-10 alcanza a `User`. Corrección propuesta: `get_readonly_fields` con `empresa` cuando `obj.empresa_id` ya está fijada. Origen: auditor-seguridad sobre la ola 3.
+- P-multiempresa-36 [importante] Introducido por la corrección cd8d3c0 de T4: con `empresa` de solo lectura, `ReglaRolEmpresaMixin.clean` (`apps/accounts/admin.py:16-22`) llama a `add_error("empresa", …)` sobre un campo que no está en el formulario y lanza `ValueError` → 500 al pasar a `plataforma` a un usuario con empresa (no guarda nada); por la misma causa, un `plataforma` con empresa no se puede editar en nada en el admin. Corrección: poner el error en `rol` (o como error general) cuando `empresa` no está en el formulario, con un test que hoy falla. Origen: auditor-seguridad sobre la corrección de T4.
+- P-multiempresa-37 [menor] `crear_usuario` (`apps/accounts/management/commands/crear_usuario.py:32-53`) no aplica la regla rol ⇔ empresa: `--rol plataforma --empresa 3` crea un `plataforma` con empresa (que con P-multiempresa-36 queda sin poder editarse en el admin). Lo cierra T14 (`CheckConstraint` y `User.clean`). Origen: auditor-seguridad sobre la corrección de T4.
 - Orden de integración de la ola 3: T5 y T6 por sí solas dan 500 a un administrador sin empresa; recién `AdministradorRequeridoMixin` de T4 cierra la sesión antes. Integrar T4 antes que T5 y T6 (orden del plan). Origen: auditor-seguridad sobre la ola 3.
 
 ### Decisiones
