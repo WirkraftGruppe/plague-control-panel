@@ -12,7 +12,7 @@ Eres Claude Code, el asistente automatizado principal de desarrollo de Detach: p
 La raíz es un repositorio git propio. Cuando exista `mobile/`, será otro repositorio y la raíz lo ignorará.
 
 ## Al entrar
-- El hook `SessionStart` (`.claude/hooks/contexto.sh`) inyecta el comienzo de `docs/bitacora.md` ("Estado actual" y la última entrada), el encabezado y la tabla de estado del plan de la rama (o el activo de la bitácora), y las últimas decisiones de `docs/decisiones.md`. También inyecta `=== Pendientes abiertos (pendientes.py) ===`: los problemas abiertos de todos los planes (`py -3 .claude/hooks/pendientes.py [--raiz R] [--json]`); la bitácora ya no lleva esa lista.
+- El hook `SessionStart` (`.claude/hooks/contexto.sh`) inyecta un resumen recortado (menos de 8 KB): de `docs/bitacora.md`, "Estado actual" y la última entrada; del plan de la rama (o el activo de la bitácora), las primeras líneas del encabezado y la tabla de estado; las últimas 5 decisiones de `docs/decisiones.md`; y `=== Pendientes abiertos (pendientes.py) ===` con el recuento por severidad y solo los `bloqueante` e `importante`. Lo recortado se lee a pedido: el plan, la bitácora o `py -3 .claude/hooks/pendientes.py [--raiz R] [--json]` (lista completa); la bitácora ya no lleva esa lista.
 - No preguntes lo que ya está ahí (plan activo, rama, pendiente inmediato, pendientes abiertos): léelo y seguí desde ese punto.
 - **Resumen de entrada**: la primera respuesta de la sesión abre con un resumen de 3 a 5 líneas de lo que Claude cree que es el estado: plan activo, último trabajo registrado, pendiente inmediato y rama. Antes de escribirlo se corre `git branch --show-current` y `git log -1 --oneline` y se marca toda diferencia con la bitácora (otra rama, commits posteriores a la última entrada): es la señal de trabajo hecho a mano, fuera de Claude. Si el primer pedido implica escribir, se muestra el resumen y se espera la confirmación del usuario antes de la primera escritura; leer no espera.
 - Si el pedido del usuario contradice una decisión registrada en `docs/decisiones.md`, avisalo citando la decisión **antes de avanzar**. Cambiar una decisión es del usuario, y queda como una línea nueva que dice a cuál reemplaza.
@@ -40,6 +40,17 @@ El principal delega según el tamaño de lo que hay que hacer, no según la como
 **Freno de sesión larga**: ≈20 llamados a herramientas, 5 lecturas exploratorias o 2 ediciones no mecánicas sin delegar en lo que va de la sesión → parar y delegar el resto.
 
 **Regla de incidente**: tras un `cwd` equivocado, un accidente de git o de worktree, o un workaround de entorno, correr `git status` en la raíz y en los worktrees activos antes de seguir.
+
+## Git y GitHub
+
+Bash corre sin pedir permiso. El principal commitea, sube ramas a `origin` y abre y sigue los PR por su cuenta; el usuario conserva el merge.
+
+- **Lo hace Claude sin preguntar**: `git add <rutas explícitas>`, commits, ramas, `git push -u origin <rama>` de cualquier rama que no sea `main`, `gh pr create`, `gh pr edit`, comentarios, `gh pr checks`, `gh run view` y la lectura de revisiones.
+- **Queda en manos del usuario**: fusionar (un PR o cualquier rama en `main`), aprobar un PR, el push a `main`, producción (Railway) y los permisos. Claude deja el comando listo y sigue con lo demás.
+- **Nunca**: `push --force`, `stash`, `add -A`, `add .`, `commit -a`, `commit --amend`, `reset --hard`, `clean`, `branch -D`, `--no-verify`, `git -c`, cambiar remotos, leer o versionar secretos (`.env`, `*.pem`, `*.key`, `credenciales*`).
+- **Antes de cada push** se revisa `git diff --stat <base>..HEAD`: nada de secretos ni de archivos ajenos a la subtarea o al plan.
+- Lo frenan tres capas: `guardia_bash.py` (hook `PreToolUse`), la lista `deny` y el hook `pre-push` (rama y remoto reales). **Un bloqueo no se rodea** escribiendo el comando de otra forma: se informa al usuario.
+- Los permisos tienen una sola fuente, `.claude/hooks/permisos.py`. Claude no edita ese archivo, la guardia, el `pre-push` ni los settings, y no ejecuta `permisos.py` (salvo `--comprobar`): el cambio lo aplica el usuario.
 
 ## Flujo de trabajo: plan → delegación → verificación
 
@@ -78,8 +89,8 @@ Aplica a todo trabajo que toque más de un archivo o que se vaya a dividir en su
 - El principal **no da por cumplida una subtarea leyendo el informe**. Los informes son optimistas por naturaleza; la única verificación válida es la del punto 6.
 
 **Regla de worktree por defecto**: toda subtarea delegada que escriba código va en su propio worktree. Inline solo va lo pasivo o lo que escribe un único archivo de documentación. Los worktrees viven en `worktrees/` (ignorado) y no tienen `venv/`: el script crea una junction.
-- **Ramas**: un plan = una rama `plan/<slug>`; las subtareas son `<slug>-T<n>` (con sufijo de letra si hay varias en una: `T5a`) y cuelgan de ella. `main` solo recibe planes con la verificación `TODO` en PASA, y el merge lo decide el usuario.
-- **Plan derivado de la rama**: los hooks `SessionStart` (`contexto.sh`) y `Stop` (`verificar_plan.py`) toman `git branch --show-current`; si es `plan/<slug>` o `<slug>-T<n>`, el plan es `docs/planes/*-<slug>.md`. Si no, usan la línea `Plan activo:` de la bitácora como respaldo.
+- **Ramas**: un plan = una rama `plan/<slug>`; las subtareas son `<slug>-T<n>` (con sufijo de letra si hay varias en una: `T5a`) y cuelgan de ella. `main` solo recibe planes con la verificación `TODO` en PASA: el principal sube `plan/<slug>` a `origin` y abre el PR contra `main`; el merge lo hace el usuario en GitHub.
+- **Plan derivado de la rama**: los hooks `SessionStart` (`contexto.sh`) y `Stop` (`verificar_plan.py --aviso`) toman `git branch --show-current`; si es `plan/<slug>` o `<slug>-T<n>`, el plan es `docs/planes/*-<slug>.md`. Si no, usan la línea `Plan activo:` de la bitácora como respaldo.
 - **Olas**: el plan ordena las subtareas en olas según el grafo de FK entre apps (la plantilla las declara y cada subtarea lleva `Ola: <n>`). Dentro de una ola todas las subtareas corren en paralelo, cada una con sus migraciones en su worktree; dos subtareas de la misma ola nunca crean migraciones en la misma app. La ola siguiente ramifica desde el commit de integración de la anterior.
 - **Propiedad**: cada app de dominio es dueña de sus archivos; los archivos transversales tienen un dueño único según la "Tabla de propiedad" de `convenciones-proyecto`. Una subtarea no declara en `Puede tocar` un archivo de otro dueño.
 - **Crear e integrar es trabajo del principal, por ola**: la integración de cada ola es una subtarea numerada `### T<n> — Integración (principal)` y el hook ejecuta sus criterios como los de cualquier `### T<n>`; `worktree-integrar.sh` se corre desde la raíz, no desde dentro del worktree (exit 3). `bash .claude/hooks/worktree-crear.sh <slug> T<n> [rama_base]` crea `worktrees/<slug>-T<n>` y su rama, con la junction `venv` y `manage.py check` como prueba de humo. Con la subtarea commiteada y verificada, `bash .claude/hooks/worktree-integrar.sh <slug> T<n> plan/<slug> <ruta>...` rechaza cambios sin commitear y archivos fuera de las rutas declaradas, mergea con `--no-ff` (`T<n>: integra <slug>-T<n>`), corre `makemigrations --check` y `test --keepdb`, y quita la junction, el worktree y la rama. Antes de integrar se revisa `bash .claude/hooks/cambios.sh . <rama_base>`, no los informes.
@@ -117,10 +128,10 @@ Se copian tal cual al último bloque del plan.
 Antes de terminar una sesión de trabajo:
 - Actualizar "Estado actual" de `docs/bitacora.md` (tabla `| plan | rama | ola actual | pendiente inmediato | sesión |`, con la línea `Plan activo:` como compatibilidad, sin lista de problemas) y agregar una entrada nueva arriba de todo en "Entradas", con fecha y título.
 - Escribir los problemas y decisiones nuevos en la sección `## Pendientes que deja este plan` del plan (debajo del corte), no en la bitácora: problemas como `- P-<slug>-<n> [bloqueante|importante|menor|observación] texto`; decisiones, una línea cada una con el formato `- AAAA-MM-DD — decisión — motivo — reemplaza a: (nada|fecha)`.
-- Al fusionar en `main` se copian solo las decisiones a `docs/decisiones.md` (apéndice) y la bitácora recibe la entrada de sesión.
+- Antes de abrir el PR contra `main` se copian solo las decisiones a `docs/decisiones.md` (apéndice) y la bitácora recibe la entrada de sesión, en la misma rama del plan.
 - Un problema se cierra con `- cierra: P-<slug>-<n> — cómo` en `### Cierra` del plan que lo resuelve, nunca editando el plan de origen.
-- Marcar una tarea como `hecha` en la tabla `### Estado de subtareas` **solo después de ver pasar sus criterios**. El hook de cierre (`.claude/hooks/verificar_plan.py`, evento `Stop`) ejecuta los criterios de todas las tareas `hecha` del plan de la rama (con `Plan activo:` como respaldo) y, cuando están todas, los de cierre global.
-- Si el hook de cierre avisa una falla, se corrige la causa, **nunca el criterio**. Si el criterio está mal, es un cambio de contrato y lo decide el usuario (§ 4).
+- Marcar una tarea como `hecha` en la tabla `### Estado de subtareas` **solo después de ver pasar sus criterios**. Los criterios de todas las tareas `hecha` del plan de la rama (con `Plan activo:` como respaldo) y, cuando están todas, los de cierre global, se ejecutan a pedido con `py -3 .claude/hooks/verificar_plan.py --ahora`: el principal lo corre al marcar una subtarea como `hecha` y antes de abrir el PR. El hook de cierre (`verificar_plan.py --aviso`, evento `Stop`) ya no ejecuta criterios: avisa una vez por sesión y por HEAD si hay tareas `hecha` sin verificar, y reemite el último informe si tenía fallas.
+- Si `--ahora` o el hook de cierre informan una falla, se corrige la causa, **nunca el criterio**. Si el criterio está mal, es un cambio de contrato y lo decide el usuario (§ 4).
 
 ## Referencia del proyecto
 Stack, mapa de rutas, variables de entorno, comandos y prohibiciones: `.claude/skills/convenciones-proyecto/SKILL.md`.

@@ -238,5 +238,41 @@ def test_contexto_inyecta_pendientes(tmp_path):
     assert salida.index("# Bitácora") < salida.index("=== Pendientes abiertos")
 
 
+def test_contexto_recorta_lineas_largas_entradas_viejas_y_pendientes_menores(tmp_path):
+    planes = tmp_path / "docs" / "planes"
+    planes.mkdir(parents=True)
+    menores = "".join(f"- P-demo-{n} [menor] MENOR-{n} {'m' * 300}\n" for n in range(1, 41))
+    (planes / "2026-01-01-demo.md").write_text(
+        "# Plan\n\n" + "".join(f"linea {n} del encabezado\n" for n in range(1, 61)) + "\n### T1 — x\n\n"
+        "## Registro de verificación\n\n## Pendientes que deja este plan\n\n### Problemas\n\n"
+        + menores + "- P-demo-99 [importante] IMPORTANTE-DE-JUGUETE\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "docs" / "bitacora.md").write_text(
+        "# Bitácora\n\n## Estado actual\nPlan activo: docs/planes/2026-01-01-demo.md\n"
+        "Pendiente inmediato: " + "ñ" * 900 + "FIN-DE-LINEA-LARGA\n\n## Entradas (la más reciente arriba)\n\n"
+        "### 2026-01-02 — ENTRADA-RECIENTE\n" + "".join(f"- detalle {n}\n" for n in range(1, 31))
+        + "\n### 2026-01-01 — ENTRADA-VIEJA\n- algo\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "docs" / "decisiones.md").write_text(
+        "".join(f"- 2026-01-{n:02d} — DECISION-{n} — motivo — reemplaza a: (nada)\n" for n in range(1, 21)),
+        encoding="utf-8",
+    )
+    proceso = correr_hook(tmp_path)
+    salida = texto(proceso)
+    assert proceso.returncode == 0
+    assert "\ufffd" not in salida  # ningún carácter partido al recortar
+    assert "ENTRADA-RECIENTE" in salida and "ENTRADA-VIEJA" not in salida
+    assert "detalle 11" in salida and "detalle 12" not in salida
+    assert "FIN-DE-LINEA-LARGA" not in salida
+    assert "linea 14 del encabezado" in salida and "linea 15 del encabezado" not in salida
+    assert "líneas más del encabezado en el plan" in salida
+    assert "DECISION-20" in salida and "DECISION-16" in salida and "DECISION-15 " not in salida
+    assert "IMPORTANTE-DE-JUGUETE" in salida and "MENOR-1 " not in salida
+    assert "Pendientes abiertos: 41 (0 bloqueante, 1 importante, 40 menor, 0 observación)" in salida
+    assert len(proceso.stdout) < 8000
+
+
 if __name__ == "__main__":
     unittest.main()

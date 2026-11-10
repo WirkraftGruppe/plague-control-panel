@@ -48,6 +48,14 @@ docs/planes/2026-09-23-endurecer-hooks.md y T2 de docs/planes/2026-09-23-endurec
     ejecutarse. La CLI `verificar_plan.py --commit-base [plan]` imprime ese hash (exit 0) o el
     motivo por stderr (exit 2); no lee stdin.
 
+13. Modos de invocación. Como hook Stop se registra con `--aviso`: hace los pasos 1 a 7 y, si
+    hay criterios sin verificar para el estado actual, **no los ejecuta**: avisa una sola vez
+    por sesión y por combinación de HEAD y subtareas `hecha`, y sale según el modo (`aviso` → 1,
+    `bloqueo` → 2). Si la caché trae un informe con fallas para la firma actual, lo reemite como
+    siempre. Los criterios se ejecutan a pedido con `verificar_plan.py --ahora` (no lee stdin,
+    presupuesto de 3600 s, imprime el resultado por stdout). Sin argumentos conserva el
+    comportamiento anterior (ejecuta dentro del hook, 780 s).
+
 Seguridad: los criterios corren con `bash -c`, es decir, con toda la potencia de un shell:
 pueden hacer red, escribir archivos o salir del árbol del proyecto. El control no está en
 restringir los comandos sino en su origen: solo se ejecuta texto congelado (leído con
@@ -75,6 +83,7 @@ from pathlib import Path, PureWindowsPath
 TIMEOUT_CRITERIO = 300
 TIMEOUT_SUITE = 700
 PRESUPUESTO_TOTAL = 780
+PRESUPUESTO_AHORA = 3600
 TIMEOUT_CONGELADO = 60
 LINEAS_DE_SALIDA = 20
 MAX_INTENTOS_BLOQUEO = 3
@@ -889,6 +898,38 @@ def reiniciar_intentos(session_id: str) -> None:
         pass  # no existía: nada que reiniciar
 
 
+def marca_de_aviso(session_id: str, clave: str) -> Path:
+    """Archivo que recuerda que la sesión ya recibió el aviso de «sin verificar» para `clave`."""
+    seguro = re.sub(r"[^A-Za-z0-9_-]", "_", session_id)[:100] or "sin-sesion"
+    return Path(tempfile.gettempdir()) / f"detach-verificar-plan-aviso-{seguro}-{clave}"
+
+
+def avisar_sin_verificar(
+    raiz: Path, plan: Path, datos_plan: Plan, seleccion: list[Criterio], session_id: str
+) -> int:
+    """Modo `--aviso`: informa que hay criterios sin verificar, sin ejecutarlos.
+
+    Avisa una sola vez por sesión y por combinación de HEAD y subtareas `hecha`: un cambio sin
+    commitear o una pausa con trabajo en curso no repiten el aviso. Sale según el modo.
+    """
+    cabeza = (salida_git(raiz, "rev-parse", "--short", "HEAD") or "").strip()
+    hechas = [n for n in datos_plan.tareas() if datos_plan.estado(n) == "hecha"]
+    clave = hashlib.sha256(f"{plan.name}|{cabeza}|{hechas}".encode("utf-8")).hexdigest()[:16]
+    marca = marca_de_aviso(session_id, clave)
+    if marca.exists():
+        return 0
+    try:
+        marca.write_text("1", encoding="utf-8")
+    except OSError:
+        pass  # sin marca el aviso se repite: molesto, no incorrecto
+    sys.stderr.write(
+        f"verificar_plan: {len(seleccion)} criterios de {len(hechas)} subtareas `hecha` de {plan.name} "
+        f"sin verificar en este estado (HEAD {cabeza or '?'}). El hook de cierre ya no los ejecuta: "
+        "corre `py -3 .claude/hooks/verificar_plan.py --ahora` cuando termines la subtarea.\n"
+    )
+    return 2 if leer_modo(raiz) == "bloqueo" else 1
+
+
 def ultimas_lineas(texto: str, cantidad: int = LINEAS_DE_SALIDA) -> str:
     """Últimas `cantidad` líneas de un texto."""
     return "\n".join(texto.rstrip("\n").splitlines()[-cantidad:])
@@ -922,9 +963,18 @@ def salir_con_falla(texto_informe: str, raiz: Path, session_id: str) -> int:
 # Punto de entrada
 # ---------------------------------------------------------------------------
 
-def main(texto_stdin: str, entorno: dict[str, str]) -> int:
-    """Punto de entrada testeable: devuelve el código de salida del hook."""
-    presupuesto = Presupuesto(PRESUPUESTO_TOTAL)
+def main(
+    texto_stdin: str,
+    entorno: dict[str, str],
+    solo_aviso: bool = False,
+    presupuesto_total: float | None = None,
+) -> int:
+    """Punto de entrada testeable: devuelve el código de salida del hook.
+
+    Con `solo_aviso` no ejecuta criterios (ver `avisar_sin_verificar`); `presupuesto_total` es
+    el tiempo máximo de toda la corrida (por defecto, `PRESUPUESTO_TOTAL`).
+    """
+    presupuesto = Presupuesto(PRESUPUESTO_TOTAL if presupuesto_total is None else presupuesto_total)
     datos = leer_entrada(texto_stdin)
     if datos is None or datos.get("stop_hook_active") is True:
         return 0
@@ -999,6 +1049,8 @@ def main(texto_stdin: str, entorno: dict[str, str]) -> int:
     seleccion = criterios_a_ejecutar(datos_plan)
     if not seleccion:
         return 0
+    if solo_aviso:
+        return avisar_sin_verificar(raiz, plan, datos_plan, seleccion, session_id)
 
     seleccion, sin_resolver = reemplazar_commit_base(seleccion, commit_base, motivo_base, plan)
     resultados = sin_resolver + ejecutar_seleccion(
@@ -1047,12 +1099,21 @@ def ejecutar() -> int:
         pass  # stderr sin reconfigure (p. ej. reemplazado): se usa tal cual
     if sys.argv[1:2] == ["--commit-base"]:
         return ejecutar_commit_base(sys.argv[2:3], dict(os.environ))
+    if sys.argv[1:2] == ["--ahora"]:
+        try:
+            codigo = main(json.dumps({"session_id": "manual"}), dict(os.environ), presupuesto_total=PRESUPUESTO_AHORA)
+        except Exception as error:  # noqa: BLE001 — mismo criterio que el hook: sin traceback
+            sys.stderr.write(f"verificar_plan: error interno: {error!r}\n")
+            return 1
+        sys.stdout.write("verificar_plan: sin fallas (o nada que verificar)\n" if codigo == 0 else "verificar_plan: FALLA\n")
+        return codigo
+    solo_aviso = sys.argv[1:2] == ["--aviso"]
     try:
         texto = sys.stdin.buffer.read().decode("utf-8", errors="replace") if sys.stdin else ""
     except (OSError, ValueError):
         texto = ""
     try:
-        return main(texto, dict(os.environ))
+        return main(texto, dict(os.environ), solo_aviso=solo_aviso)
     except Exception as error:  # noqa: BLE001 — el hook nunca debe cortar la sesión con traceback
         sys.stderr.write(f"verificar_plan: error interno: {error!r}\n")
         return 1

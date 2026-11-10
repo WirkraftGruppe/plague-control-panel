@@ -1,8 +1,26 @@
 #!/usr/bin/env bash
-# Hook SessionStart de Claude Code: inyecta en el contexto de la sesión la bitácora,
-# el encabezado y la tabla de estado del plan activo, y las últimas decisiones.
-# Lo que se imprime por stdout con exit 0 se agrega al contexto. Termina siempre con exit 0.
+# Hook SessionStart de Claude Code: inyecta en el contexto de la sesión el estado actual de la
+# bitácora y su última entrada, el encabezado y la tabla de estado del plan activo, las últimas
+# decisiones y el resumen de pendientes. Lo que se imprime por stdout con exit 0 se agrega al
+# contexto. Termina siempre con exit 0.
+#
+# Todo va recortado (líneas por sección y caracteres por línea): esto entra en cada sesión antes
+# de trabajar, y el detalle está a un comando de distancia. Meta: menos de 8000 bytes en total.
 set +e
+
+MAX_ANCHO=240            # bytes por línea
+MAX_ENTRADA=12           # líneas de la última entrada de la bitácora
+MAX_ENCABEZADO_PLAN=16   # líneas del encabezado del plan
+MAX_DECISIONES=5         # últimas decisiones
+
+# Recorta cada línea a MAX_ANCHO bytes; iconv descarta el carácter que haya quedado partido.
+cortar() {
+  if command -v iconv >/dev/null 2>&1; then
+    cut -b1-"$MAX_ANCHO" | iconv -c -f UTF-8 -t UTF-8 2>/dev/null
+  else
+    cut -b1-"$MAX_ANCHO"
+  fi
+}
 
 raiz="${CLAUDE_PROJECT_DIR:-.}"
 if command -v cygpath >/dev/null 2>&1; then
@@ -13,10 +31,15 @@ fi
 bitacora="$raiz/docs/bitacora.md"
 decisiones="$raiz/docs/decisiones.md"
 
-# 1. Primeras 40 líneas de la bitácora.
+# 1. Bitácora: todo lo anterior a "## Entradas" (el estado actual) y la entrada más reciente.
 if [ -f "$bitacora" ]; then
-  echo "=== docs/bitacora.md (primeras 40 líneas) ==="
-  head -n 40 "$bitacora" 2>/dev/null | tr -d '\r'
+  echo "=== docs/bitacora.md (estado actual y última entrada) ==="
+  tr -d '\r' < "$bitacora" 2>/dev/null | awk -v max="$MAX_ENTRADA" '
+    /^## Entradas/ { entradas = 1; print; next }
+    !entradas { if (++estado <= 40) print; next }
+    /^### / { if (++vistas > 1) exit }
+    vistas == 1 { if (++n <= max) print; else if (n == max + 1) print "(… la entrada sigue en docs/bitacora.md)" }
+  ' | cortar
   echo
 fi
 
@@ -83,7 +106,11 @@ if [ -f "$bitacora" ] || [ -n "$plan_rama" ]; then
   fi
   if [ "$plan_valido" -eq 1 ] && [ -f "$raiz/$plan" ]; then
     echo "=== Plan activo ($origen): $plan (encabezado, sin subtareas) ==="
-    tr -d '\r' < "$raiz/$plan" 2>/dev/null | awk '/^### T/ { exit } { print }'
+    tr -d '\r' < "$raiz/$plan" 2>/dev/null | awk -v max="$MAX_ENCABEZADO_PLAN" '
+      /^### T/ { exit }
+      { if (++n <= max) print; else resto++ }
+      END { if (resto) print "(… " resto " líneas más del encabezado en el plan)" }
+    ' | cortar
     echo
     echo "=== Plan activo ($origen): $plan (estado de subtareas) ==="
     tr -d '\r' < "$raiz/$plan" 2>/dev/null | awk '
@@ -96,14 +123,15 @@ if [ -f "$bitacora" ] || [ -n "$plan_rama" ]; then
   fi
 fi
 
-# 3. Últimas 10 líneas de las decisiones.
+# 3. Últimas decisiones.
 if [ -f "$decisiones" ]; then
-  echo "=== docs/decisiones.md (últimas 10 líneas) ==="
-  tail -n 10 "$decisiones" 2>/dev/null | tr -d '\r'
+  echo "=== docs/decisiones.md (últimas $MAX_DECISIONES líneas) ==="
+  tail -n "$MAX_DECISIONES" "$decisiones" 2>/dev/null | tr -d '\r' | cortar
   echo
 fi
 
-# 4. Pendientes abiertos de todos los planes (py -3, si no python3). Sin Python, avisa y sigue.
+# 4. Resumen de pendientes abiertos de todos los planes: recuento y solo bloqueantes e
+#    importantes (py -3, si no python3). Sin Python, avisa y sigue.
 echo "=== Pendientes abiertos (pendientes.py) ==="
 raiz_py="$raiz"
 if command -v cygpath >/dev/null 2>&1; then
@@ -112,9 +140,9 @@ if command -v cygpath >/dev/null 2>&1; then
 fi
 guion="$(dirname "$0")/pendientes.py"
 if command -v py >/dev/null 2>&1 && py -3 -c "" >/dev/null 2>&1; then
-  py -3 "$guion" --raiz "$raiz_py" 2>/dev/null | tr -d '\r'
+  py -3 "$guion" --raiz "$raiz_py" --resumen 2>/dev/null | tr -d '\r'
 elif command -v python3 >/dev/null 2>&1; then
-  python3 "$guion" --raiz "$raiz_py" 2>/dev/null | tr -d '\r'
+  python3 "$guion" --raiz "$raiz_py" --resumen 2>/dev/null | tr -d '\r'
 else
   echo "(Python no disponible: no se pudieron listar los pendientes)"
 fi

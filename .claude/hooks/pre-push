@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# Hook pre-push de Detach: rechaza los push a un remoto que no es `origin`, los que escriben
+# directo en main o master y los forzados (los que reescriben historia remota). Mira el remoto
+# y la rama de destino reales que git le pasa, no el texto del comando, así que una rama como
+# fix/main-x pasa. A main se entra por PR y el merge lo hace el usuario en GitHub.
+# La copia versionada vive en .claude/hooks/pre-push; se instala copiándola a .git/hooks/
+# (los worktrees comparten esa carpeta). Para saltearlo a mano: git push --no-verify.
+set -u
+remoto="${1:-}"
+if [ "$remoto" != "origin" ]; then
+  echo "pre-push: bloqueado: push al remoto '$remoto'. Solo se sube a 'origin'." >&2
+  exit 1
+fi
+solo_ceros='^0+$'
+while read -r local_ref local_sha remote_ref remote_sha; do
+  rama="${remote_ref#refs/heads/}"
+  case "$rama" in
+    main|master)
+      echo "pre-push: bloqueado: push directo a '$rama'. Los cambios a $rama entran por PR." >&2
+      exit 1 ;;
+  esac
+  # Borrar una rama remota (local_sha en ceros) que no es main/master está permitido.
+  [[ "$local_sha" =~ $solo_ceros ]] && continue
+  # Rama nueva en el remoto: no hay nada que reescribir.
+  [[ "$remote_sha" =~ $solo_ceros ]] && continue
+  # Forzado: lo que hay en el remoto no es ancestro de lo que se empuja.
+  if ! git cat-file -e "$remote_sha^{commit}" 2>/dev/null; then
+    echo "pre-push: bloqueado: no tengo el commit remoto de '$rama' para comprobar que no es un push forzado. Corre git fetch y vuelve a intentarlo." >&2
+    exit 1
+  fi
+  if ! git merge-base --is-ancestor "$remote_sha" "$local_sha"; then
+    echo "pre-push: bloqueado: push forzado sobre '$rama' (reescribe historia remota)." >&2
+    exit 1
+  fi
+done
+exit 0

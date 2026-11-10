@@ -252,6 +252,90 @@ class TestVerificarPlan(ProyectoTemporal):
         self.assertEqual(correr_hook(self.raiz).returncode, 0)
 
 
+def correr_con_argumento(raiz, argumento, session_id=None, con_stdin=True):
+    """Ejecuta `verificar_plan.py <argumento>` (`--aviso` o `--ahora`) sobre el proyecto temporal."""
+    entrada = json.dumps({"session_id": session_id or uuid.uuid4().hex, "stop_hook_active": False})
+    entorno = dict(os.environ, CLAUDE_PROJECT_DIR=str(raiz))
+    entorno.pop("VERIFICAR_PLAN_TIMEOUT", None)
+    return subprocess.run(
+        [sys.executable, str(SCRIPT), argumento],
+        input=entrada.encode("utf-8") if con_stdin else b"",
+        env=entorno,
+        capture_output=True,
+        timeout=120,
+    )
+
+
+class TestAvisoYAhora(ProyectoTemporal):
+    """El hook Stop corre con `--aviso` (no ejecuta criterios); `--ahora` los ejecuta a pedido."""
+
+    def test_aviso_no_ejecuta_criterios_y_sale_con_uno(self):
+        self.agregar_criterio_t1(CRITERIO_MARCADOR)
+        proceso = correr_con_argumento(self.raiz, "--aviso")
+        error = texto(proceso.stderr)
+        self.assertEqual(proceso.returncode, 1, error)
+        self.assertIn("sin verificar en este estado", error)
+        self.assertIn("verificar_plan.py --ahora", error)
+        self.assert_sin_marcador()
+        self.assertFalse((self.raiz / ".claude" / ".ultimo-verificado").exists())
+
+    def test_aviso_en_modo_bloqueo_sale_con_dos(self):
+        self.fijar_modo("bloqueo")
+        git(self.raiz, "add", "-A")
+        git(self.raiz, "commit", "-q", "-m", "modo")
+        self.assertEqual(correr_con_argumento(self.raiz, "--aviso").returncode, 2)
+
+    def test_aviso_no_se_repite_en_la_misma_sesion_y_mismo_estado(self):
+        sesion = uuid.uuid4().hex
+        self.assertEqual(correr_con_argumento(self.raiz, "--aviso", sesion).returncode, 1)
+        segunda = correr_con_argumento(self.raiz, "--aviso", sesion)
+        self.assertEqual(segunda.returncode, 0)
+        self.assertEqual(segunda.stderr, b"")
+        # Un cambio sin commitear (trabajo en curso) tampoco repite el aviso.
+        (self.raiz / "en-curso.txt").write_text("x", encoding="utf-8")
+        self.assertEqual(correr_con_argumento(self.raiz, "--aviso", sesion).returncode, 0)
+        # Un commit nuevo sí: cambió el HEAD.
+        git(self.raiz, "add", "en-curso.txt")
+        git(self.raiz, "commit", "-q", "-m", "T1: algo")
+        self.assertEqual(correr_con_argumento(self.raiz, "--aviso", sesion).returncode, 1)
+
+    def test_aviso_calla_si_el_estado_ya_se_verifico(self):
+        ahora = correr_con_argumento(self.raiz, "--ahora", con_stdin=False)
+        self.assertEqual(ahora.returncode, 0, texto(ahora.stderr))
+        self.assertIn("sin fallas", texto(ahora.stdout))
+        proceso = correr_con_argumento(self.raiz, "--aviso")
+        self.assertEqual(proceso.returncode, 0, texto(proceso.stderr))
+        self.assertEqual(proceso.stderr, b"")
+
+    def test_aviso_reemite_el_informe_guardado_si_la_ultima_corrida_fallo(self):
+        self.agregar_criterio_t1("  - `[cmd]` `false`")
+        ahora = correr_con_argumento(self.raiz, "--ahora", con_stdin=False)
+        self.assertEqual(ahora.returncode, 1)
+        self.assertIn("FALLA", texto(ahora.stdout))
+        proceso = correr_con_argumento(self.raiz, "--aviso")
+        error = texto(proceso.stderr)
+        self.assertEqual(proceso.returncode, 1, error)
+        self.assertIn("(caché)", error)
+        self.assertIn("T1 [cmd] `false` → FALLA (exit 1)", error)
+
+    def test_ahora_ejecuta_los_criterios_sin_leer_stdin(self):
+        self.agregar_criterio_t1(CRITERIO_MARCADOR)
+        proceso = correr_con_argumento(self.raiz, "--ahora", con_stdin=False)
+        self.assertEqual(proceso.returncode, 0, texto(proceso.stderr))
+        self.assertTrue((self.raiz / "marcador-ejecutado").exists())
+
+    def test_aviso_sin_plan_o_con_stop_hook_active_sale_con_cero(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertEqual(correr_con_argumento(tmp, "--aviso").returncode, 0)
+        entrada = json.dumps({"session_id": "x", "stop_hook_active": True}).encode("utf-8")
+        proceso = subprocess.run(
+            [sys.executable, str(SCRIPT), "--aviso"], input=entrada, capture_output=True, timeout=120,
+            env=dict(os.environ, CLAUDE_PROJECT_DIR=str(self.raiz)),
+        )
+        self.assertEqual(proceso.returncode, 0)
+        self.assertEqual(proceso.stderr, b"")
+
+
 def borrar_arbol(ruta):
     """Borra un directorio aunque tenga archivos de solo lectura (objetos de git en Windows)."""
     def reintentar(funcion, camino, _error):
