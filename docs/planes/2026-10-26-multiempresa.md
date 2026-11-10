@@ -480,7 +480,7 @@ commit_base: 0927fcd
 | T6 | hecha (c83ac65; integrada en f6a201f, 874 tests OK) |
 | T7 | hecha (1f3f835; integrada en 53b7594, 897 tests OK) |
 | T8 | hecha (9815485; integrada en c1bf26f, 886 tests OK) |
-| T9 | en curso |
+| T9 | verificada (e3cd431; 12/12 x2), integrándose |
 | T10 | pendiente |
 | T11 | pendiente |
 | T12 | pendiente |
@@ -501,6 +501,7 @@ commit_base: 0927fcd
 | 2026-11-10 12:00 | T4 (corrección cd8d3c0) | cd8d3c0 | criterios 14/14 PASA (verificador y verificador-b); veredicto global FALLA solo por CONTRATO MODIFICADO (e4ada1f) | auditor-seguridad: P-multiempresa-35 cerrado; 0 bloqueantes, 1 importante nuevo (P-multiempresa-36), 1 menor (-37); presupuesto 480/700 |
 | 2026-11-10 12:40 | T4 (corrección 1089be6) | 1089be6 | criterios 14/14 PASA (verificador y verificador-b); veredicto global FALLA solo por CONTRATO MODIFICADO (e4ada1f) | auditor-seguridad: P-multiempresa-36 cerrado y -35 sigue cerrado; 0 bloqueantes, 1 observación (P-multiempresa-38); presupuesto 509/700 |
 | 2026-11-10 13:30 | T7, T8 | 1f3f835, 9815485 | criterios 29/29 PASA (verificador y verificador-b); veredicto global FALLA solo por CONTRATO MODIFICADO (e4ada1f) | auditor-seguridad: 0 bloqueantes, 0 importantes, 2 menores y 4 observaciones (P-multiempresa-39 a 44); las 21 pruebas de criterio fallan con el código de b35ac40; integración de prueba T8→T7: 897 tests OK; orden de bloqueo sin cambios; presupuestos 491/900 y 691/1000 |
+| 2026-11-10 13:45 | T9 | e3cd431 | criterios 12/12 PASA (verificador y verificador-b); veredicto global FALLA solo por CONTRATO MODIFICADO (e4ada1f) | auditor-seguridad: 0 bloqueantes, 0 importantes, 3 menores y 4 observaciones (P-multiempresa-45 a 50); las 9 pruebas de criterio fallan con a83969a; suite 907 OK; presupuesto 370/1000 |
 | | T4–T9 | | | |
 | | T10 | | | |
 | | T11 | | | |
@@ -568,6 +569,12 @@ commit_base: 0927fcd
 - P-multiempresa-42 [observación] `cerrar_visitas_abiertas` (`apps/visitas/management/commands/cerrar_visitas_abiertas.py:35-43`) corta la corrida entera si una visita tiene `empresa_id` nulo (`ConsultaSinEmpresa` no capturada); posible solo antes de T14. Origen: auditor-seguridad sobre T7 y T8.
 - P-multiempresa-43 [observación] Varios filtros nuevos usan la empresa del propio objeto y no la del pedido (`apps/sitios/services.py:77,134`; `apps/visitas/services.py:261,284,303,476,525,787-791,1037`): satisfacen a la guardia pero dependen de que quien llama ya acote; hoy todos lo hacen. Para la documentación de T11/T12. Origen: auditor-seguridad sobre T7 y T8.
 - P-multiempresa-44 [observación] `apps/sitios/tests/test_publico.py` lo modificó T7 (su criterio `PublicoSinEmpresaTests` vive ahí) aunque la decisión de propiedad lo pasa a T10: T10 parte del cambio de T7, como ya prevé su paso 2. Origen: auditor-seguridad sobre T7 y T8.
+- P-multiempresa-45 [menor] Ningún test protege que `cargar_demo` no borre datos marcados `[demo]` o del formato viejo de otra empresa (`apps/panel/demo.py:55-127`; `test_conserva_datos_que_no_son_demo` usa solo datos sin marca, que también sobreviven con a83969a). Corrección: test con `Cliente`/`Sitio` marcado y un "Cliente Demo 1" en otra empresa. Para T11. Origen: auditor-seguridad sobre T9.
+- P-multiempresa-46 [menor] `cargar_demo` reasigna a la empresa demo un `demo-*` sin empresa aunque tenga otra contraseña, y a la vez avisa por stderr "no se modificó" (`apps/panel/management/commands/cargar_demo.py:124-133`). Solo desarrollo con SQLite. Corrección: reasignar solo si `check_password(CLAVE_DEMO)` o corregir el aviso. Sin dueño en el plan (T9 integrada). Origen: auditor-seguridad sobre T9.
+- P-multiempresa-47 [menor] `registrar_revision_demo` (`apps/visitas/management/commands/registrar_revision_demo.py:76-93`) deja de funcionar con la demo de dos empresas ("Hay 4 puntos activos llamados …") y `_empleado` toma el primer empleado de cualquier empresa; lanza con la guardia en `exigir`. Para T11 (`--empresa` o acotar punto y empleado a una empresa). Origen: implementador de T9 y auditor-seguridad.
+- P-multiempresa-48 [observación] Un login correcto con la empresa inactiva cuenta como intento fallido para el límite (sexto intento → 429; `apps/api/views.py:117-119`, `apps/accounts/limites.py:120-122`), coherente con el criterio previo de "sin acceso". Origen: auditor-seguridad sobre T9.
+- P-multiempresa-49 [observación] `cargar_demo` identifica la empresa demo solo por el nombre (`cargar_demo.py:104-107`): una empresa creada a mano como "Empresa demo" se trata como demo. Solo desarrollo. Origen: auditor-seguridad sobre T9.
+- P-multiempresa-50 [observación] Un `plataforma` obtiene JWT pero solo alcanza `RaizView` (`EsEmpleado`/`EsAdministrador` lo rechazan); un empleado sin empresa obtiene token y luego las vistas dan 500 (P-multiempresa-41); lo cierra T14. Origen: auditor-seguridad sobre T9.
 - Orden de integración de la ola 3: T5 y T6 por sí solas dan 500 a un administrador sin empresa; recién `AdministradorRequeridoMixin` de T4 cierra la sesión antes. Integrar T4 antes que T5 y T6 (orden del plan). Origen: auditor-seguridad sobre la ola 3.
 
 ### Decisiones
