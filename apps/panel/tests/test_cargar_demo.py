@@ -18,7 +18,7 @@ from apps.clientes.models import Cliente
 from apps.empresas.models import Empresa
 from apps.empresas.tests.ayudas import una_empresa
 from apps.panel.demo import _es_sqlite
-from apps.panel.demo_datos import CLIENTES, EMPRESA_DEMO, MARCA_DEMO
+from apps.panel.demo_datos import CLIENTES, EMPRESA_DEMO, EMPRESA_DEMO_B, MARCA_DEMO
 from apps.productos.models import MovimientoStock, Producto
 from apps.productos.services import stock
 from apps.productos.unidades import magnitud_de, unidades_permitidas
@@ -137,7 +137,7 @@ class CargarDemoTests(TestCase):
         self.assertEqual(previo.rol, User.Rol.EMPLEADO)
         self.assertTrue(previo.check_password("otra-clave"))
         self.assertIn("demo-admin", errores.getvalue())
-        self.assertNotIn("demo-admin", salida.getvalue())
+        self.assertNotIn("Usuario creado: demo-admin,", salida.getvalue())
         self.assertIn("demo-empleado", salida.getvalue())
 
 
@@ -159,20 +159,28 @@ class CargarDemoClienteTests(TestCase):
         )
         return {modelo.__name__: modelo.objects.count() for modelo in modelos}
 
+    @classmethod
+    def _demo(cls):
+        return Empresa.objects.get(nombre=EMPRESA_DEMO)
+
     def test_crea_los_conteos_esperados(self):
-        self.assertEqual(Cliente.objects.count(), 4)
-        self.assertEqual(Sitio.objects.count(), 6)
-        self.assertTrue(20 <= PuntoControl.objects.count() <= 30)
-        plano = Plano.objects.get()
+        demo = self._demo()
+        self.assertEqual(Cliente.objects.de_empresa(demo).count(), 4)
+        self.assertEqual(Sitio.objects.de_empresa(demo).count(), 6)
+        self.assertTrue(20 <= PuntoControl.objects.de_empresa(demo).count() <= 30)
+        plano = Plano.objects.de_empresa(demo).get()
         ubicados = plano.puntos.exclude(x=None).exclude(y=None)
         self.assertGreaterEqual(ubicados.count(), 4)
         self.assertGreater(plano.ancho_px, 0)
         self.assertTrue(ProductoAplicado.objects.exists())
-        incidencias = Revision.objects.filter(incidencia_ubicacion=True)
+        incidencias = Revision.objects.de_empresa(demo).filter(
+            incidencia_ubicacion=True
+        )
         self.assertTrue(2 <= incidencias.count() <= 3)
         self.assertTrue(Visita.objects.filter(incidencia_ubicacion=True).exists())
-        for rol in User.Rol.values:
-            self.assertEqual(User.objects.filter(rol=rol).count(), 1)
+        for rol in (User.Rol.ADMINISTRADOR, User.Rol.EMPLEADO):
+            self.assertEqual(User.objects.filter(empresa=demo, rol=rol).count(), 1)
+        self.assertEqual(User.objects.filter(rol=User.Rol.PLATAFORMA).count(), 1)
         for revision in Revision.objects.all():
             self.assertGreaterEqual(revision.fotos.count(), 1)
         for sitio in Sitio.objects.all():
@@ -234,7 +242,8 @@ class CargarDemoClienteTests(TestCase):
             restantes = _archivos(media)
             self.assertEqual(len(restantes), len(archivos))
             self.assertFalse(set(restantes) & set(archivos))
-        self.assertEqual(Sitio.history.filter(nombre="Planta Castelli").count(), 1)
+        # Una fila por empresa demo.
+        self.assertEqual(Sitio.history.filter(nombre="Planta Castelli").count(), 2)
 
     def test_conserva_datos_que_no_son_demo(self):
         cliente = Cliente.objects.create(
@@ -255,7 +264,7 @@ class CargarDemoClienteTests(TestCase):
             sitio=sitio, empleado=empleado, origen=Visita.Origen.APP
         )
         # Un sitio sin marca colgado de un cliente demo tampoco se toca.
-        demo = Cliente.objects.get(razon_social="Nutrisur")
+        demo = Cliente.objects.de_empresa(self._demo()).get(razon_social="Nutrisur")
         cuelga = Sitio.objects.create(cliente=demo, nombre="Sitio mío")
         self._cargar()
         self._cargar()
@@ -267,13 +276,13 @@ class CargarDemoClienteTests(TestCase):
 
     def test_limpia_el_formato_viejo(self):
         viejo = Cliente.objects.create(
-            razon_social="Cliente Demo 1", empresa=una_empresa()
+            razon_social="Cliente Demo 1", empresa=self._demo()
         )
         sitio = Sitio.objects.create(cliente=viejo, nombre="Planta Demo Norte")
         tipo = TipoServicio.objects.create(
             nombre="Control de plagas (demo)",
             slug="demo-control-de-plagas",
-            empresa=una_empresa(),
+            empresa=self._demo(),
         )
         empleado = User.objects.get(username="demo-empleado")
         Visita.objects.create(sitio=sitio, empleado=empleado, origen=Visita.Origen.APP)
@@ -284,7 +293,7 @@ class CargarDemoClienteTests(TestCase):
         self.assertFalse(Sitio.objects.filter(nombre="Planta Demo Norte").exists())
         self.assertFalse(TipoServicio.objects.filter(slug=tipo.slug).exists())
         self.assertFalse(Sitio.history.filter(nombre="Planta Demo Norte").exists())
-        self.assertEqual(Cliente.objects.count(), 4)
+        self.assertEqual(Cliente.objects.de_empresa(self._demo()).count(), 4)
 
 
 @override_settings(MEDIA_ROOT=MEDIA_DEMO, DEBUG=True)
@@ -338,7 +347,7 @@ class CargarDemoStockTests(TestCase):
         despues = set(MovimientoStock.objects.values_list("pk", flat=True))
         self.assertEqual(len(despues), len(antes))
         self.assertFalse(antes & despues)
-        self.assertEqual(Producto.objects.count(), 3)
+        self.assertEqual(Producto.objects.count(), 6)
 
 
 @override_settings(MEDIA_ROOT=MEDIA_DEMO, DEBUG=True)
@@ -356,7 +365,8 @@ class CargarDemoTurnosTests(TestCase):
         )
         for visita in Visita.objects.all():
             self.assertTrue(visita.items.exists(), visita)
-        pendiente = Visita.objects.get(estado=Visita.Estado.PENDIENTE)
+        demo = Empresa.objects.get(nombre=EMPRESA_DEMO)
+        pendiente = Visita.objects.de_empresa(demo).get(estado=Visita.Estado.PENDIENTE)
         self.assertGreater(pendiente.programada_para, timezone.localdate())
         self.assertEqual(pendiente.asignada_por.username, "demo-admin")
         self.assertEqual(pendiente.items.count(), pendiente.sitio.puntos.count())
@@ -370,3 +380,60 @@ class CargarDemoTurnosTests(TestCase):
         self.assertGreaterEqual(len({p.frecuencia_dias for p in puntos}), 3)
         for item in ItemTurno.objects.select_related("punto"):
             self.assertEqual(item.servicio_id, item.punto.servicio_id)
+
+
+@override_settings(MEDIA_ROOT=MEDIA_DEMO, DEBUG=True)
+class DosEmpresasDemoTests(TestCase):
+    """La demo crea dos empresas con datos y usuarios propios."""
+
+    @classmethod
+    def setUpTestData(cls):
+        call_command("cargar_demo", stdout=StringIO())
+        cls.empresa_a = Empresa.objects.get(nombre=EMPRESA_DEMO)
+        cls.empresa_b = Empresa.objects.get(nombre=EMPRESA_DEMO_B)
+
+    def test_crea_dos_empresas_con_datos_separados(self):
+        self.assertEqual(Empresa.objects.count(), 2)
+        for empresa in (self.empresa_a, self.empresa_b):
+            self.assertEqual(Cliente.objects.de_empresa(empresa).count(), 4)
+            self.assertEqual(Sitio.objects.de_empresa(empresa).count(), 6)
+            self.assertEqual(Producto.objects.de_empresa(empresa).count(), 3)
+            self.assertEqual(TipoServicio.objects.de_empresa(empresa).count(), 2)
+            self.assertEqual(Plano.objects.de_empresa(empresa).count(), 1)
+            visitas = Visita.objects.de_empresa(empresa).select_related(
+                "sitio", "empleado", "asignada_por"
+            )
+            self.assertTrue(visitas.exists())
+            for visita in visitas:
+                self.assertEqual(visita.sitio.empresa_id, empresa.pk)
+                self.assertEqual(visita.empleado.empresa_id, empresa.pk)
+        # Una nueva corrida limpia cada empresa sin tocar la otra.
+        antes = Visita.objects.de_empresa(self.empresa_b).count()
+        with self.captureOnCommitCallbacks(execute=True):
+            call_command("cargar_demo", stdout=StringIO())
+        despues = Empresa.objects.get(nombre=EMPRESA_DEMO_B)
+        self.assertEqual(Visita.objects.de_empresa(despues).count(), antes)
+        self.assertEqual(Sitio.objects.de_empresa(despues).count(), 6)
+
+    def test_crea_los_usuarios_de_cada_empresa_y_el_de_plataforma(self):
+        esperados = {
+            "demo-admin": (User.Rol.ADMINISTRADOR, self.empresa_a),
+            "demo-empleado": (User.Rol.EMPLEADO, self.empresa_a),
+            "demo-admin-b": (User.Rol.ADMINISTRADOR, self.empresa_b),
+            "demo-empleado-b": (User.Rol.EMPLEADO, self.empresa_b),
+        }
+        for nombre, (rol, empresa) in esperados.items():
+            usuario = User.objects.get(username=nombre)
+            self.assertEqual((usuario.rol, usuario.empresa_id), (rol, empresa.pk))
+            self.assertTrue(usuario.check_password("demo1234"))
+        plataforma = User.objects.get(username="demo-plataforma")
+        self.assertTrue(plataforma.es_plataforma and plataforma.is_superuser)
+        self.assertIsNone(plataforma.empresa_id)
+
+    def test_empresas_repetidas_y_admin_sin_empresa(self):
+        Empresa.objects.create(nombre=EMPRESA_DEMO)
+        User.objects.filter(username="demo-admin").update(empresa=None)
+        call_command("cargar_demo", stdout=StringIO())
+        admin = User.objects.get(username="demo-admin")
+        # Se usa la empresa demo más antigua y el administrador vuelve a ella.
+        self.assertEqual(admin.empresa_id, self.empresa_a.pk)
