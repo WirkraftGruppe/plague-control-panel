@@ -475,7 +475,7 @@ commit_base: 0927fcd
 | T1 | hecha |
 | T2 | hecha (8332abb; integrada en 8aa5856) |
 | T3 | hecha (T1 en b9c7118, T2 en 8aa5856 con 836 tests OK; `migrate` + `cargar_demo` OK; worktrees de T4, T5 y T6 creados desde 8aa5856) |
-| T4 | verificada tras la corrección cd8d3c0 (14/14 x2); P-multiempresa-36 a decidir; sin integrar |
+| T4 | en corrección (P-multiempresa-36), sin integrar |
 | T5 | verificada (e9d615a; 14/14 x2), sin integrar |
 | T6 | verificada (c83ac65; 12/12 x2), sin integrar |
 | T7 | pendiente |
@@ -563,6 +563,7 @@ commit_base: 0927fcd
 
 ### Decisiones
 
+- 2026-11-10 — P-multiempresa-36 se corrige en T4 antes de integrar la ola 3, en otro ciclo corto con commits `T4:` dentro del presupuesto (700): con `empresa` de solo lectura, el error de la regla rol ⇔ empresa va al campo `rol`, con un test que falla antes del cambio — decisión del usuario — reemplaza a: (nada)
 - 2026-11-10 — P-multiempresa-35 (y la parte de admin de -26) se corrige en T4 antes de integrar la ola 3, en un ciclo con commits `T4:` dentro del presupuesto (700): en `CuentaAdmin` la empresa de un usuario que ya la tiene es de solo lectura al editar (la inmutabilidad de la empresa alcanza también a `User` en el admin), con test; asignar empresa a un usuario que no la tiene sigue permitido — decisión del usuario — reemplaza a: (nada)
 - 2026-11-10 — P-multiempresa-15, -17 y la parte de modelo de -16 se corrigen en T2 antes de integrar, en un solo ciclo de corrección con commits `T2:` dentro del presupuesto (2200): `clean()` usa la empresa efectiva (la propia o la del padre) y compara también con el padre, con test de hijo nuevo sin empresa que da error de validación y no 500; `movimiento` entra en `ProductoAplicado.referencias_de_empresa`, con test — decisión del usuario — reemplaza a: (nada)
 - 2026-11-10 — La empresa de un registro es inmutable después del alta: un registro cargado en la empresa equivocada se da de baja y se carga de nuevo. Inmutable en el modelo, con test, en la corrección de T2; el campo `readonly` al editar en el admin de las raíces lo hace T6 — decisión de producto del usuario — reemplaza a: (nada)
