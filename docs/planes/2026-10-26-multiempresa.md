@@ -481,8 +481,8 @@ commit_base: 0927fcd
 | T7 | hecha (1f3f835; integrada en 53b7594, 897 tests OK) |
 | T8 | hecha (9815485; integrada en c1bf26f, 886 tests OK) |
 | T9 | hecha (e3cd431; integrada en 9390eb5, 907 tests OK) |
-| T10 | paso 1 hecho (T4–T9 integradas, 9390eb5); paso 2 (ajuste de `config`) en curso en worktree multiempresa-T10 |
-| T11 | pendiente |
+| T10 | hecha (T4–T9 integradas; ajuste de `config` 724f926 integrado en abdf150, 905 tests OK; worktree de T11 creado) |
+| T11 | worktree creado, sin lanzar |
 | T12 | pendiente |
 | T13 | pendiente |
 | T14 | pendiente |

@@ -7,7 +7,7 @@ Planes activos (los hooks derivan el plan de la rama; la línea `Plan activo:` d
 
 | plan | rama | ola actual | pendiente inmediato | sesión |
 |---|---|---|---|---|
-| `multiempresa` | plan/multiempresa | 3 (T1–T9 hechas e integradas, 9390eb5) | T10 paso 2 (ajuste de `config`) en curso; después crear T11 | sesión 2026-11-10 |
+| `multiempresa` | plan/multiempresa | 4 (olas 1 a 3 cerradas: T1–T10 hechas, abdf150) | lanzar T11 (guardia siempre activa); después T14, T12 y T13 | sesión 2026-11-10 |
 
 Siguiente (orden decidido el 2026-10-20; reconfirmado el 2026-10-21): `multiempresa` → despliegue. El despliegue en Railway espera a que esos planes estén en `main`, para no tener que migrar datos reales. Problemas abiertos: ver `pendientes.py`. Decisiones y cuándo preguntar: `docs/protocolo-decisiones.md` (CLAUDE.md § Reglas globales, regla 1).
 
