@@ -35,7 +35,7 @@ class LogoTests(TestCase):
             procesar_logo(archivo)
 
     def test_guarda_png_sin_exif_con_nombre_aleatorio(self):
-        archivo = SimpleUploadedFile("logo.png", _png(exif=True))
+        archivo = SimpleUploadedFile("logo.png", _png((1600, 900), exif=True))
         with override_settings(MEDIA_ROOT=self._media()):
             empresa = crear_empresa()
             empresa.logo = procesar_logo(archivo)
@@ -44,7 +44,7 @@ class LogoTests(TestCase):
             self.assertRegex(empresa.logo.name, r"^empresas/logos/[0-9a-f]{32}\.png$")
             with Image.open(empresa.logo.path) as guardado:
                 self.assertEqual(guardado.format, "PNG")
-                self.assertEqual(max(guardado.size), 512)
+                self.assertEqual(max(guardado.size), 1000)
                 self.assertEqual(guardado.mode, "RGBA")
                 self.assertEqual(len(guardado.getexif()), 0)
                 self.assertNotIn("exif", guardado.info)
@@ -54,6 +54,20 @@ class LogoTests(TestCase):
         with Image.open(BytesIO(resultado.read())) as imagen:
             self.assertEqual(imagen.size, (40, 30))
         self.assertIsNotNone(re.match(r"^logo\.png$", resultado.name))
+
+    def test_guarda_hasta_1000_px_de_lado_mayor(self):
+        grande = procesar_logo(SimpleUploadedFile("l.png", _png((2000, 1000))))
+        with Image.open(BytesIO(grande.read())) as imagen:
+            self.assertEqual(imagen.size, (1000, 500))
+        justo = procesar_logo(SimpleUploadedFile("l.png", _png((1000, 400))))
+        with Image.open(BytesIO(justo.read())) as imagen:
+            self.assertEqual(imagen.size, (1000, 400))
+
+    def test_rechaza_mas_de_16_mp(self):
+        # 4001 x 4001 = 16,008,001 px, comprimido pesa muy poco.
+        archivo = SimpleUploadedFile("l.png", _png((4001, 4001)))
+        with self.assertRaises(ValidationError):
+            procesar_logo(archivo)
 
     def _media(self):
         import tempfile
