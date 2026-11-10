@@ -475,9 +475,9 @@ commit_base: 0927fcd
 | T1 | hecha |
 | T2 | hecha (8332abb; integrada en 8aa5856) |
 | T3 | hecha (T1 en b9c7118, T2 en 8aa5856 con 836 tests OK; `migrate` + `cargar_demo` OK; worktrees de T4, T5 y T6 creados desde 8aa5856) |
-| T4 | worktree creado, sin lanzar |
-| T5 | worktree creado, sin lanzar |
-| T6 | worktree creado, sin lanzar |
+| T4 | verificada (dedc3ca; 14/14 x2), sin integrar |
+| T5 | verificada (e9d615a; 14/14 x2), sin integrar |
+| T6 | verificada (c83ac65; 12/12 x2), sin integrar |
 | T7 | pendiente |
 | T8 | pendiente |
 | T9 | pendiente |
@@ -497,6 +497,7 @@ commit_base: 0927fcd
 | 2026-10-26 21:00 | T2 | 4f98237 | criterios 15/15 PASA (verificador y verificador-b); veredicto global FALLA solo por CONTRATO MODIFICADO (e4ada1f, aprobado por el usuario) | auditor-seguridad: 0 bloqueantes, 2 importantes (P-multiempresa-15, -16), 1 menor (-17); presupuesto 1361/2200 |
 | 2026-11-10 09:45 | T2 (corrección 8332abb) | 8332abb | criterios 15/15 PASA (verificador y verificador-b, suite 836 OK); veredicto global FALLA solo por CONTRATO MODIFICADO (e4ada1f) | auditor-seguridad: P-multiempresa-15, -16 (modelo) y -17 cerrados; 0 bloqueantes, 0 importantes, 3 menores y 5 observaciones (P-multiempresa-20 a 27); el cuerpo del test criterio `test_referencias_de_otra_empresa_no_validan` cambió en su última línea (llamada sin aserción que afirmaba el defecto P-15), confirmado por los dos verificadores y el auditor como no debilitado; presupuesto 1510/2200 |
 | 2026-11-10 10:10 | T3 | 8aa5856 | criterios 3/3 PASA (principal; los verifica el verificador al cierre de la ola 3) | `worktree-integrar.sh` de T2: 836 tests OK; `db.sqlite3` borrada y recreada con `migrate` + `cargar_demo` |
+| 2026-11-10 11:00 | T4, T5, T6 | dedc3ca, e9d615a, c83ac65 | criterios 40/40 PASA (verificador; verificador-b los enumera los 40 en PASA y suma 38); veredicto global FALLA solo por CONTRATO MODIFICADO (e4ada1f) | auditor-seguridad: 0 bloqueantes, 1 importante (P-multiempresa-35, confirma P-26), 2 menores y observaciones (P-multiempresa-28 a 34); integración de prueba T4→T5→T6 en el scratchpad del auditor: 870 tests OK; presupuestos 423/700, 335/600, 387/700 |
 | | T4–T9 | | | |
 | | T10 | | | |
 | | T11 | | | |
@@ -547,6 +548,15 @@ commit_base: 0927fcd
 - P-multiempresa-25 [observación] En un alta donde el padre se fija recién al guardar (inlines editables sobre un padre nuevo: `BaseInlineFormSet` valida con la FK sin padre), `clean()` no tiene empresa efectiva y no compara nada: un `PuntoControl(servicio=servicio_B)` validado sin sitio y guardado con `sitio_A` queda en A con servicio de B. Hoy no aplica (sin inlines editables con referencias ni `inlineformset` en el panel). Para T6/T7/T8: fijar `instance.empresa` antes de validar (regla de la ola 3) y no agregar inlines editables con referencias sin fijarla. Origen: auditor-seguridad sobre la corrección de T2.
 - P-multiempresa-26 [observación] `User.empresa` (`apps/accounts/models.py:30`) no es inmutable: pasar un empleado de A a B en el admin deja las visitas de A apuntando a un usuario de B. Para T4 (`CuentaAdmin`) o T14. Origen: auditor-seguridad sobre la corrección de T2.
 - P-multiempresa-27 [observación] Los tests de inmutabilidad cubren solo una raíz (`Cliente`): faltan un hijo y el camino de `update_fields` que agrega `empresa` (`apps/empresas/models.py:101-103`). Para T11 o T14. Origen: auditor-seguridad sobre la corrección de T2.
+- P-multiempresa-28 [menor] El admin de `TipoServicio` da 500 (`IntegrityError`) al editar con un slug repetido dentro de la misma empresa: `AdminRaizMixin` (`apps/clientes/empresa.py:50-52`, T6) deja `empresa` de solo lectura al editar y Django la excluye de la validación, así que `UniqueConstraint(empresa, slug)` no corre. Falla cerrado. Corrección: que el formulario de `AdminRaizMixin.get_form` saque `empresa` de `_get_validation_exclusions`, como `FormularioDeEmpresa`. Para T11. Origen: auditor-seguridad sobre la ola 3.
+- P-multiempresa-29 [menor] Una cuenta `plataforma` con empresa (hoy solo por código: `create_superuser(empresa=A)`, P-multiempresa-19) quedaría al alcance de un superusuario de esa empresa en el panel (`apps/accounts/panel_views.py:20-25` filtra solo por empresa; cambio de contraseña) y entraría a `/admin/` (`config/admin.py:25-31` no exige `empresa_id is None`). Lo cierra T14 (regla rol ⇔ empresa en el modelo); refuerzo opcional: excluir `plataforma` de `usuarios_de_empresa` y exigir `empresa_id is None` en `has_permission`. Origen: auditor-seguridad sobre la ola 3.
+- P-multiempresa-30 [observación] `EmpresaAdmin` (`apps/empresas/admin.py:27`) usa el `ImageField` por defecto y no llama a `procesar_logo`: `plataforma` puede subir cualquier formato que lea Pillow, con EXIF, que luego se sirve como `image/png`. Solo el operador. Sin dueño en el plan. Origen: auditor-seguridad sobre la ola 3.
+- P-multiempresa-31 [observación] Los helpers comunes de empresa (`FormularioDeEmpresa`, `VistaDeEmpresaMixin`, `AdminRaizMixin`, `AdminHijoMixin`) quedaron en `apps/clientes/empresa.py` porque T6 no podía tocar `apps/empresas/`; servicios, productos y luego T7 y T8 dependen de `clientes`. Moverlos a `apps/empresas/` en una subtarea transversal (T11). Origen: implementador de T6 y auditor-seguridad.
+- P-multiempresa-32 [observación] `CatalogoView` (`apps/productos/api_views.py:35`) da 500 (`ConsultaSinEmpresa` por `de_empresa(None)`) a un empleado sin empresa, posible hasta T14. Falla cerrado; lo elimina T14. Origen: auditor-seguridad sobre la ola 3.
+- P-multiempresa-33 [observación] La barra lateral pide `/panel/empresa/logo/` con `no-store` en cada página (se descarga siempre); rendimiento, no seguridad. Sin dueño. Origen: auditor-seguridad sobre la ola 3.
+- P-multiempresa-34 [menor] El docstring de `_AdministradorMixin` (`apps/sitios/admin.py:14`) sigue diciendo "rol administrador" (T4 solo podía tocar la compuerta): para T7. Y cuando un administrador pierde la sesión por empresa inactiva, el login no explica el motivo (observación, sin dueño). Origen: implementador de T4.
+- P-multiempresa-35 [importante] Confirma P-multiempresa-26 sobre T4: `CuentaAdmin` (`apps/accounts/admin.py:46-48`) deja cambiar la empresa de un usuario existente (sonda: 302 y el empleado de A queda en B); sus visitas de A quedan apuntando a un usuario de B, su `full_clean()` falla y el historial de A queda atribuido a otra empresa. Solo `plataforma`. Decisión del usuario pendiente: si la inmutabilidad del 2026-11-10 alcanza a `User`. Corrección propuesta: `get_readonly_fields` con `empresa` cuando `obj.empresa_id` ya está fijada. Origen: auditor-seguridad sobre la ola 3.
+- Orden de integración de la ola 3: T5 y T6 por sí solas dan 500 a un administrador sin empresa; recién `AdministradorRequeridoMixin` de T4 cierra la sesión antes. Integrar T4 antes que T5 y T6 (orden del plan). Origen: auditor-seguridad sobre la ola 3.
 
 ### Decisiones
 
