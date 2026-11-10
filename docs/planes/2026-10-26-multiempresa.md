@@ -480,7 +480,7 @@ commit_base: 0927fcd
 | T6 | hecha (c83ac65; integrada en f6a201f, 874 tests OK) |
 | T7 | hecha (1f3f835; integrada en 53b7594, 897 tests OK) |
 | T8 | hecha (9815485; integrada en c1bf26f, 886 tests OK) |
-| T9 | verificada (e3cd431; 12/12 x2), integrándose |
+| T9 | hecha (e3cd431; integrada en 9390eb5, 907 tests OK) |
 | T10 | pendiente |
 | T11 | pendiente |
 | T12 | pendiente |
