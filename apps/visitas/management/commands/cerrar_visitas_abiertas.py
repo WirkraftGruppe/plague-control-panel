@@ -9,6 +9,7 @@ from django.core.management.base import BaseCommand
 from django.db import OperationalError
 from django.utils import timezone
 
+from apps.empresas.consultas import sin_filtro_empresa
 from apps.visitas.models import Visita
 from apps.visitas.services import cerrar_visita
 
@@ -23,9 +24,13 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         limite = timezone.now() - timedelta(hours=settings.VISITA_ABIERTA_MAXIMO_HORAS)
-        abiertas = Visita.objects.filter(
-            estado=Visita.Estado.ABIERTA, abierta_en__lt=limite
-        ).order_by("abierta_en", "pk")
+        # Cron de plataforma: recorre las visitas de todas las empresas.
+        with sin_filtro_empresa():
+            abiertas = list(
+                Visita.objects.filter(
+                    estado=Visita.Estado.ABIERTA, abierta_en__lt=limite
+                ).order_by("abierta_en", "pk")
+            )
         cerradas = 0
         for visita in abiertas:
             try:

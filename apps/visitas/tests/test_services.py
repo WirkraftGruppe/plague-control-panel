@@ -1152,7 +1152,7 @@ class EsquemaTests(TestCase):
             clave="cebos",
             tipo=CampoPlanilla.Tipo.NUMERO,
         )
-        servicio = _servicio_con_campos(visita.tipo.pk)
+        servicio = _servicio_con_campos(visita.tipo.pk, visita.empresa_id)
         with self.assertNumQueries(0):
             esquema = servicio.esquema_planilla("punto")
             servicio.esquema_planilla("visita")
