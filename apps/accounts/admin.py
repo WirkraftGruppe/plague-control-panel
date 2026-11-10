@@ -12,7 +12,12 @@ class ReglaRolEmpresaMixin:
 
     def clean(self):
         datos = super().clean()
-        rol, empresa = datos.get("rol"), datos.get("empresa")
+        rol = datos.get("rol")
+        if "empresa" in self.fields:
+            empresa = datos.get("empresa")
+        else:
+            # Empresa de solo lectura: rige la de la instancia.
+            empresa = self.instance.empresa_id
         if rol == User.Rol.PLATAFORMA and empresa:
             self.add_error("empresa", "El rol plataforma no pertenece a una empresa.")
         elif rol and rol != User.Rol.PLATAFORMA and not empresa:
@@ -49,3 +54,10 @@ class CuentaAdmin(AdminTodosMixin, UserAdmin):
     add_fieldsets = UserAdmin.add_fieldsets + (
         ("", {"fields": ("rol", "empresa", "telefono")}),
     )
+
+    def get_readonly_fields(self, request, obj=None):
+        """La empresa de un usuario que ya la tiene no se cambia al editar."""
+        campos = super().get_readonly_fields(request, obj)
+        if obj is not None and obj.empresa_id:
+            campos = (*campos, "empresa")
+        return campos

@@ -74,6 +74,50 @@ class AdminPlataformaTests(TestCase):
             get_user_model().objects.get(username="ok-admin").empresa, empresa
         )
 
+    def _datos_edicion(self, usuario, **cambios):
+        """Datos mínimos de un POST de cambio de usuario en el admin."""
+        datos = {
+            "username": usuario.username,
+            "rol": usuario.rol,
+            "telefono": "",
+            "is_active": "on",
+            "date_joined_0": "2026-01-01",
+            "date_joined_1": "00:00:00",
+        }
+        datos.update(cambios)
+        return datos
+
+    def test_edicion_no_cambia_la_empresa_de_un_usuario_que_ya_la_tiene(self):
+        empresa_a, empresa_b = crear_empresa("A"), crear_empresa("B")
+        empleado = get_user_model().objects.create_user(
+            "ana", password="clave-larga-123", rol="empleado", empresa=empresa_a
+        )
+        self.client.force_login(crear_plataforma())
+        url = reverse("admin:accounts_user_change", args=[empleado.pk])
+        r = self.client.get(url)
+        self.assertNotIn("empresa", r.context["adminform"].form.fields)
+        r = self.client.post(
+            url, self._datos_edicion(empleado, empresa=empresa_b.pk, first_name="Ana")
+        )
+        self.assertEqual(r.status_code, 302)
+        empleado.refresh_from_db()
+        self.assertEqual(empleado.empresa, empresa_a)
+        self.assertEqual(empleado.first_name, "Ana")
+
+    def test_edicion_asigna_empresa_a_un_usuario_que_no_la_tiene(self):
+        empresa = crear_empresa()
+        empleado = get_user_model().objects.create_user(
+            "sin", password="clave-larga-123", rol="empleado"
+        )
+        self.client.force_login(crear_plataforma())
+        url = reverse("admin:accounts_user_change", args=[empleado.pk])
+        r = self.client.get(url)
+        self.assertIn("empresa", r.context["adminform"].form.fields)
+        r = self.client.post(url, self._datos_edicion(empleado, empresa=empresa.pk))
+        self.assertEqual(r.status_code, 302)
+        empleado.refresh_from_db()
+        self.assertEqual(empleado.empresa, empresa)
+
     @override_settings(EMPRESA_GUARDIA="exigir")
     def test_change_de_visita_con_raw_id_no_consulta_fuera_del_contexto(self):
         visita = crear_visita()
