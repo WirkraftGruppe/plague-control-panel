@@ -475,11 +475,11 @@ commit_base: 0927fcd
 | T1 | hecha |
 | T2 | hecha (8332abb; integrada en 8aa5856) |
 | T3 | hecha (T1 en b9c7118, T2 en 8aa5856 con 836 tests OK; `migrate` + `cargar_demo` OK; worktrees de T4, T5 y T6 creados desde 8aa5856) |
-| T4 | verificada tras la corrección 1089be6 (14/14 x2; auditor 0 bloqueantes); se integra en T10 paso 1 |
-| T5 | verificada (e9d615a; 14/14 x2), sin integrar |
-| T6 | verificada (c83ac65; 12/12 x2), sin integrar |
-| T7 | pendiente |
-| T8 | pendiente |
+| T4 | hecha (1089be6; integrada en 2b01cb7, 852 tests OK) |
+| T5 | hecha (e9d615a; integrada en 22c58db, 863 tests OK) |
+| T6 | hecha (c83ac65; integrada en f6a201f, 874 tests OK) |
+| T7 | en curso (worktree desde f6a201f) |
+| T8 | en curso (worktree desde f6a201f) |
 | T9 | pendiente |
 | T10 | pendiente |
 | T11 | pendiente |
