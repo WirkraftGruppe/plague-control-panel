@@ -473,7 +473,7 @@ commit_base: 0927fcd
 | Tarea | Estado |
 |---|---|
 | T1 | hecha |
-| T2 | verificada (sin integrar); P-multiempresa-15 y -16 a decidir |
+| T2 | en corrección (P-multiempresa-15, -16 parte de modelo, -17), sin integrar |
 | T3 | paso 1 hecho (b9c7118); paso 2 pendiente (T2) |
 | T4 | pendiente |
 | T5 | pendiente |
@@ -541,6 +541,8 @@ commit_base: 0927fcd
 
 ### Decisiones
 
+- 2026-11-10 — P-multiempresa-15, -17 y la parte de modelo de -16 se corrigen en T2 antes de integrar, en un solo ciclo de corrección con commits `T2:` dentro del presupuesto (2200): `clean()` usa la empresa efectiva (la propia o la del padre) y compara también con el padre, con test de hijo nuevo sin empresa que da error de validación y no 500; `movimiento` entra en `ProductoAplicado.referencias_de_empresa`, con test — decisión del usuario — reemplaza a: (nada)
+- 2026-11-10 — La empresa de un registro es inmutable después del alta: un registro cargado en la empresa equivocada se da de baja y se carga de nuevo. Inmutable en el modelo, con test, en la corrección de T2; el campo `readonly` al editar en el admin de las raíces lo hace T6 — decisión de producto del usuario — reemplaza a: (nada)
 - 2026-10-26 — P-multiempresa-8 (slice a la izquierda de `|`/`^`) se cierra en T1 y es el último ciclo de corrección de la guardia dentro de T1: cualquier otra variante que encuentre el auditor queda como pendiente para T11, sin ciclo nuevo; lo que no entre en el presupuesto de T1 va a una subtarea nueva antes de T3, como contrato modificado — decisión del usuario — reemplaza a: (nada)
 - 2026-10-26 — P-multiempresa-9, -10 y -11 van a T11 (contrato modificado e4ada1f): se documenta qué cubre la guardia y qué no (Prefetch reutilizado, `db_manager` con hints), la garantía principal es el test de aislamiento generado, se suma un `[grep-0]` de `db_manager(`/`_add_hints` y los tests de cobertura con una segunda empresa — decisión del usuario — reemplaza a: (nada)
 - 2026-10-26 — El límite del logo (16 MP de entrada, 1000 px de lado mayor) se hace en T5 (contrato modificado e4ada1f: T5 puede tocar `apps/empresas/logos.py` y `tests/test_logos.py`) — decisión del usuario — reemplaza a: 2026-10-26 (el logo usa el límite de las fotos, sin subtarea definida)
