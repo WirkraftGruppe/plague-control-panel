@@ -22,6 +22,8 @@ FORMATO_FECHA = "%Y-%m-%d"  # el que exige <input type="date">
 class FormularioPuntosConServicio(forms.Form):
     """Puntos activos de un sitio, cada uno con el servicio que se le hará.
 
+    Los servicios ofrecidos son los de la empresa del sitio.
+
     Cada punto lleva un campo `servicio_<id>` con su servicio como valor inicial;
     los campos con `agrupado` los dibuja la plantilla de la tabla de puntos.
     """
@@ -35,11 +37,17 @@ class FormularioPuntosConServicio(forms.Form):
     def __init__(self, *args, sitio, **kwargs):
         super().__init__(*args, **kwargs)
         self.sitio = sitio
-        puntos = PuntoControl.objects.filter(sitio=sitio, activo=True)
+        puntos = PuntoControl.objects.de_empresa(sitio.empresa_id).filter(
+            sitio=sitio, activo=True
+        )
         self.fields["puntos"].queryset = puntos
         self.fields["puntos"].agrupado = True
         self.puntos_activos = list(puntos)
-        servicios = TipoServicio.objects.filter(activo=True).order_by("nombre")
+        servicios = (
+            TipoServicio.objects.de_empresa(sitio.empresa_id)
+            .filter(activo=True)
+            .order_by("nombre")
+        )
         for punto in self.puntos_activos:
             campo = forms.ModelChoiceField(
                 label=f"Servicio de {punto.nombre}",
@@ -85,12 +93,7 @@ class FormularioPuntosConServicio(forms.Form):
 class FormularioTurno(FormularioPuntosConServicio):
     """Empleado activo, fecha y puntos con servicio para un turno pendiente."""
 
-    empleado = forms.ModelChoiceField(
-        label="Empleado",
-        queryset=User.objects.filter(rol=User.Rol.EMPLEADO, is_active=True).order_by(
-            "username"
-        ),
-    )
+    empleado = forms.ModelChoiceField(label="Empleado", queryset=User.objects.none())
     programada_para = forms.DateField(
         label="Fecha programada",
         widget=forms.DateInput(format=FORMATO_FECHA, attrs={"type": "date"}),
@@ -98,6 +101,7 @@ class FormularioTurno(FormularioPuntosConServicio):
 
     def __init__(self, *args, sitio, **kwargs):
         super().__init__(*args, sitio=sitio, **kwargs)
+        self.fields["empleado"].queryset = empleados_de_empresa(sitio.empresa_id)
         # Al abrir el formulario: todos los puntos activos tildados y fecha de hoy.
         self.initial.setdefault("puntos", [p.pk for p in self.puntos_activos])
         self.initial.setdefault("programada_para", timezone.localdate())
@@ -151,12 +155,13 @@ class ProductoConUnidadField(forms.ModelChoiceField):
 class FormularioProductoManual(forms.Form):
     """Un producto aplicado: siempre del catálogo y activo.
 
-    La unidad de la cantidad debe ser una de las del producto (lo valida el servicio);
-    la de la dosis es texto libre, por ejemplo la `unidad_dosis_por_defecto`.
+    Solo del catálogo de la empresa. La unidad de la cantidad debe ser una de las
+    del producto (lo valida el servicio); la de la dosis es texto libre, por ejemplo
+    la `unidad_dosis_por_defecto`.
     """
 
     producto = ProductoConUnidadField(
-        label="Producto", queryset=Producto.objects.filter(activo=True)
+        label="Producto", queryset=Producto.objects.none()
     )
     lote = forms.CharField(label="Lote", max_length=60)
     dosis = forms.DecimalField(label="Dosis", max_digits=10, decimal_places=3)
@@ -170,6 +175,12 @@ class FormularioProductoManual(forms.Form):
         help_text="Una de las unidades del producto.",
     )
 
+    def __init__(self, *args, empresa_id, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["producto"].queryset = Producto.objects.de_empresa(
+            empresa_id
+        ).filter(activo=True)
+
 
 FormSetProductos = forms.formset_factory(
     FormularioProductoManual,
@@ -177,6 +188,13 @@ FormSetProductos = forms.formset_factory(
     max_num=MAX_PRODUCTOS,
     validate_max=True,
 )
+
+
+def empleados_de_empresa(empresa_id):
+    """Empleados activos de la empresa, por nombre de usuario."""
+    return User.objects.filter(
+        rol=User.Rol.EMPLEADO, is_active=True, empresa_id=empresa_id
+    ).order_by("username")
 
 
 def _campo_de_planilla(campo):
@@ -207,12 +225,7 @@ def _campo_de_planilla(campo):
 class FormularioManual(FormularioPuntosConServicio):
     """Carga manual de una visita; la planilla sale del esquema de cada servicio."""
 
-    empleado = forms.ModelChoiceField(
-        label="Empleado",
-        queryset=User.objects.filter(rol=User.Rol.EMPLEADO, is_active=True).order_by(
-            "username"
-        ),
-    )
+    empleado = forms.ModelChoiceField(label="Empleado", queryset=User.objects.none())
     pendiente = forms.ModelChoiceField(
         label="Completar una visita pendiente",
         queryset=Visita.objects.none(),
@@ -250,14 +263,23 @@ class FormularioManual(FormularioPuntosConServicio):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        empresa_id = self.sitio.empresa_id
+        self.fields["empleado"].queryset = empleados_de_empresa(empresa_id)
         # La hora actual como valor inicial y como tope del campo.
         ahora = timezone.localtime().strftime(FORMATO_FECHA_HORA)
         self.fields["realizada_en"].initial = ahora
         self.fields["realizada_en"].widget.attrs["max"] = ahora
         # Una pendiente con revisiones (evidencia migrada) no se completa a mano.
         pendientes = (
-            Visita.objects.filter(sitio=self.sitio, estado=Visita.Estado.PENDIENTE)
-            .exclude(Exists(Revision.objects.filter(visita=OuterRef("pk"))))
+            Visita.objects.de_empresa(empresa_id)
+            .filter(sitio=self.sitio, estado=Visita.Estado.PENDIENTE)
+            .exclude(
+                Exists(
+                    Revision.objects.de_empresa(empresa_id).filter(
+                        visita=OuterRef("pk")
+                    )
+                )
+            )
             .order_by("programada_para", "pk")
         )
         self.fields["pendiente"].queryset = pendientes
@@ -271,7 +293,11 @@ class FormularioManual(FormularioPuntosConServicio):
         )
         # Las planillas de todos los servicios; las del servicio no elegido se ignoran.
         self.servicios = {}
-        servicios = TipoServicio.objects.filter(activo=True).prefetch_related("campos")
+        servicios = (
+            TipoServicio.objects.de_empresa(empresa_id)
+            .filter(activo=True)
+            .prefetch_related("campos")
+        )
         for servicio in servicios.order_by("nombre"):
             self.servicios[servicio.pk] = servicio
             for ambito, prefijo in (
