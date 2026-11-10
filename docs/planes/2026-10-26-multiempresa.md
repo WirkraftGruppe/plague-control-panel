@@ -473,11 +473,11 @@ commit_base: 0927fcd
 | Tarea | Estado |
 |---|---|
 | T1 | hecha |
-| T2 | verificada tras la corrección 8332abb (15/15 x2, auditor 0 bloqueantes); se integra en T3 paso 2 |
-| T3 | paso 1 hecho (b9c7118); paso 2 pendiente (T2) |
-| T4 | pendiente |
-| T5 | pendiente |
-| T6 | pendiente |
+| T2 | hecha (8332abb; integrada en 8aa5856) |
+| T3 | hecha (T1 en b9c7118, T2 en 8aa5856 con 836 tests OK; `migrate` + `cargar_demo` OK; worktrees de T4, T5 y T6 creados desde 8aa5856) |
+| T4 | worktree creado, sin lanzar |
+| T5 | worktree creado, sin lanzar |
+| T6 | worktree creado, sin lanzar |
 | T7 | pendiente |
 | T8 | pendiente |
 | T9 | pendiente |
@@ -496,7 +496,7 @@ commit_base: 0927fcd
 | 2026-10-26 19:50 | T1 (corrección ee96c52) | ee96c52 | PASA (verificador 21/21, verificador-b 21/21) | auditor-seguridad sobre el slice: P-multiempresa-8 cerrado, 0 bloqueantes (P-multiempresa-12 a 14); presupuesto 893/900; integrada en b9c7118 (818 tests OK) |
 | 2026-10-26 21:00 | T2 | 4f98237 | criterios 15/15 PASA (verificador y verificador-b); veredicto global FALLA solo por CONTRATO MODIFICADO (e4ada1f, aprobado por el usuario) | auditor-seguridad: 0 bloqueantes, 2 importantes (P-multiempresa-15, -16), 1 menor (-17); presupuesto 1361/2200 |
 | 2026-11-10 09:45 | T2 (corrección 8332abb) | 8332abb | criterios 15/15 PASA (verificador y verificador-b, suite 836 OK); veredicto global FALLA solo por CONTRATO MODIFICADO (e4ada1f) | auditor-seguridad: P-multiempresa-15, -16 (modelo) y -17 cerrados; 0 bloqueantes, 0 importantes, 3 menores y 5 observaciones (P-multiempresa-20 a 27); el cuerpo del test criterio `test_referencias_de_otra_empresa_no_validan` cambió en su última línea (llamada sin aserción que afirmaba el defecto P-15), confirmado por los dos verificadores y el auditor como no debilitado; presupuesto 1510/2200 |
-| | T3 | | | |
+| 2026-11-10 10:10 | T3 | 8aa5856 | criterios 3/3 PASA (principal; los verifica el verificador al cierre de la ola 3) | `worktree-integrar.sh` de T2: 836 tests OK; `db.sqlite3` borrada y recreada con `migrate` + `cargar_demo` |
 | | T4–T9 | | | |
 | | T10 | | | |
 | | T11 | | | |
