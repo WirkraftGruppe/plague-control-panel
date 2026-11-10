@@ -2,10 +2,11 @@
 
 from django import forms
 
+from apps.clientes.empresa import FormularioDeEmpresa
 from apps.clientes.models import Cliente
 
 
-class ClienteForm(forms.ModelForm):
+class ClienteForm(FormularioDeEmpresa):
     """Alta y edición de un cliente."""
 
     class Meta:
