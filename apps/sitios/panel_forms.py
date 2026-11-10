@@ -2,13 +2,18 @@
 
 from django import forms
 
+from apps.clientes.empresa import FormularioDeEmpresa
+from apps.clientes.models import Cliente
 from apps.servicios.models import TipoServicio
 
 from .models import Plano, PuntoControl, Sitio
 
 
-class SitioForm(forms.ModelForm):
-    """Alta y edición de un sitio; lat y lng se cargan a mano."""
+class SitioForm(FormularioDeEmpresa):
+    """Alta y edición de un sitio; lat y lng se cargan a mano.
+
+    El cliente y el responsable se ofrecen solo de la empresa.
+    """
 
     class Meta:
         model = Sitio
@@ -31,9 +36,18 @@ class SitioForm(forms.ModelForm):
             "notas": forms.Textarea(attrs={"rows": 3}),
         }
 
+    def __init__(self, *args, empresa, **kwargs):
+        super().__init__(*args, empresa=empresa, **kwargs)
+        self.fields["cliente"].queryset = Cliente.objects.de_empresa(empresa)
+        responsables = self.fields["responsable"].queryset
+        self.fields["responsable"].queryset = responsables.filter(empresa=empresa)
 
-class PuntoForm(forms.ModelForm):
-    """Alta y edición de un punto; el plano se limita a los del propio sitio."""
+
+class PuntoForm(FormularioDeEmpresa):
+    """Alta y edición de un punto; el plano se limita a los del propio sitio.
+
+    La empresa del punto es la de su sitio.
+    """
 
     class Meta:
         model = PuntoControl
@@ -54,7 +68,7 @@ class PuntoForm(forms.ModelForm):
         }
 
     def __init__(self, *args, sitio, **kwargs):
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, empresa=sitio.empresa, **kwargs)
         self.instance.sitio = sitio
         self.fields["plano"].queryset = sitio.planos.filter(activo=True)
         self.fields["orden"].required = False
@@ -88,15 +102,19 @@ def _en_rango(valor, limite, nombre):
     return valor
 
 
-class PlanoForm(forms.ModelForm):
-    """Subida de un plano: ``Plano.clean`` valida JPG, PNG o PDF y lo convierte."""
+class PlanoForm(FormularioDeEmpresa):
+    """Subida de un plano: ``Plano.clean`` valida JPG, PNG o PDF y lo convierte.
+
+    El sitio y la empresa se fijan antes de validar.
+    """
 
     class Meta:
         model = Plano
         fields = ["nombre", "imagen", "orden"]
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, *args, sitio, **kwargs):
+        super().__init__(*args, empresa=sitio.empresa, **kwargs)
+        self.instance.sitio = sitio
         self.fields["orden"].required = False
 
 
@@ -105,17 +123,19 @@ class PosicionForm(forms.Form):
 
     x = forms.DecimalField(min_value=0, max_value=1, max_digits=5, decimal_places=4)
     y = forms.DecimalField(min_value=0, max_value=1, max_digits=5, decimal_places=4)
-    plano = forms.ModelChoiceField(
-        queryset=Plano.objects.filter(activo=True), required=False
-    )
+    plano = forms.ModelChoiceField(queryset=Plano.objects.none(), required=False)
+
+    def __init__(self, *args, empresa, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["plano"].queryset = Plano.objects.de_empresa(empresa).filter(
+            activo=True
+        )
 
 
 class ProgramacionForm(forms.Form):
     """Servicio, frecuencia y próximo vencimiento de un punto (edición en línea)."""
 
-    servicio = forms.ModelChoiceField(
-        TipoServicio.objects.filter(activo=True), required=False
-    )
+    servicio = forms.ModelChoiceField(TipoServicio.objects.none(), required=False)
     frecuencia_dias = forms.IntegerField(
         min_value=1, max_value=3650, required=False, label="Frecuencia (días)"
     )
@@ -123,3 +143,9 @@ class ProgramacionForm(forms.Form):
         required=False,
         widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
     )
+
+    def __init__(self, *args, empresa, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["servicio"].queryset = TipoServicio.objects.de_empresa(
+            empresa
+        ).filter(activo=True)

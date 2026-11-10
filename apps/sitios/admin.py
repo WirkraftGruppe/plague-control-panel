@@ -6,12 +6,14 @@ from django.template.response import TemplateResponse
 from django.urls import reverse
 from simple_history.admin import SimpleHistoryAdmin
 
+from apps.clientes.empresa import AdminHijoMixin
+
 from . import services
 from .models import Plano, PuntoControl, Sitio
 
 
 class _AdministradorMixin:
-    """Requisitos comunes del admin: rol administrador, confirmación y sin revert."""
+    """Requisitos comunes del admin: rol plataforma, confirmación y sin revert."""
 
     def history_form_view(self, request, object_id, version_id, extra_context=None):
         """Prohíbe revertir desde el historial: solo se consulta."""
@@ -43,7 +45,7 @@ class _AdministradorMixin:
 
 
 @admin.register(Sitio)
-class SitioAdmin(_AdministradorMixin, SimpleHistoryAdmin):
+class SitioAdmin(_AdministradorMixin, AdminHijoMixin, SimpleHistoryAdmin):
     list_display = ("nombre", "cliente", "localidad", "sector", "activo")
     search_fields = ("nombre", "direccion", "localidad", "cliente__razon_social")
     list_filter = ("sector", "activo")
@@ -108,7 +110,7 @@ class PuntoControlAdminForm(forms.ModelForm):
 
 
 @admin.register(PuntoControl)
-class PuntoControlAdmin(_AdministradorMixin, SimpleHistoryAdmin):
+class PuntoControlAdmin(_AdministradorMixin, AdminHijoMixin, SimpleHistoryAdmin):
     form = PuntoControlAdminForm
     list_display = ("nombre", "sitio", "sector", "orden", "activo")
     search_fields = ("nombre", "sector", "sitio__nombre")
@@ -169,7 +171,7 @@ class PuntoControlAdmin(_AdministradorMixin, SimpleHistoryAdmin):
 
 
 @admin.register(Plano)
-class PlanoAdmin(_AdministradorMixin, SimpleHistoryAdmin):
+class PlanoAdmin(_AdministradorMixin, AdminHijoMixin, SimpleHistoryAdmin):
     list_display = ("nombre", "sitio", "orden", "ancho_px", "alto_px", "activo")
     search_fields = ("nombre", "sitio__nombre")
     list_filter = ("activo",)

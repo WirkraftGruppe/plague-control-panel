@@ -26,7 +26,8 @@ class RutasTests(TestCase):
         self.assertEqual(resolve(f"/q/{codigo}/").view_name, "publico:qr")
         respuesta = self.client.get(f"/q/{codigo}/")
         self.assertEqual(respuesta.status_code, 200)
-        self.assertContains(respuesta, settings.NOMBRE_EMPRESA)
+        self.assertContains(respuesta, "Detach")
+        self.assertNotContains(respuesta, settings.NOMBRE_EMPRESA)
         self.assertNotContains(respuesta, str(codigo))
 
     def test_contenido_del_qr_abre_la_pagina_de_sitios(self):
