@@ -148,8 +148,8 @@ class HerenciaEmpresaTests(TestCase):
                 with self.assertRaises(ValidationError) as ctx:
                     objeto.clean()
                 self.assertIn(campo, ctx.exception.message_dict)
-        # Con una empresa sin fijar no hay nada que comparar.
-        Visita(sitio=self.sitio, empleado=empleado_b).clean()
+        # Sin empresa propia ni padre no hay empresa efectiva con qué comparar.
+        Visita(empleado=empleado_b).clean()
 
     def test_items_de_turno_creados_por_bulk_create_tienen_empresa(self):
         punto = self.sitio.puntos.get(orden=0)
@@ -189,3 +189,98 @@ class HerenciaEmpresaTests(TestCase):
         # La misma empresa con el mismo uuid: IntegrityError.
         with self.assertRaises(IntegrityError), transaction.atomic():
             self._revision(self._visita(), cliente_uuid=compartido)
+
+
+class ValidacionConEmpresaEfectivaTests(TestCase):
+    """`clean()` usa la empresa efectiva y la empresa es inmutable tras el alta."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.a = crear_empresa("Empresa A")
+        cls.b = crear_empresa("Empresa B")
+        cls.cliente = Cliente.objects.create(empresa=cls.a, razon_social="ACME")
+        cls.sitio = Sitio.objects.create(cliente=cls.cliente, nombre="Planta")
+        cls.empleado = User.objects.create_user(
+            "emp-a", password="x", rol=User.Rol.EMPLEADO, empresa=cls.a
+        )
+        cls.servicio_b = TipoServicio.objects.create(empresa=cls.b, nombre="Roedores")
+        cls.empleado_b = User.objects.create_user(
+            "emp-b", password="x", rol=User.Rol.EMPLEADO, empresa=cls.b
+        )
+
+    def test_punto_nuevo_sin_empresa_con_servicio_de_otra_empresa_no_valida(self):
+        punto = PuntoControl(sitio=self.sitio, nombre="P", servicio=self.servicio_b)
+        with self.assertRaises(ValidationError) as ctx:
+            punto.full_clean(exclude=["qr_codigo"])
+        self.assertIn("servicio", ctx.exception.message_dict)
+
+    def test_visita_nueva_sin_empresa_con_empleado_de_otra_empresa_no_valida(self):
+        visita = Visita(
+            sitio=self.sitio, empleado=self.empleado_b, origen=Visita.Origen.APP
+        )
+        with self.assertRaises(ValidationError) as ctx:
+            visita.full_clean()
+        self.assertIn("empleado", ctx.exception.message_dict)
+
+    def test_hijo_con_empresa_fijada_y_padre_de_otra_empresa_no_valida(self):
+        punto = PuntoControl(sitio=self.sitio, nombre="P", empresa=self.b)
+        with self.assertRaises(ValidationError) as ctx:
+            punto.full_clean(exclude=["qr_codigo"])
+        self.assertIn("sitio", ctx.exception.message_dict)
+
+    def test_producto_aplicado_con_movimiento_de_otra_empresa_no_valida(self):
+        producto_b = Producto.objects.create(empresa=self.b, nombre_comercial="Cebo")
+        movimiento_b = MovimientoStock.objects.create(
+            producto=producto_b,
+            tipo=MovimientoStock.Tipo.INGRESO,
+            cantidad_base=Decimal("5"),
+            usuario=self.empleado_b,
+        )
+        producto_a = Producto.objects.create(empresa=self.a, nombre_comercial="Cebo")
+        visita = Visita.objects.create(
+            sitio=self.sitio, empleado=self.empleado, origen=Visita.Origen.APP
+        )
+        ahora = timezone.now()
+        servicio_a = TipoServicio.objects.create(empresa=self.a, nombre="Aves")
+        revision = Revision.objects.create(
+            visita=visita,
+            punto=self.sitio.puntos.get(orden=0),
+            servicio=servicio_a,
+            realizada_en=ahora,
+            recibida_en=ahora,
+        )
+        aplicado = ProductoAplicado(
+            revision=revision,
+            producto=producto_a,
+            movimiento=movimiento_b,
+            empresa=self.a,
+        )
+        with self.assertRaises(ValidationError) as ctx:
+            aplicado.clean()
+        self.assertIn("movimiento", ctx.exception.message_dict)
+
+    def test_cambiar_la_empresa_de_un_registro_guardado_lanza(self):
+        cliente = Cliente.todos.get(pk=self.cliente.pk)
+        cliente.empresa = self.b
+        with self.assertRaises(ValidationError):
+            cliente.clean()
+        with self.assertRaises(ValueError):
+            cliente.save()
+        cliente.empresa = None
+        with self.assertRaises(ValidationError):
+            cliente.clean()
+        with self.assertRaises(ValueError):
+            cliente.save()
+        self.assertEqual(Cliente.todos.get(pk=self.cliente.pk).empresa_id, self.a.pk)
+
+    def test_asignar_empresa_a_un_registro_guardado_sin_empresa_funciona(self):
+        cliente = Cliente.todos.create(razon_social="Sin empresa")
+        self.assertIsNone(cliente.empresa_id)
+        cliente = Cliente.todos.get(pk=cliente.pk)
+        cliente.empresa = self.a
+        cliente.full_clean()
+        cliente.save()
+        self.assertEqual(Cliente.todos.get(pk=cliente.pk).empresa_id, self.a.pk)
+        cliente.empresa = self.b
+        with self.assertRaises(ValueError):
+            cliente.save()

@@ -1,6 +1,6 @@
 import uuid
 
-from django.core.exceptions import ValidationError
+from django.core.exceptions import NON_FIELD_ERRORS, ValidationError
 from django.db import models
 
 from .consultas import EmpresaQuerySet, sin_filtro_empresa
@@ -73,29 +73,64 @@ class ModeloDeEmpresa(models.Model):
                 f"({self.padre_de_empresa})."
             )
 
+    @classmethod
+    def from_db(cls, db, field_names, values):
+        """Recuerda la empresa con la que se cargó el registro (sin consulta extra)."""
+        instancia = super().from_db(db, field_names, values)
+        if "empresa_id" in instancia.__dict__:
+            instancia._empresa_original = instancia.__dict__["empresa_id"]
+        return instancia
+
+    # Empresa guardada en la base; `None` en las altas y en los registros sin empresa.
+    _empresa_original = None
+
+    def _empresa_cambiada(self):
+        """Indica si se intenta cambiar la empresa ya fijada de un registro guardado."""
+        if self._empresa_original is None or "empresa_id" not in self.__dict__:
+            return False
+        return self.empresa_id != self._empresa_original
+
     def save(self, *args, **kwargs):
+        if self._empresa_cambiada():
+            raise ValueError(
+                f"La empresa de {type(self).__name__} no se puede cambiar "
+                "después del alta."
+            )
         sin_empresa = self.empresa_id is None
         self._heredar_empresa()
         campos = kwargs.get("update_fields")
         if sin_empresa and self.empresa_id is not None and campos is not None:
             kwargs["update_fields"] = {*campos, "empresa"}
         super().save(*args, **kwargs)
+        self._empresa_original = self.empresa_id
 
     def clean(self):
-        """Rechaza referencias a objetos de otra empresa si ambas están fijadas."""
+        """Rechaza el cambio de empresa y las referencias a otra empresa.
+
+        Usa la empresa efectiva: la propia o, si falta, la del padre (que `save()`
+        copiará). Los campos sin empresa fijada no se comparan.
+        """
         super().clean()
-        if self.empresa_id is None:
-            return
         errores = {}
-        for nombre in self.referencias_de_empresa:
-            if getattr(self, f"{nombre}_id") is None:
-                continue
-            referido = getattr(self, nombre)
-            if (
-                referido.empresa_id is not None
-                and referido.empresa_id != self.empresa_id
-            ):
-                errores[nombre] = "Pertenece a otra empresa."
+        if self._empresa_cambiada():
+            errores[NON_FIELD_ERRORS] = (
+                "La empresa no se puede cambiar después del alta."
+            )
+        efectiva = self.empresa_id
+        padre = self.padre_de_empresa
+        if padre and getattr(self, f"{padre}_id") is not None:
+            empresa_padre = getattr(self, padre).empresa_id
+            if efectiva is None:
+                efectiva = empresa_padre
+            elif empresa_padre is not None and empresa_padre != efectiva:
+                errores[padre] = "Pertenece a otra empresa."
+        if efectiva is not None:
+            for nombre in self.referencias_de_empresa:
+                if getattr(self, f"{nombre}_id") is None:
+                    continue
+                referido = getattr(self, nombre)
+                if referido.empresa_id is not None and referido.empresa_id != efectiva:
+                    errores[nombre] = "Pertenece a otra empresa."
         if errores:
             raise ValidationError(errores)
 

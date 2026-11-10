@@ -147,6 +147,9 @@ class PuntoControlAdminTests(TestCase):
             "sector": "",
             "orden": 0,
             "activo": "on",
+            # La empresa es inmutable: el formulario debe reenviar la actual (T6 la
+            # vuelve de solo lectura).
+            "empresa": self.punto.empresa_id or "",
             "_save": "Guardar",
             **extra,
         }

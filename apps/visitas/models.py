@@ -319,7 +319,7 @@ def borrar_archivo_de_foto(sender, instance, **kwargs):
 
 class ProductoAplicado(ModeloDeEmpresa):
     padre_de_empresa = "revision"
-    referencias_de_empresa = ("producto",)
+    referencias_de_empresa = ("producto", "movimiento")
 
     revision = models.ForeignKey(
         Revision,
