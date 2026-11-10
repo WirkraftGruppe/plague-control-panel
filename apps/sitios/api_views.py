@@ -21,6 +21,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from apps.accounts.permisos import EsAdministrador, EsEmpleado
+from apps.empresas.consultas import empresa_de
 from apps.visitas.models import Visita
 from apps.visitas.serializers import MAX_BYTES_FOTO
 from apps.visitas.services import servicio_para_punto, visita_destino
@@ -110,8 +111,10 @@ class ResolverQRView(APIView):
         ),
     )
     def post(self, request, codigo):
+        empresa = empresa_de(request)
         punto = (
-            PuntoControl.objects.select_related("sitio__cliente", "plano")
+            PuntoControl.objects.de_empresa(empresa)
+            .select_related("sitio__cliente", "plano")
             .filter(
                 qr_codigo=codigo,
                 activo=True,
@@ -127,9 +130,8 @@ class ResolverQRView(APIView):
         # Una sola consulta para las visitas propias; la pendiente más antigua gana.
         pendiente, abierta = None, None
         visitas = (
-            Visita.objects.filter(
-                empleado=request.user, estado__in=ESTADOS_CON_TRABAJO, sitio=sitio
-            )
+            Visita.objects.de_empresa(empresa)
+            .filter(empleado=request.user, estado__in=ESTADOS_CON_TRABAJO, sitio=sitio)
             .order_by(F("programada_para").asc(nulls_last=True), "id")
             .values_list("id", "estado")
         )
@@ -192,18 +194,21 @@ class PlanoImagenView(APIView):
         },
     )
     def get(self, request, pk):
-        plano = Plano.objects.filter(pk=pk, activo=True).first()
+        empresa = empresa_de(request)
+        plano = Plano.objects.de_empresa(empresa).filter(pk=pk, activo=True).first()
         if plano is None:
             raise NotFound("El plano no existe.")
         if (
             not request.user.es_administrador
-            and not Visita.objects.filter(
+            and not Visita.objects.de_empresa(empresa)
+            .filter(
                 empleado=request.user,
                 estado__in=ESTADOS_CON_TRABAJO,
                 sitio_id=plano.sitio_id,
                 sitio__activo=True,
                 sitio__cliente__activo=True,
-            ).exists()
+            )
+            .exists()
         ):
             raise NotFound("El plano no existe.")
         try:
@@ -237,7 +242,8 @@ class MisPuntosView(APIView):
         parametros = MisPuntosParametrosSerializer(data=request.query_params)
         parametros.is_valid(raise_exception=True)
         sitio = parametros.validated_data.get("sitio")
-        sitios = Visita.objects.filter(
+        empresa = empresa_de(request)
+        sitios = Visita.objects.de_empresa(empresa).filter(
             empleado=request.user,
             estado__in=ESTADOS_CON_TRABAJO,
             sitio__activo=True,
@@ -246,9 +252,8 @@ class MisPuntosView(APIView):
         if sitio is not None:
             sitios = sitios.filter(sitio_id=sitio)
         puntos = list(
-            PuntoControl.objects.filter(
-                activo=True, sitio_id__in=sitios.values("sitio_id")
-            )
+            PuntoControl.objects.de_empresa(empresa)
+            .filter(activo=True, sitio_id__in=sitios.values("sitio_id"))
             .select_related("sitio")
             .order_by("sitio__nombre", "sitio_id", "orden", "id")
         )
@@ -289,7 +294,9 @@ class AltaSitioView(APIView):
         ),
     )
     def post(self, request):
-        serializer = AltaSitioSerializer(data=request.data)
+        serializer = AltaSitioSerializer(
+            data=request.data, context={"request": request}
+        )
         serializer.is_valid(raise_exception=True)
         datos = serializer.validated_data
         try:
@@ -330,7 +337,12 @@ class AltaPuntoView(APIView):
         ),
     )
     def post(self, request, pk):
-        sitio = Sitio.objects.select_related("cliente").filter(pk=pk).first()
+        sitio = (
+            Sitio.objects.de_empresa(empresa_de(request))
+            .select_related("cliente")
+            .filter(pk=pk)
+            .first()
+        )
         if sitio is None:
             raise NotFound("El sitio no existe.")
         try:
@@ -375,7 +387,10 @@ class UbicacionPuntoView(APIView):
     )
     def post(self, request, pk):
         punto = (
-            PuntoControl.objects.select_related("sitio__cliente").filter(pk=pk).first()
+            PuntoControl.objects.de_empresa(empresa_de(request))
+            .select_related("sitio__cliente")
+            .filter(pk=pk)
+            .first()
         )
         if punto is None:
             raise NotFound("El punto no existe.")

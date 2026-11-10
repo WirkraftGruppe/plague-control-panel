@@ -133,7 +133,7 @@ class GeocodificacionTests(TestCase):
         self.assertEqual(r.json()["error"], geocodificacion.MENSAJE_CARGA_MANUAL)
 
     @override_settings(
-        SITE_URL="https://ejemplo.test", CORREO_CONTACTO="a@ejemplo.test"
+        SITE_URL="https://ejemplo.test", CORREO_PLATAFORMA="a@ejemplo.test"
     )
     def test_user_agent_usa_producto_y_correo_de_settings(self):
         self.assertEqual(
@@ -356,3 +356,17 @@ class GeocodificacionTests(TestCase):
         with mock.patch(ABRIR, side_effect=error):
             r = self.client.post(self.url, {"q": "Castelli"})
         self.assertEqual(r.status_code, 503)
+
+
+class UserAgentPlataformaTests(TestCase):
+    @override_settings(
+        SITE_URL="https://ejemplo.test",
+        CORREO_PLATAFORMA="plataforma@ejemplo.test",
+        CORREO_CONTACTO="empresa@ejemplo.test",
+    )
+    def test_user_agent_usa_el_correo_de_plataforma(self):
+        agente = geocodificacion.user_agent()
+        self.assertEqual(
+            agente, "Detach/1.0 (+https://ejemplo.test; plataforma@ejemplo.test)"
+        )
+        self.assertNotIn("empresa@ejemplo.test", agente)
