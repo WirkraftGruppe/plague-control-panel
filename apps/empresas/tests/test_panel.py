@@ -175,8 +175,7 @@ class IngresoTests(TestCase):
     def test_login_no_muestra_el_nombre_de_ninguna_empresa(self):
         crear_empresa("Fumigaciones Sur")
         crear_empresa("Control Norte")
-        with override_settings(NOMBRE_EMPRESA="Fumigaciones Sur"):
-            html = self.client.get("/panel/ingresar/").content.decode()
+        html = self.client.get("/panel/ingresar/").content.decode()
         self.assertIn('alt="Detach"', html)
         self.assertNotIn("Fumigaciones Sur", html)
         self.assertNotIn("Control Norte", html)

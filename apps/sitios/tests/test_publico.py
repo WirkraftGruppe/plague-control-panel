@@ -37,8 +37,7 @@ class PaginaQRTests(TestCase):
 class PublicoSinEmpresaTests(TestCase):
     def test_pagina_del_qr_no_muestra_datos_de_ninguna_empresa(self):
         empresas = [Empresa.objects.create(nombre=n) for n in ("Alfa SA", "Beta SRL")]
-        with override_settings(NOMBRE_EMPRESA=empresas[0].nombre):
-            respuesta = self.client.get(f"/q/{uuid.uuid4()}/")
+        respuesta = self.client.get(f"/q/{uuid.uuid4()}/")
         self.assertEqual(respuesta.status_code, 200)
         for empresa in empresas:
             self.assertNotContains(respuesta, empresa.nombre)

@@ -82,17 +82,6 @@ def leer_distancia_maxima_m():
     return valor
 
 
-# Nombre de la empresa en el admin, la API y la página del QR; provisoria hasta
-# multiempresa. Un valor vacío cae al valor por defecto.
-NOMBRE_EMPRESA = env("NOMBRE_EMPRESA", default="").strip() or "MAControl S.A."
-
-# Correo de contacto del User-Agent de las consultas a Nominatim, que lo exige;
-# provisorio hasta multiempresa, como NOMBRE_EMPRESA.
-CORREO_CONTACTO = (
-    env("CORREO_CONTACTO", default="").strip() or "administracion@macontrol.com.ar"
-)
-
-
 def leer_empresa_guardia():
     """Modo de la guardia de consultas por empresa: `advertir` o `exigir`.
 
@@ -173,7 +162,6 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
-                "config.contexto.empresa",
                 "apps.empresas.contexto.empresa_actual",
             ],
         },
@@ -259,9 +247,7 @@ REST_FRAMEWORK = {
 # explotable mientras `SESSION_COOKIE_SAMESITE` siga en "Lax" (ver arriba).
 SPECTACULAR_SETTINGS = {
     "TITLE": "API de Detach",
-    # Sin doble punto cuando el nombre termina en "S.A." o similar.
-    "DESCRIPTION": "API de la app móvil de los empleados de "
-    f"{NOMBRE_EMPRESA.rstrip('.')}.",
+    "DESCRIPTION": "API de la app móvil de los empleados.",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "SERVE_PERMISSIONS": ["rest_framework.permissions.IsAuthenticated"],
