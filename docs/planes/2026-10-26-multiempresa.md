@@ -478,9 +478,9 @@ commit_base: 0927fcd
 | T4 | hecha (1089be6; integrada en 2b01cb7, 852 tests OK) |
 | T5 | hecha (e9d615a; integrada en 22c58db, 863 tests OK) |
 | T6 | hecha (c83ac65; integrada en f6a201f, 874 tests OK) |
-| T7 | verificada (1f3f835; 15/15 x2), integrándose |
-| T8 | verificada (9815485; 14/14 x2), integrándose |
-| T9 | pendiente |
+| T7 | hecha (1f3f835; integrada en 53b7594, 897 tests OK) |
+| T8 | hecha (9815485; integrada en c1bf26f, 886 tests OK) |
+| T9 | en curso |
 | T10 | pendiente |
 | T11 | pendiente |
 | T12 | pendiente |
