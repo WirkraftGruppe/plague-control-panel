@@ -481,7 +481,7 @@ commit_base: 0927fcd
 | T7 | hecha (1f3f835; integrada en 53b7594, 897 tests OK) |
 | T8 | hecha (9815485; integrada en c1bf26f, 886 tests OK) |
 | T9 | hecha (e3cd431; integrada en 9390eb5, 907 tests OK) |
-| T10 | pendiente |
+| T10 | paso 1 hecho (T4–T9 integradas, 9390eb5); paso 2 (ajuste de `config`) en curso en worktree multiempresa-T10 |
 | T11 | pendiente |
 | T12 | pendiente |
 | T13 | pendiente |
@@ -579,6 +579,7 @@ commit_base: 0927fcd
 
 ### Decisiones
 
+- 2026-11-10 — El ajuste de `config` de T10 (paso 2) también actualiza `apps/panel/tests/test_rutas.py:30`, que lee `settings.NOMBRE_EMPRESA` y rompería la suite al borrar la variable: pasa a comprobar que la página no muestre el nombre de una `Empresa` creada en el test, como `test_errores.py`. El archivo era de T7, ya integrada; no cambia ningún criterio — decisión del usuario — reemplaza a: (nada)
 - 2026-11-10 — P-multiempresa-36 se corrige en T4 antes de integrar la ola 3, en otro ciclo corto con commits `T4:` dentro del presupuesto (700): con `empresa` de solo lectura, el error de la regla rol ⇔ empresa va al campo `rol`, con un test que falla antes del cambio — decisión del usuario — reemplaza a: (nada)
 - 2026-11-10 — P-multiempresa-35 (y la parte de admin de -26) se corrige en T4 antes de integrar la ola 3, en un ciclo con commits `T4:` dentro del presupuesto (700): en `CuentaAdmin` la empresa de un usuario que ya la tiene es de solo lectura al editar (la inmutabilidad de la empresa alcanza también a `User` en el admin), con test; asignar empresa a un usuario que no la tiene sigue permitido — decisión del usuario — reemplaza a: (nada)
 - 2026-11-10 — P-multiempresa-15, -17 y la parte de modelo de -16 se corrigen en T2 antes de integrar, en un solo ciclo de corrección con commits `T2:` dentro del presupuesto (2200): `clean()` usa la empresa efectiva (la propia o la del padre) y compara también con el padre, con test de hijo nuevo sin empresa que da error de validación y no 500; `movimiento` entra en `ProductoAplicado.referencias_de_empresa`, con test — decisión del usuario — reemplaza a: (nada)
