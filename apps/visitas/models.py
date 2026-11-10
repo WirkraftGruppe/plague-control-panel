@@ -11,6 +11,7 @@ from django.dispatch import receiver
 from simple_history.models import HistoricalRecords
 
 from apps.accounts.models import User
+from apps.empresas.models import ModeloDeEmpresa
 from apps.productos import unidades
 
 from . import imagenes
@@ -18,7 +19,10 @@ from . import imagenes
 logger = logging.getLogger(__name__)
 
 
-class Visita(models.Model):
+class Visita(ModeloDeEmpresa):
+    padre_de_empresa = "sitio"
+    referencias_de_empresa = ("empleado", "asignada_por", "incidencia_revisada_por")
+
     class Origen(models.TextChoices):
         APP = "app", "App móvil"
         MANUAL = "manual", "Manual"
@@ -142,8 +146,11 @@ class Visita(models.Model):
             )
 
 
-class ItemTurno(models.Model):
+class ItemTurno(ModeloDeEmpresa):
     """Punto de control de un turno con el servicio que se hará en él."""
+
+    padre_de_empresa = "visita"
+    referencias_de_empresa = ("punto", "servicio")
 
     visita = models.ForeignKey(
         Visita,
@@ -178,8 +185,11 @@ class ItemTurno(models.Model):
         return f"Ítem {self.pk} de visita {self.visita_id}"
 
 
-class Revision(models.Model):
+class Revision(ModeloDeEmpresa):
     """Un escaneo de un punto de control dentro de una visita."""
+
+    padre_de_empresa = "visita"
+    referencias_de_empresa = ("punto", "servicio")
 
     visita = models.ForeignKey(
         Visita,
@@ -203,9 +213,7 @@ class Revision(models.Model):
     orden = models.PositiveSmallIntegerField("orden", default=0)
     realizada_en = models.DateTimeField("realizada en")
     recibida_en = models.DateTimeField("recibida en")
-    cliente_uuid = models.UUIDField(
-        "identificador del cliente", unique=True, null=True, blank=True
-    )
+    cliente_uuid = models.UUIDField("identificador del cliente", null=True, blank=True)
     latitud = models.DecimalField(
         "latitud", max_digits=9, decimal_places=6, null=True, blank=True
     )
@@ -235,6 +243,12 @@ class Revision(models.Model):
         verbose_name = "revisión"
         verbose_name_plural = "revisiones"
         ordering = ["visita_id", "orden", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["empresa", "cliente_uuid"],
+                name="revision_cliente_uuid_unico_por_empresa",
+            )
+        ]
 
     def __str__(self):
         return f"Revisión {self.pk} de visita {self.visita_id}"
@@ -245,7 +259,9 @@ def ruta_foto(instancia, nombre):
     return f"visitas/fotos/{uuid4().hex}.jpg"
 
 
-class Foto(models.Model):
+class Foto(ModeloDeEmpresa):
+    padre_de_empresa = "revision"
+
     revision = models.ForeignKey(
         Revision,
         on_delete=models.CASCADE,
@@ -269,7 +285,7 @@ class Foto(models.Model):
         anterior = None
         if self.pk:
             anterior = (
-                Foto.objects.filter(pk=self.pk).values_list("imagen", flat=True).first()
+                Foto.todos.filter(pk=self.pk).values_list("imagen", flat=True).first()
             )
         nuevo = bool(self.imagen) and not self.imagen._committed
         if nuevo:
@@ -301,7 +317,10 @@ def borrar_archivo_de_foto(sender, instance, **kwargs):
         _borrar_archivo_al_confirmar(instance.imagen.storage, instance.imagen.name)
 
 
-class ProductoAplicado(models.Model):
+class ProductoAplicado(ModeloDeEmpresa):
+    padre_de_empresa = "revision"
+    referencias_de_empresa = ("producto", "movimiento")
+
     revision = models.ForeignKey(
         Revision,
         on_delete=models.CASCADE,

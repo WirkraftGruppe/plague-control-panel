@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError
 from django.test import TestCase
 
 from apps.accounts.models import User
+from apps.empresas.tests.ayudas import una_empresa
 from apps.productos import services
 from apps.productos.models import MovimientoStock, Producto
 from apps.productos.panel_forms import MovimientoForm
@@ -16,12 +17,16 @@ class TopeCantidadTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.admin = User.objects.create_user(
-            username="admin-tope", password="x", rol=User.Rol.ADMINISTRADOR
+            username="admin-tope",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         cls.producto = Producto.objects.create(
             nombre_comercial="Cebo",
             unidad_base="l",
             contenido_por_envase=Decimal("1000"),
+            empresa=una_empresa(),
         )
 
     def test_ingreso_en_envases_desbordado_da_error_sin_movimiento(self):

@@ -6,6 +6,7 @@ from django.test import TestCase
 from django.urls import NoReverseMatch, resolve, reverse
 
 from apps.clientes.models import Cliente
+from apps.empresas.tests.ayudas import una_empresa
 from apps.sitios.models import Sitio
 from apps.sitios.qr import contenido_qr
 
@@ -29,7 +30,7 @@ class RutasTests(TestCase):
         self.assertNotContains(respuesta, str(codigo))
 
     def test_contenido_del_qr_abre_la_pagina_de_sitios(self):
-        cliente = Cliente.objects.create(razon_social="Cliente")
+        cliente = Cliente.objects.create(razon_social="Cliente", empresa=una_empresa())
         punto = Sitio.objects.create(cliente=cliente, nombre="Sitio").puntos.get()
         ruta = urlparse(contenido_qr(punto)).path
         self.assertEqual(resolve(ruta).view_name, "publico:qr")

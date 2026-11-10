@@ -5,6 +5,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from apps.accounts.models import User
+from apps.empresas.tests.ayudas import una_empresa
 from apps.visitas.models import Visita
 
 from .test_models import crear_visita
@@ -15,7 +16,7 @@ class MenuTests(TestCase):
     def setUpTestData(cls):
         cls.visita = crear_visita(incidencia=True)
         cls.admin = User.objects.create_user(
-            "adm-menu", password="x", rol=User.Rol.ADMINISTRADOR
+            "adm-menu", password="x", rol=User.Rol.ADMINISTRADOR, empresa=una_empresa()
         )
 
     def setUp(self):

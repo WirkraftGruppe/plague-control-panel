@@ -11,6 +11,7 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from apps.accounts.models import User
+from apps.empresas.tests.ayudas import una_empresa
 from apps.productos.models import MovimientoStock, Producto
 from apps.productos.services import registrar_ingreso, stock
 from apps.sitios.models import Sitio
@@ -34,12 +35,20 @@ class ConsumoTests(SinArchivosMixin, TestCase):
         self.tipo = self.pendiente.tipo
         self.punto = punto_de(self.pendiente)
         self.admin = User.objects.create_user(
-            username="admin-stock", password="x", rol=User.Rol.ADMINISTRADOR
+            username="admin-stock",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         self.gel = Producto.objects.create(
-            nombre_comercial="Gel", unidad_base="g", modo_unidad="equivalentes"
+            nombre_comercial="Gel",
+            unidad_base="g",
+            modo_unidad="equivalentes",
+            empresa=una_empresa(),
         )
-        self.cebo = Producto.objects.create(nombre_comercial="Cebo")
+        self.cebo = Producto.objects.create(
+            nombre_comercial="Cebo", empresa=una_empresa()
+        )
         for producto in (self.gel, self.cebo):
             registrar_ingreso(producto, Decimal("1000"), False, self.admin)
         self.items = [

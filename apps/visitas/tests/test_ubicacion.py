@@ -6,6 +6,7 @@ from django.test import SimpleTestCase, TestCase, override_settings
 from django.utils import timezone
 
 from apps.accounts.models import User
+from apps.empresas.tests.ayudas import una_empresa
 from apps.visitas.models import Visita
 from apps.visitas.services import MOTIVO_UBICACION_FIJADA, registrar_revision
 from apps.visitas.tests.test_models import crear_visita, punto_de
@@ -38,7 +39,10 @@ class UbicacionTests(SinArchivosMixin, TestCase):
         self.sitio = self.visita.sitio
         self.punto = punto_de(self.visita)
         self.admin = User.objects.create_user(
-            username="adm-ubic", password="x", rol=User.Rol.ADMINISTRADOR
+            username="adm-ubic",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
 
     def _con_coordenadas(self, objeto, coordenadas=PUNTO):
@@ -104,7 +108,7 @@ class UbicacionTests(SinArchivosMixin, TestCase):
         self.assertFalse(otro.incidencia_ubicacion)
         self.assertLess(otro.distancia_m, 300)
         nuevo = User.objects.create_user(
-            username="e2", password="x", rol=User.Rol.EMPLEADO
+            username="e2", password="x", rol=User.Rol.EMPLEADO, empresa=una_empresa()
         )
         sin, _ = abrir(empleado=nuevo, sitio=self.sitio)
         self.assertIsNone(sin.distancia_m)

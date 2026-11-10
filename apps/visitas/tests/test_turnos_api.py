@@ -4,6 +4,7 @@ import json
 from datetime import date, timedelta
 from decimal import Decimal
 
+from apps.empresas.tests.ayudas import una_empresa
 from apps.productos.models import MovimientoStock, Producto
 from apps.productos.services import registrar_ingreso, stock
 from apps.sitios.models import Sitio
@@ -114,6 +115,7 @@ class RevisionCantidadApiTests(ApiVisitasBase):
             nombre_comercial="Concentrado",
             unidad_base="ml",
             modo_unidad="equivalentes",
+            empresa=una_empresa(),
         )
         registrar_ingreso(self.concentrado, Decimal("1000"), False, self.empleado)
 

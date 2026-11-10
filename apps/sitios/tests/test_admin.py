@@ -6,6 +6,7 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.clientes.models import Cliente
+from apps.empresas.tests.ayudas import una_empresa
 from apps.sitios import services
 from apps.sitios.models import Plano, PuntoControl, Sitio
 
@@ -13,9 +14,14 @@ from apps.sitios.models import Plano, PuntoControl, Sitio
 class SitioAdminTests(TestCase):
     def setUp(self):
         self.administrador = User.objects.create_superuser(
-            username="root", password="x", rol=User.Rol.ADMINISTRADOR
+            username="root",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
-        self.cliente = Cliente.objects.create(razon_social="ACME")
+        self.cliente = Cliente.objects.create(
+            razon_social="ACME", empresa=una_empresa()
+        )
         self.sitio = Sitio.objects.create(cliente=self.cliente, nombre="Planta 1")
         self.url = reverse("admin:sitios_sitio_changelist")
 
@@ -74,9 +80,12 @@ class SitioAdminTests(TestCase):
 class PuntoControlAdminTests(TestCase):
     def setUp(self):
         self.administrador = User.objects.create_superuser(
-            username="root", password="x", rol=User.Rol.ADMINISTRADOR
+            username="root",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
-        cliente = Cliente.objects.create(razon_social="ACME")
+        cliente = Cliente.objects.create(razon_social="ACME", empresa=una_empresa())
         self.sitio = Sitio.objects.create(cliente=cliente, nombre="Planta 1")
         self.punto = self.sitio.puntos.get()
         self.url = reverse("admin:sitios_puntocontrol_changelist")
@@ -97,7 +106,11 @@ class PuntoControlAdminTests(TestCase):
 
     def test_staff_sin_rol_administrador_no_ve_la_accion(self):
         usuario = User.objects.create_user(
-            username="staff", password="x", rol=User.Rol.EMPLEADO, is_staff=True
+            username="staff",
+            password="x",
+            rol=User.Rol.EMPLEADO,
+            is_staff=True,
+            empresa=una_empresa(),
         )
         permisos = Permission.objects.filter(
             content_type__app_label="sitios",
@@ -134,6 +147,9 @@ class PuntoControlAdminTests(TestCase):
             "sector": "",
             "orden": 0,
             "activo": "on",
+            # La empresa es inmutable: el formulario debe reenviar la actual (T6 la
+            # vuelve de solo lectura).
+            "empresa": self.punto.empresa_id or "",
             "_save": "Guardar",
             **extra,
         }
@@ -223,12 +239,18 @@ class PuntoControlAdminTests(TestCase):
 class PlanoAdminTests(TestCase):
     def test_sitio_de_solo_lectura_al_editar(self):
         administrador = User.objects.create_superuser(
-            username="root", password="x", rol=User.Rol.ADMINISTRADOR
+            username="root",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         sitio = Sitio.objects.create(
-            cliente=Cliente.objects.create(razon_social="ACME"), nombre="Planta 1"
+            cliente=Cliente.objects.create(razon_social="ACME", empresa=una_empresa()),
+            nombre="Planta 1",
         )
-        plano = Plano(sitio=sitio, nombre="PB", imagen="p.png")
+        plano = Plano(
+            sitio=sitio, nombre="PB", imagen="p.png", empresa_id=sitio.empresa_id
+        )
         plano.ancho_px = plano.alto_px = 10
         Plano.objects.bulk_create([plano])
         modelo_admin = admin.site._registry[Plano]

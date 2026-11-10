@@ -17,6 +17,7 @@ from django.utils import timezone
 from PIL import Image
 
 from apps.accounts.models import User
+from apps.empresas.tests.ayudas import una_empresa
 from apps.productos.models import Producto
 from apps.servicios.models import CampoPlanilla
 from apps.sitios.models import PuntoControl, Sitio
@@ -112,7 +113,9 @@ class CicloVisitaTests(SinArchivosMixin, TestCase):
         self.empleado = self.visita.empleado
         self.sitio = self.visita.sitio
         self.punto = punto_de(self.visita)
-        self.producto = Producto.objects.create(nombre_comercial="Cebo")
+        self.producto = Producto.objects.create(
+            nombre_comercial="Cebo", empresa=una_empresa()
+        )
 
     def revisar(self, visita, **extra):
         argumentos = {
@@ -181,7 +184,7 @@ class CicloVisitaTests(SinArchivosMixin, TestCase):
 
     def test_abrir_es_idempotente_y_crea_con_incidencia_si_la_pendiente_es_ajena(self):
         otro = User.objects.create_user(
-            username="emp-b", password="x", rol=User.Rol.EMPLEADO
+            username="emp-b", password="x", rol=User.Rol.EMPLEADO, empresa=una_empresa()
         )
         self.visita.empleado = otro
         self.visita.save()
@@ -228,7 +231,7 @@ class CicloVisitaTests(SinArchivosMixin, TestCase):
     def test_revision_exige_visita_abierta_y_propia(self):
         pendiente = crear_visita()
         otro = User.objects.create_user(
-            username="emp-c", password="x", rol=User.Rol.EMPLEADO
+            username="emp-c", password="x", rol=User.Rol.EMPLEADO, empresa=una_empresa()
         )
         propia = abierta()
         for nombre, visita, empleado in (
@@ -390,7 +393,10 @@ class CerrarVisitaTests(SinArchivosMixin, TestCase):
 
     def otro_empleado(self):
         return User.objects.create_user(
-            username="emp-otro", password="x", rol=User.Rol.EMPLEADO
+            username="emp-otro",
+            password="x",
+            rol=User.Rol.EMPLEADO,
+            empresa=una_empresa(),
         )
 
     def test_cerrar_no_toca_el_vencimiento_del_punto(self):
@@ -445,7 +451,10 @@ class CerrarVisitaTests(SinArchivosMixin, TestCase):
     def test_exige_quien_corresponde_al_tipo_de_cierre(self):
         visita = self.con_revision()
         admin = User.objects.create_user(
-            username="admin-svc", password="x", rol=User.Rol.ADMINISTRADOR
+            username="admin-svc",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         for quien, cierre in (
             (self.otro_empleado(), Visita.Cierre.EMPLEADO),
@@ -555,7 +564,10 @@ class CerrarVisitaTests(SinArchivosMixin, TestCase):
     def test_falla_de_validacion_no_muta_la_instancia(self):
         visita = self.con_revision()
         admin = User.objects.create_user(
-            username="admin-svc2", password="x", rol=User.Rol.ADMINISTRADOR
+            username="admin-svc2",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         empleado_original = visita.empleado
         with self.assertRaises(ValidationError):
@@ -594,7 +606,10 @@ class AdministradorEnCampoTests(SinArchivosMixin, TestCase):
         self.general.save()
         self.empleado = self.pendiente.empleado
         self.admin = User.objects.create_user(
-            username="adm-campo", password="x", rol=User.Rol.ADMINISTRADOR
+            username="adm-campo",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
 
     def test_no_toma_pendiente_ni_toca_el_vencimiento(self):
@@ -637,7 +652,10 @@ class ManualPorPuntosTests(SinArchivosMixin, TestCase):
         self.empleado = self.pendiente.empleado
         self.sitio = self.pendiente.sitio
         self.admin = User.objects.create_user(
-            username="admin-man", password="x", rol=User.Rol.ADMINISTRADOR
+            username="admin-man",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         self.general = punto_de(self.pendiente)
         self.sala = PuntoControl.objects.create(
@@ -646,7 +664,9 @@ class ManualPorPuntosTests(SinArchivosMixin, TestCase):
         self.techo = PuntoControl.objects.create(
             sitio=self.sitio, nombre="Techo", orden=2
         )
-        self.producto = Producto.objects.create(nombre_comercial="Cebo")
+        self.producto = Producto.objects.create(
+            nombre_comercial="Cebo", empresa=una_empresa()
+        )
         self.fecha = timezone.now() - timedelta(hours=3)
         # Las cargas son anteriores a hoy: el sitio ya existía.
         Sitio.objects.filter(pk=self.sitio.pk).update(
@@ -773,7 +793,9 @@ class RegistrarRevisionTests(SinArchivosMixin, TestCase):
         self.tipo = pendiente.tipo
         self.punto = punto_de(pendiente)
         self.visita, _ = abrir(empleado=self.empleado, sitio=self.sitio)
-        self.producto = Producto.objects.create(nombre_comercial="Cebo")
+        self.producto = Producto.objects.create(
+            nombre_comercial="Cebo", empresa=una_empresa()
+        )
         self.archivos_previos = self.archivos_en_disco()
 
     def archivos_en_disco(self):
@@ -893,7 +915,7 @@ class RegistrarRevisionTests(SinArchivosMixin, TestCase):
         self.assertNadaCreado()
 
     def test_productos_se_buscan_en_una_consulta(self):
-        otro = Producto.objects.create(nombre_comercial="Gel")
+        otro = Producto.objects.create(nombre_comercial="Gel", empresa=una_empresa())
         items = [self.item_valido(p) for p in (self.producto, otro, self.producto)]
         with CaptureQueriesContext(connection) as consultas:
             self.registrar(productos_aplicados=items)
@@ -952,7 +974,10 @@ class BloqueosTests(SinArchivosMixin, TestCase):
             )
         self.assertEqual(al_cerrar, [Sitio, Visita])
         otro = User.objects.create_user(
-            username="emp-bloqueo", password="x", rol=User.Rol.EMPLEADO
+            username="emp-bloqueo",
+            password="x",
+            rol=User.Rol.EMPLEADO,
+            empresa=una_empresa(),
         )
         with espiar_bloqueos() as al_abrir:
             abrir(empleado=otro, sitio=self.sitio)
@@ -961,7 +986,10 @@ class BloqueosTests(SinArchivosMixin, TestCase):
     def test_manual_bloquea_sitio_antes_que_pendiente(self):
         pendiente = crear_visita(programada_para=date(2026, 9, 1))
         admin = User.objects.create_user(
-            username="adm-orden", password="x", rol=User.Rol.ADMINISTRADOR
+            username="adm-orden",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         with espiar_bloqueos() as modelos:
             registrar_visita_manual(
@@ -1007,7 +1035,10 @@ class BloqueosTests(SinArchivosMixin, TestCase):
         otra = crear_visita(programada_para=date(2026, 9, 2))
         Visita.objects.filter(pk=otra.pk).update(cuenta_como_servicio=False)
         admin = User.objects.create_user(
-            username="adm-cs", password="x", rol=User.Rol.ADMINISTRADOR
+            username="adm-cs",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         manual = registrar_visita_manual(
             sitio=otra.sitio,
@@ -1027,7 +1058,10 @@ class BloqueosTests(SinArchivosMixin, TestCase):
 
     def test_revision_filtra_por_empleado_al_bloquear(self):
         ajeno = User.objects.create_user(
-            username="emp-ajeno", password="x", rol=User.Rol.EMPLEADO
+            username="emp-ajeno",
+            password="x",
+            rol=User.Rol.EMPLEADO,
+            empresa=una_empresa(),
         )
         with CaptureQueriesContext(connection) as consultas:
             with self.assertRaises(VisitaNoEncontrada):
@@ -1059,7 +1093,10 @@ class BloqueosTests(SinArchivosMixin, TestCase):
         punto.frecuencia_dias = 30
         punto.save()
         admin = User.objects.create_user(
-            username="adm-rol", password="x", rol=User.Rol.ADMINISTRADOR
+            username="adm-rol",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         de_admin, _ = abrir(empleado=admin, sitio=self.sitio)
         de_empleado, _ = abrir(empleado=self.empleado, sitio=self.sitio)
@@ -1092,7 +1129,10 @@ class PrecisionTests(SinArchivosMixin, TestCase):
         visita.refresh_from_db()
         self.assertEqual(visita.precision_m, Decimal("8.50"))
         otro = User.objects.create_user(
-            username="emp-prec", password="x", rol=User.Rol.EMPLEADO
+            username="emp-prec",
+            password="x",
+            rol=User.Rol.EMPLEADO,
+            empresa=una_empresa(),
         )
         nueva, _ = abrir(empleado=otro, sitio=sitio)
         nueva.refresh_from_db()

@@ -10,6 +10,7 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.clientes.models import Cliente
+from apps.empresas.tests.ayudas import una_empresa
 from apps.sitios.models import Sitio
 
 RAIZ_APP = Path(__file__).resolve().parents[1]
@@ -20,9 +21,11 @@ class BasePanelTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.admin = User.objects.create_user(
-            "adm-ini", password="x", rol=User.Rol.ADMINISTRADOR
+            "adm-ini", password="x", rol=User.Rol.ADMINISTRADOR, empresa=una_empresa()
         )
-        cls.cliente = Cliente.objects.create(razon_social="Cliente Inicio")
+        cls.cliente = Cliente.objects.create(
+            razon_social="Cliente Inicio", empresa=una_empresa()
+        )
 
     def setUp(self):
         self.client.force_login(self.admin)
@@ -38,7 +41,9 @@ class InicioTests(BasePanelTests):
 
     def test_empleado_no_entra_al_inicio(self):
         self.client.force_login(
-            User.objects.create_user("emp-ini", password="x", rol=User.Rol.EMPLEADO)
+            User.objects.create_user(
+                "emp-ini", password="x", rol=User.Rol.EMPLEADO, empresa=una_empresa()
+            )
         )
         self.assertEqual(self.client.get("/panel/").status_code, 403)
 

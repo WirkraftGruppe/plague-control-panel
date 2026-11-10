@@ -15,8 +15,10 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.clientes.models import Cliente
+from apps.empresas.models import Empresa
+from apps.empresas.tests.ayudas import una_empresa
 from apps.panel.demo import _es_sqlite
-from apps.panel.demo_datos import CLIENTES, MARCA_DEMO
+from apps.panel.demo_datos import CLIENTES, EMPRESA_DEMO, MARCA_DEMO
 from apps.productos.models import MovimientoStock, Producto
 from apps.productos.services import stock
 from apps.productos.unidades import magnitud_de, unidades_permitidas
@@ -116,7 +118,7 @@ class CargarDemoTests(TestCase):
         self.assertFalse(TipoServicio.objects.exists())
         self._cargar()
         self.assertTrue(TipoServicio.objects.filter(slug="servicio-mipu").exists())
-        # Con tipos ya cargados, el fixture no vuelve a correr ni pisa nada.
+        # Con tipos ya creados, la demo no los pisa.
         TipoServicio.objects.filter(slug="servicio-mipu").update(nombre="Del cliente")
         self._cargar()
         self.assertTrue(TipoServicio.objects.filter(nombre="Del cliente").exists())
@@ -124,7 +126,10 @@ class CargarDemoTests(TestCase):
     @override_settings(DEBUG=True)
     def test_avisa_usuario_demo_existente_sin_modificarlo(self):
         previo = User.objects.create_user(
-            "demo-admin", password="otra-clave", rol=User.Rol.EMPLEADO
+            "demo-admin",
+            password="otra-clave",
+            rol=User.Rol.EMPLEADO,
+            empresa=Empresa.objects.get_or_create(nombre=EMPRESA_DEMO)[0],
         )
         salida, errores = StringIO(), StringIO()
         call_command("cargar_demo", stdout=salida, stderr=errores)
@@ -232,12 +237,20 @@ class CargarDemoClienteTests(TestCase):
         self.assertEqual(Sitio.history.filter(nombre="Planta Castelli").count(), 1)
 
     def test_conserva_datos_que_no_son_demo(self):
-        cliente = Cliente.objects.create(razon_social="Cliente Propio", notas="mío")
+        cliente = Cliente.objects.create(
+            razon_social="Cliente Propio", notas="mío", empresa=una_empresa()
+        )
         sitio = Sitio.objects.create(cliente=cliente, nombre="Sitio propio")
-        ajeno = Cliente.objects.create(razon_social="Danone")
-        producto = Producto.objects.create(nombre_comercial="Producto propio")
-        tipo = TipoServicio.objects.create(nombre="Propio", slug="servicio-propio")
-        empleado = User.objects.create_user("propio", password="x", rol="empleado")
+        ajeno = Cliente.objects.create(razon_social="Danone", empresa=una_empresa())
+        producto = Producto.objects.create(
+            nombre_comercial="Producto propio", empresa=una_empresa()
+        )
+        tipo = TipoServicio.objects.create(
+            nombre="Propio", slug="servicio-propio", empresa=una_empresa()
+        )
+        empleado = User.objects.create_user(
+            "propio", password="x", rol="empleado", empresa=una_empresa()
+        )
         visita = Visita.objects.create(
             sitio=sitio, empleado=empleado, origen=Visita.Origen.APP
         )
@@ -253,10 +266,14 @@ class CargarDemoClienteTests(TestCase):
         self.assertEqual(sitio.puntos.count(), 1)
 
     def test_limpia_el_formato_viejo(self):
-        viejo = Cliente.objects.create(razon_social="Cliente Demo 1")
+        viejo = Cliente.objects.create(
+            razon_social="Cliente Demo 1", empresa=una_empresa()
+        )
         sitio = Sitio.objects.create(cliente=viejo, nombre="Planta Demo Norte")
         tipo = TipoServicio.objects.create(
-            nombre="Control de plagas (demo)", slug="demo-control-de-plagas"
+            nombre="Control de plagas (demo)",
+            slug="demo-control-de-plagas",
+            empresa=una_empresa(),
         )
         empleado = User.objects.get(username="demo-empleado")
         Visita.objects.create(sitio=sitio, empleado=empleado, origen=Visita.Origen.APP)

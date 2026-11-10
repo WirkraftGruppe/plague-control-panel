@@ -4,13 +4,13 @@ import logging
 from datetime import timedelta
 from decimal import Decimal
 
-from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.clientes.models import Cliente
+from apps.empresas.models import Empresa
 from apps.panel.demo import exigir_entorno_demo, limpiar_datos_demo
 from apps.panel.demo_datos import (
     CADENCIA_HISTORIA_DIAS,
@@ -20,6 +20,7 @@ from apps.panel.demo_datos import (
     CLIENTES,
     DESFASES,
     DIAS_DE_HISTORIA,
+    EMPRESA_DEMO,
     FRECUENCIAS,
     INCIDENCIAS_UBICACION,
     MARCA_DEMO,
@@ -67,10 +68,9 @@ class Command(BaseCommand):
         self._archivos = []
         try:
             with transaction.atomic():
+                self.empresa = Empresa.objects.get_or_create(nombre=EMPRESA_DEMO)[0]
                 administrador, empleado = self._usuarios()
                 borrados = limpiar_datos_demo()
-                if not TipoServicio.objects.exists():
-                    call_command("loaddata", "tipos_servicio", verbosity=0)
                 sitios = self._crear_sitios()
                 self._crear_historia(sitios, administrador, empleado)
         except Exception:
@@ -96,8 +96,8 @@ class Command(BaseCommand):
         """
         usuarios = []
         for nombre, rol, extra in (
-            ("demo-admin", User.Rol.ADMINISTRADOR, {}),
-            ("demo-empleado", User.Rol.EMPLEADO, {}),
+            ("demo-admin", User.Rol.ADMINISTRADOR, {"empresa": self.empresa}),
+            ("demo-empleado", User.Rol.EMPLEADO, {"empresa": self.empresa}),
             (
                 "demo-plataforma",
                 User.Rol.PLATAFORMA,
@@ -122,7 +122,9 @@ class Command(BaseCommand):
     def _crear_sitios(self):
         """Clientes de la Carta, sus sitios y puntos; el primer sitio lleva plano."""
         clientes = {
-            razon: Cliente.objects.create(razon_social=razon, notas=MARCA_DEMO)
+            razon: Cliente.objects.create(
+                empresa=self.empresa, razon_social=razon, notas=MARCA_DEMO
+            )
             for razon in CLIENTES
         }
         sitios = []
@@ -179,6 +181,7 @@ class Command(BaseCommand):
             nombre, principio, presentacion, unidad_dosis, registro = datos[:5]
             base, contenido, modo, envases = datos[5:]
             producto = Producto.objects.create(
+                empresa=self.empresa,
                 nombre_comercial=f"{nombre}{SUFIJO_PRODUCTO}",
                 principio_activo=principio,
                 presentacion=presentacion,
@@ -193,11 +196,11 @@ class Command(BaseCommand):
         return productos
 
     def _tipos(self):
-        """Tipos de servicio reales por slug; los que faltan se crean sin pisar."""
+        """Tipos de servicio de la demo por slug; los que faltan se crean sin pisar."""
         return [
-            TipoServicio.objects.get_or_create(slug=slug, defaults={"nombre": nombre})[
-                0
-            ]
+            TipoServicio.todos.get_or_create(
+                empresa=self.empresa, slug=slug, defaults={"nombre": nombre}
+            )[0]
             for slug, nombre in TIPOS.items()
         ]
 

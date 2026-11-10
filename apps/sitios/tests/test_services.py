@@ -8,6 +8,7 @@ from django.test import TestCase
 
 from apps.accounts.models import User
 from apps.clientes.models import Cliente
+from apps.empresas.tests.ayudas import una_empresa
 from apps.sitios import services
 from apps.sitios.models import Plano, PuntoControl, Sitio
 from apps.visitas.models import Visita
@@ -15,7 +16,9 @@ from apps.visitas.models import Visita
 
 class _BaseSitio(TestCase):
     def setUp(self):
-        self.cliente = Cliente.objects.create(razon_social="ACME")
+        self.cliente = Cliente.objects.create(
+            razon_social="ACME", empresa=una_empresa()
+        )
         self.sitio = Sitio.objects.create(cliente=self.cliente, nombre="Planta 1")
 
 
@@ -31,7 +34,10 @@ class SuprimirSitioTests(_BaseSitio):
 
     def _visita(self, sitio):
         empleado = User.objects.create_user(
-            username=f"emp-{sitio.pk}", password="x", rol=User.Rol.EMPLEADO
+            username=f"emp-{sitio.pk}",
+            password="x",
+            rol=User.Rol.EMPLEADO,
+            empresa=una_empresa(),
         )
         return Visita.objects.create(
             sitio=sitio, empleado=empleado, origen=Visita.Origen.APP
@@ -138,7 +144,10 @@ class FijarUbicacionTests(_BaseSitio):
     def test_fijar_ubicacion_bloquea_la_fila(self):
         punto = self.sitio.puntos.get()
         administrador = User.objects.create_user(
-            username="adm", password="x", rol=User.Rol.ADMINISTRADOR
+            username="adm",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         original = QuerySet.select_for_update
         with mock.patch.object(
@@ -164,7 +173,10 @@ class FijarUbicacionTests(_BaseSitio):
 
     def test_corregir_ubicacion_limpia_fijada_por_escaneo(self):
         administrador = User.objects.create_user(
-            username="adm", password="x", rol=User.Rol.ADMINISTRADOR
+            username="adm",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         for corregir in (
             lambda p: services.fijar_ubicacion(p, Decimal("-36.1"), Decimal("-57.8")),
@@ -191,7 +203,10 @@ class FijarUbicacionTests(_BaseSitio):
         punto = self.sitio.puntos.get()
         PuntoControl.objects.filter(pk=punto.pk).update(activo=False)
         administrador = User.objects.create_user(
-            username="adm", password="x", rol=User.Rol.ADMINISTRADOR
+            username="adm",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         with self.assertRaises(ValidationError):
             services.fijar_ubicacion_en_campo(

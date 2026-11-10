@@ -3,17 +3,24 @@
 from django.db import models
 from django.utils.text import slugify
 
+from apps.empresas.models import ModeloDeEmpresa
 
-class TipoServicio(models.Model):
+
+class TipoServicio(ModeloDeEmpresa):
     """Servicio que ofrece la empresa; define la planilla de cada visita."""
 
     nombre = models.CharField("nombre", max_length=150)
-    slug = models.SlugField("slug", max_length=150, unique=True)
+    slug = models.SlugField("slug", max_length=150)
     activo = models.BooleanField("activo", default=True)
 
     class Meta:
         verbose_name = "tipo de servicio"
         verbose_name_plural = "tipos de servicio"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["empresa", "slug"], name="tipo_servicio_slug_unico_por_empresa"
+            )
+        ]
 
     def __str__(self):
         return self.nombre
@@ -28,10 +35,10 @@ class TipoServicio(models.Model):
         super().save(*args, **kwargs)
 
     def _slug_libre(self) -> str:
-        """`slugify(nombre)` con sufijo `-2`, `-3`… si ya existe."""
+        """`slugify(nombre)` con sufijo `-2`, `-3`… si ya existe en la empresa."""
         base = slugify(self.nombre)[:140] or "servicio"
         slug, numero = base, 2
-        while TipoServicio.objects.filter(slug=slug).exists():
+        while TipoServicio.todos.filter(empresa_id=self.empresa_id, slug=slug).exists():
             slug = f"{base}-{numero}"
             numero += 1
         return slug
@@ -65,7 +72,7 @@ class TipoServicio(models.Model):
         ]
 
 
-class CampoPlanilla(models.Model):
+class CampoPlanilla(ModeloDeEmpresa):
     """Campo de la planilla de un tipo de servicio."""
 
     class Tipo(models.TextChoices):
@@ -79,6 +86,8 @@ class CampoPlanilla(models.Model):
     class Ambito(models.TextChoices):
         PUNTO = "punto", "Punto de control"
         VISITA = "visita", "Visita"
+
+    padre_de_empresa = "tipo_servicio"
 
     tipo_servicio = models.ForeignKey(
         TipoServicio,

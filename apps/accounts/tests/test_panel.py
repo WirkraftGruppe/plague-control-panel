@@ -2,6 +2,8 @@ from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
 
+from apps.empresas.tests.ayudas import una_empresa
+
 User = get_user_model()
 CLAVE = "Clave-Segura-2026"
 
@@ -10,10 +12,14 @@ class UsuarioPanelTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.admin = User.objects.create_user(
-            "admin1", password=CLAVE, rol=User.Rol.ADMINISTRADOR
+            "admin1", password=CLAVE, rol=User.Rol.ADMINISTRADOR, empresa=una_empresa()
         )
         cls.empleado = User.objects.create_user(
-            "emp1", password=CLAVE, rol=User.Rol.EMPLEADO, first_name="Ana"
+            "emp1",
+            password=CLAVE,
+            rol=User.Rol.EMPLEADO,
+            first_name="Ana",
+            empresa=una_empresa(),
         )
 
     def setUp(self):
@@ -133,10 +139,14 @@ class UsuarioPanelSuperusuarioTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.admin = User.objects.create_user(
-            "admin1", password=CLAVE, rol=User.Rol.ADMINISTRADOR
+            "admin1", password=CLAVE, rol=User.Rol.ADMINISTRADOR, empresa=una_empresa()
         )
         cls.super = User.objects.create_superuser(
-            "super1", "s@example.com", CLAVE, rol=User.Rol.ADMINISTRADOR
+            "super1",
+            "s@example.com",
+            CLAVE,
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
 
     def _url(self, nombre, usuario=None):
@@ -170,7 +180,11 @@ class UsuarioPanelSuperusuarioTests(TestCase):
 
     def test_superusuario_si_gestiona_superusuarios(self):
         otro = User.objects.create_superuser(
-            "super2", "o@example.com", CLAVE, rol=User.Rol.ADMINISTRADOR
+            "super2",
+            "o@example.com",
+            CLAVE,
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         self.client.force_login(self.super)
         nueva = "Otra-Clave-Nueva-77"

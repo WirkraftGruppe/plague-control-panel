@@ -4,9 +4,10 @@ from django.core.validators import RegexValidator
 from django.db import models
 
 from apps.clientes.validators import validar_cuit
+from apps.empresas.models import ModeloDeEmpresa
 
 
-class Cliente(models.Model):
+class Cliente(ModeloDeEmpresa):
     """Empresa o persona a la que la empresa presta servicios."""
 
     razon_social = models.CharField("razón social", max_length=200)

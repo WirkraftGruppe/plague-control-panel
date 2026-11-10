@@ -15,6 +15,7 @@ from rest_framework.throttling import ScopedRateThrottle
 
 from apps.accounts.models import User
 from apps.clientes.models import Cliente
+from apps.empresas.tests.ayudas import una_empresa
 from apps.servicios.models import CampoPlanilla, TipoServicio
 from apps.sitios.api_views import (
     MAX_BYTES_PEDIDO_PUNTO,
@@ -39,7 +40,9 @@ def crear_plano(sitio, nombre="Planta baja", **extra):
 class ResolverQRTests(TestCase):
     def setUp(self):
         cache.clear()
-        self.cliente = Cliente.objects.create(razon_social="ACME")
+        self.cliente = Cliente.objects.create(
+            razon_social="ACME", empresa=una_empresa()
+        )
         self.sitio = Sitio.objects.create(
             cliente=self.cliente,
             nombre="Planta 1",
@@ -53,7 +56,9 @@ class ResolverQRTests(TestCase):
             notas="Nota interna",
         )
         self.punto = self.sitio.puntos.get()
-        self.tipo = TipoServicio.objects.create(nombre="Desratización", slug="desrat")
+        self.tipo = TipoServicio.objects.create(
+            nombre="Desratización", slug="desrat", empresa=una_empresa()
+        )
         CampoPlanilla.objects.create(
             tipo_servicio=self.tipo,
             orden=1,
@@ -63,13 +68,16 @@ class ResolverQRTests(TestCase):
             obligatorio=True,
         )
         self.empleado = User.objects.create_user(
-            username="emp", password="x", rol=User.Rol.EMPLEADO
+            username="emp", password="x", rol=User.Rol.EMPLEADO, empresa=una_empresa()
         )
         self.otro = User.objects.create_user(
-            username="otro", password="x", rol=User.Rol.EMPLEADO
+            username="otro", password="x", rol=User.Rol.EMPLEADO, empresa=una_empresa()
         )
         self.admin = User.objects.create_user(
-            username="adm", password="x", rol=User.Rol.ADMINISTRADOR
+            username="adm",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         self.cliente_api = APIClient()
         self.cliente_api.force_authenticate(self.empleado)
@@ -240,19 +248,24 @@ class ResolverQRTests(TestCase):
 @override_settings(MEDIA_ROOT=MEDIA_TEMPORAL)
 class PlanoApiTests(TestCase):
     def setUp(self):
-        cliente = Cliente.objects.create(razon_social="ACME")
+        cliente = Cliente.objects.create(razon_social="ACME", empresa=una_empresa())
         self.sitio = Sitio.objects.create(cliente=cliente, nombre="Planta 1")
         self.otro_sitio = Sitio.objects.create(cliente=cliente, nombre="Planta 2")
         self.plano = crear_plano(self.sitio)
-        self.tipo = TipoServicio.objects.create(nombre="Desratización", slug="desrat")
+        self.tipo = TipoServicio.objects.create(
+            nombre="Desratización", slug="desrat", empresa=una_empresa()
+        )
         self.empleado = User.objects.create_user(
-            username="emp", password="x", rol=User.Rol.EMPLEADO
+            username="emp", password="x", rol=User.Rol.EMPLEADO, empresa=una_empresa()
         )
         self.ajeno = User.objects.create_user(
-            username="ajeno", password="x", rol=User.Rol.EMPLEADO
+            username="ajeno", password="x", rol=User.Rol.EMPLEADO, empresa=una_empresa()
         )
         self.admin = User.objects.create_user(
-            username="adm", password="x", rol=User.Rol.ADMINISTRADOR
+            username="adm",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         self.url = f"/api/v1/planos/{self.plano.id}/imagen/"
 
@@ -331,19 +344,26 @@ class MisPuntosTests(TestCase):
     URL = "/api/v1/me/puntos/"
 
     def setUp(self):
-        self.cliente = Cliente.objects.create(razon_social="ACME")
+        self.cliente = Cliente.objects.create(
+            razon_social="ACME", empresa=una_empresa()
+        )
         self.sitio = Sitio.objects.create(cliente=self.cliente, nombre="Planta 1")
         self.sitio2 = Sitio.objects.create(cliente=self.cliente, nombre="Planta 2")
         self.sitio3 = Sitio.objects.create(cliente=self.cliente, nombre="Planta 3")
-        self.tipo = TipoServicio.objects.create(nombre="Desratización", slug="desrat")
+        self.tipo = TipoServicio.objects.create(
+            nombre="Desratización", slug="desrat", empresa=una_empresa()
+        )
         self.empleado = User.objects.create_user(
-            username="emp", password="x", rol=User.Rol.EMPLEADO
+            username="emp", password="x", rol=User.Rol.EMPLEADO, empresa=una_empresa()
         )
         self.otro = User.objects.create_user(
-            username="otro", password="x", rol=User.Rol.EMPLEADO
+            username="otro", password="x", rol=User.Rol.EMPLEADO, empresa=una_empresa()
         )
         self.admin = User.objects.create_user(
-            username="adm", password="x", rol=User.Rol.ADMINISTRADOR
+            username="adm",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         self.api = APIClient()
         self.api.force_authenticate(self.empleado)
@@ -420,12 +440,17 @@ class ModoCampoTests(TestCase):
 
     def setUp(self):
         cache.clear()
-        self.cliente = Cliente.objects.create(razon_social="ACME")
+        self.cliente = Cliente.objects.create(
+            razon_social="ACME", empresa=una_empresa()
+        )
         self.admin = User.objects.create_user(
-            username="adm", password="x", rol=User.Rol.ADMINISTRADOR
+            username="adm",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         self.empleado = User.objects.create_user(
-            username="emp", password="x", rol=User.Rol.EMPLEADO
+            username="emp", password="x", rol=User.Rol.EMPLEADO, empresa=una_empresa()
         )
         self.api = APIClient()
         self.api.force_authenticate(self.admin)
@@ -609,9 +634,14 @@ class AltaPuntoTests(TestCase):
 
     def setUp(self):
         cache.clear()
-        self.cliente = Cliente.objects.create(razon_social="ACME")
+        self.cliente = Cliente.objects.create(
+            razon_social="ACME", empresa=una_empresa()
+        )
         self.admin = User.objects.create_user(
-            username="adm", password="x", rol=User.Rol.ADMINISTRADOR
+            username="adm",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         self.sitio = Sitio.objects.create(cliente=self.cliente, nombre="Planta")
         self.api = APIClient()

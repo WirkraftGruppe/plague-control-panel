@@ -12,6 +12,7 @@ from django.utils import timezone
 from PIL import Image
 
 from apps.accounts.models import User
+from apps.empresas.tests.ayudas import una_empresa
 from apps.productos.models import MovimientoStock, Producto
 from apps.servicios.models import TipoServicio
 from apps.sitios.models import Plano, PuntoControl, Sitio
@@ -35,7 +36,7 @@ class BaseTurnosTests(TestCase):
         cls.sitio = visita.sitio
         cls.roedores = visita.tipo
         cls.insectos = TipoServicio.objects.create(
-            nombre="Insectos", slug="insectos-t8"
+            nombre="Insectos", slug="insectos-t8", empresa=una_empresa()
         )
         cls.general = punto_de(visita)
         cls.sala = PuntoControl.objects.create(
@@ -46,7 +47,7 @@ class BaseTurnosTests(TestCase):
         )
         cls.empleado = visita.empleado
         cls.admin = User.objects.create_user(
-            "adm-t8", password="x", rol=User.Rol.ADMINISTRADOR
+            "adm-t8", password="x", rol=User.Rol.ADMINISTRADOR, empresa=una_empresa()
         )
         visita.delete()
 
@@ -183,7 +184,10 @@ class CargarVisitaPanelTests(BaseTurnosTests):
 
     def test_cantidad_desbordada_da_error_en_el_producto(self):
         producto = Producto.objects.create(
-            nombre_comercial="Cebo", unidad_base="ml", modo_unidad="equivalentes"
+            nombre_comercial="Cebo",
+            unidad_base="ml",
+            modo_unidad="equivalentes",
+            empresa=una_empresa(),
         )
         datos = self._datos(
             [self.general],

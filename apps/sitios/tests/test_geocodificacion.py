@@ -11,6 +11,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from apps.accounts.models import User
+from apps.empresas.tests.ayudas import una_empresa
 from apps.sitios import geocodificacion
 
 ABRIR = "apps.sitios.geocodificacion._abrir"
@@ -25,14 +26,19 @@ class GeocodificacionTests(TestCase):
         cache.clear()
         self.addCleanup(cache.clear)
         self.admin = User.objects.create_user(
-            "adm", password="clave-segura-123", rol=User.Rol.ADMINISTRADOR
+            "adm",
+            password="clave-segura-123",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         self.url = reverse("panel:sitios:geocodificar")
 
     def test_exige_administrador(self):
         with mock.patch(ABRIR) as abrir:
             self.assertEqual(self.client.post(self.url, {"q": "x"}).status_code, 302)
-            empleado = User.objects.create_user("emp", password="clave-segura-123")
+            empleado = User.objects.create_user(
+                "emp", password="clave-segura-123", empresa=una_empresa()
+            )
             self.client.force_login(empleado)
             self.assertEqual(self.client.post(self.url, {"q": "x"}).status_code, 403)
         abrir.assert_not_called()

@@ -14,6 +14,7 @@ from PIL import Image
 
 from apps.accounts.models import User
 from apps.clientes.models import Cliente
+from apps.empresas.tests.ayudas import una_empresa
 from apps.productos.models import Producto
 from apps.servicios.models import TipoServicio
 from apps.sitios.models import Sitio
@@ -27,14 +28,19 @@ def crear_visita(**extra):
     (`visita.tipo`).
     """
     sufijo = uuid4().hex[:8]
-    tipo = TipoServicio.objects.create(nombre="Roedores", slug=f"roedores-{sufijo}")
+    tipo = TipoServicio.objects.create(
+        nombre="Roedores", slug=f"roedores-{sufijo}", empresa=una_empresa()
+    )
     if "sitio" not in extra:
-        cliente = Cliente.objects.create(razon_social="ACME")
+        cliente = Cliente.objects.create(razon_social="ACME", empresa=una_empresa())
         extra["sitio"] = Sitio.objects.create(cliente=cliente, nombre="Planta 1")
     extra["sitio"].puntos.filter(orden=0, servicio__isnull=True).update(servicio=tipo)
     if "empleado" not in extra:
         extra["empleado"] = User.objects.create_user(
-            username=f"emp-{sufijo}", password="x", rol=User.Rol.EMPLEADO
+            username=f"emp-{sufijo}",
+            password="x",
+            rol=User.Rol.EMPLEADO,
+            empresa=una_empresa(),
         )
     datos = {"origen": Visita.Origen.APP}
     datos.update(extra)
@@ -69,7 +75,10 @@ class VisitaTests(TestCase):
     def setUpTestData(cls):
         cls.visita = crear_visita()
         cls.admin = User.objects.create_user(
-            username="admin-vis", password="x", rol=User.Rol.ADMINISTRADOR
+            username="admin-vis",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
 
     def test_empleado_acepta_empleado_o_administrador_y_rechaza_otro_rol(self):
@@ -79,7 +88,7 @@ class VisitaTests(TestCase):
         self.visita.full_clean()
         self.visita.estado = Visita.Estado.PENDIENTE
         self.visita.empleado = User.objects.create_user(
-            username="otro-rol", password="x", rol="visitante"
+            username="otro-rol", password="x", rol="visitante", empresa=una_empresa()
         )
         with self.assertRaises(ValidationError) as ctx:
             self.visita.full_clean()
@@ -221,7 +230,9 @@ class FotoArchivoTests(TestCase):
 class ProductoAplicadoTests(TestCase):
     def test_historial_registra_cambio_de_lote(self):
         revision = crear_revision(crear_visita())
-        producto = Producto.objects.create(nombre_comercial="Cebo X")
+        producto = Producto.objects.create(
+            nombre_comercial="Cebo X", empresa=una_empresa()
+        )
         aplicado = ProductoAplicado.objects.create(
             revision=revision,
             producto=producto,

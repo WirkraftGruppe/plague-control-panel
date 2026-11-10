@@ -3,6 +3,7 @@ import datetime
 from django.test import TestCase
 
 from apps.clientes.models import Cliente
+from apps.empresas.tests.ayudas import una_empresa
 from apps.sitios.estado import (
     EstadoVencimiento,
     estado_por_vencimiento,
@@ -20,7 +21,9 @@ def _en(dias):
 
 class EstadoVencimientoTests(TestCase):
     def setUp(self):
-        self.cliente = Cliente.objects.create(razon_social="ACME")
+        self.cliente = Cliente.objects.create(
+            razon_social="ACME", empresa=una_empresa()
+        )
 
     def _sitio(self, nombre, *vencimientos):
         """Sitio cuyo punto General queda sin programar y suma un punto por fecha."""

@@ -3,6 +3,7 @@ from django.test import SimpleTestCase, TestCase
 from django.utils import timezone
 
 from apps.accounts.models import User
+from apps.empresas.tests.ayudas import una_empresa
 from apps.visitas.models import Visita
 from apps.visitas.planillas import filas_planilla
 from apps.visitas.services import marcar_incidencia_revisada
@@ -12,7 +13,10 @@ from apps.visitas.tests.test_models import crear_visita
 class RevisionTests(TestCase):
     def setUp(self):
         self.admin = User.objects.create_user(
-            username="adm-rev", password="x", rol=User.Rol.ADMINISTRADOR
+            username="adm-rev",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
 
     def visita_realizada(self, **extra):
