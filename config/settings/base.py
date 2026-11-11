@@ -82,20 +82,6 @@ def leer_distancia_maxima_m():
     return valor
 
 
-def leer_empresa_guardia():
-    """Modo de la guardia de consultas por empresa: `advertir` o `exigir`.
-
-    Provisorio mientras las apps agregan `de_empresa`; el plan multiempresa lo deja
-    siempre en `exigir` y borra el setting.
-    """
-    valor = env("EMPRESA_GUARDIA", default="advertir").strip()
-    if valor not in ("advertir", "exigir"):
-        raise ImproperlyConfigured("EMPRESA_GUARDIA debe ser 'advertir' o 'exigir'.")
-    return valor
-
-
-EMPRESA_GUARDIA = leer_empresa_guardia()
-
 # Correo de la plataforma (soporte a las empresas); el valor por defecto es de
 # desarrollo.
 CORREO_PLATAFORMA = (
