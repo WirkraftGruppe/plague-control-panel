@@ -483,8 +483,8 @@ commit_base: 0927fcd
 | T9 | hecha (e3cd431; integrada en 9390eb5, 907 tests OK) |
 | T10 | hecha (T4–T9 integradas; ajuste de `config` 724f926 integrado en abdf150, 905 tests OK; worktree de T11 creado) |
 | T11 | hecha (10a047f; integrada en 5235e3d, 916 tests OK) |
-| T12 | verificada tras la ronda 2 (7c039f9; 8/8 x2), integrándose |
-| T13 | pendiente |
+| T12 | hecha (7c039f9; integrada en ff29ae4, 928 tests OK) |
+| T13 | pasos 1 y 2 hechos (T11, T14 y T12 integradas; `EMPRESA_GUARDIA` borrada en 701c934; base local recreada); paso 3: verificación TODO en curso |
 | T14 | hecha (c83527d; integrada en 0cb2001, 928 tests OK; base local recreada con `migrate` + `cargar_demo`) |
 
 ### Corridas
