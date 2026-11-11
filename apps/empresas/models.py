@@ -15,6 +15,10 @@ def ruta_logo(instancia, nombre):
     return f"empresas/logos/{uuid.uuid4().hex}.png"
 
 
+# Marca de "el objeto referido no existe", distinta de una empresa nula.
+_INEXISTENTE = object()
+
+
 class Empresa(models.Model):
     """Empresa de control de plagas que usa la plataforma; dueña de sus datos."""
 
@@ -110,14 +114,17 @@ class ModeloDeEmpresa(models.Model):
         if sin_empresa and self.empresa_id is not None and campos is not None:
             kwargs["update_fields"] = {*campos, "empresa"}
         super().save(*args, **kwargs)
-        self._empresa_original = self.empresa_id
+        # Solo se da por guardada la empresa si este `save()` la escribió.
+        escritos = kwargs.get("update_fields")
+        if escritos is None or {"empresa", "empresa_id"} & set(escritos):
+            self._empresa_original = self.empresa_id
 
     def _empresa_de(self, nombre):
-        """Empresa de la FK `nombre`; `None` si el objeto referido no existe."""
+        """Empresa de la FK `nombre`; `_INEXISTENTE` si el objeto referido no existe."""
         try:
             return getattr(self, nombre).empresa_id
         except ObjectDoesNotExist:
-            return None
+            return _INEXISTENTE
 
     def clean(self):
         """Rechaza el cambio de empresa y las referencias a otra empresa.
@@ -136,15 +143,21 @@ class ModeloDeEmpresa(models.Model):
         if padre and getattr(self, f"{padre}_id") is not None:
             empresa_padre = self._empresa_de(padre)
             if efectiva is None:
-                efectiva = empresa_padre
-            elif empresa_padre is not None and empresa_padre != efectiva:
+                efectiva = None if empresa_padre is _INEXISTENTE else empresa_padre
+            elif (
+                empresa_padre not in (None, _INEXISTENTE) and empresa_padre != efectiva
+            ):
                 errores[padre] = "Pertenece a otra empresa."
         if efectiva is not None:
             for nombre in self.referencias_de_empresa:
                 if getattr(self, f"{nombre}_id") is None:
                     continue
                 empresa_referido = self._empresa_de(nombre)
-                if empresa_referido is not None and empresa_referido != efectiva:
+                # Una referencia sin empresa (un usuario `plataforma`) es ajena.
+                if (
+                    empresa_referido is not _INEXISTENTE
+                    and empresa_referido != efectiva
+                ):
                     errores[nombre] = "Pertenece a otra empresa."
         if errores:
             raise ValidationError(errores)

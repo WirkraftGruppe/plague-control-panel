@@ -139,7 +139,9 @@ class Visita(ModeloDeEmpresa):
         if (
             self.estado == self.Estado.PENDIENTE
             and self.empleado_id
-            and self.empleado.es_administrador
+            and User.objects.filter(
+                pk=self.empleado_id, rol=User.Rol.ADMINISTRADOR
+            ).exists()
         ):
             raise ValidationError(
                 {"empleado": "Una visita pendiente no se asigna a un administrador."}
