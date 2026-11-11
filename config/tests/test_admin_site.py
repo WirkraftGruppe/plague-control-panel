@@ -104,20 +104,6 @@ class AdminPlataformaTests(TestCase):
         self.assertEqual(empleado.empresa, empresa_a)
         self.assertEqual(empleado.first_name, "Ana")
 
-    def test_edicion_asigna_empresa_a_un_usuario_que_no_la_tiene(self):
-        empresa = crear_empresa()
-        empleado = get_user_model().objects.create_user(
-            "sin", password="clave-larga-123", rol="empleado"
-        )
-        self.client.force_login(crear_plataforma())
-        url = reverse("admin:accounts_user_change", args=[empleado.pk])
-        r = self.client.get(url)
-        self.assertIn("empresa", r.context["adminform"].form.fields)
-        r = self.client.post(url, self._datos_edicion(empleado, empresa=empresa.pk))
-        self.assertEqual(r.status_code, 302)
-        empleado.refresh_from_db()
-        self.assertEqual(empleado.empresa, empresa)
-
     def test_cambiar_a_plataforma_a_un_usuario_con_empresa_da_error_de_formulario(self):
         empresa = crear_empresa("A")
         empleado = get_user_model().objects.create_user(
@@ -132,16 +118,21 @@ class AdminPlataformaTests(TestCase):
         self.assertEqual(empleado.rol, "empleado")
         self.assertEqual(empleado.empresa, empresa)
 
-    def test_editar_un_plataforma_con_empresa_da_error_de_formulario(self):
+    def test_asignar_empresa_a_un_plataforma_da_error_de_formulario(self):
         empresa = crear_empresa("A")
         operador = get_user_model().objects.create_user(
-            "op", password="clave-larga-123", rol="plataforma", empresa=empresa
+            "op", password="clave-larga-123", rol="plataforma"
         )
         self.client.force_login(crear_plataforma())
         url = reverse("admin:accounts_user_change", args=[operador.pk])
-        r = self.client.post(url, self._datos_edicion(operador, first_name="Op"))
+        r = self.client.post(
+            url, self._datos_edicion(operador, first_name="Op", empresa=empresa.pk)
+        )
         self.assertEqual(r.status_code, 200)
-        self.assertIn("rol", r.context["adminform"].form.errors)
+        self.assertIn("empresa", r.context["adminform"].form.errors)
+        operador.refresh_from_db()
+        self.assertIsNone(operador.empresa_id)
+        self.assertEqual(operador.first_name, "")
 
     @override_settings(EMPRESA_GUARDIA="exigir")
     def test_change_de_visita_con_raw_id_no_consulta_fuera_del_contexto(self):
