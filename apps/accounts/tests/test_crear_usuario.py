@@ -14,7 +14,13 @@ GETPASS = "apps.accounts.management.commands.crear_usuario.getpass"
 class CrearUsuarioTests(TestCase):
     def test_crea_empleado_sin_is_staff(self):
         with mock.patch(GETPASS, return_value="clave-segura-123"):
-            call_command("crear_usuario", "ana", rol="empleado", nombre="Ana")
+            call_command(
+                "crear_usuario",
+                "ana",
+                rol="empleado",
+                nombre="Ana",
+                empresa=una_empresa().pk,
+            )
         usuario = User.objects.get(username="ana")
         self.assertEqual(usuario.rol, User.Rol.EMPLEADO)
         self.assertEqual(usuario.first_name, "Ana")
@@ -54,7 +60,9 @@ class CrearUsuarioTests(TestCase):
 
     def test_normaliza_el_nombre(self):
         with mock.patch(GETPASS, return_value="clave-segura-123"):
-            call_command("crear_usuario", " ＡＮＡ ", rol="empleado")
+            call_command(
+                "crear_usuario", " ＡＮＡ ", rol="empleado", empresa=una_empresa().pk
+            )
         self.assertTrue(User.objects.filter(username="ana").exists())
 
     def test_rechaza_variante_unicode_de_usuario_existente(self):

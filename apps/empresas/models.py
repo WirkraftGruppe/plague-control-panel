@@ -1,6 +1,10 @@
 import uuid
 
-from django.core.exceptions import NON_FIELD_ERRORS, ValidationError
+from django.core.exceptions import (
+    NON_FIELD_ERRORS,
+    ObjectDoesNotExist,
+    ValidationError,
+)
 from django.db import models
 
 from .consultas import EmpresaQuerySet, sin_filtro_empresa
@@ -9,6 +13,10 @@ from .consultas import EmpresaQuerySet, sin_filtro_empresa
 def ruta_logo(instancia, nombre):
     """Ruta de almacenamiento: UUID aleatorio, nunca el nombre original."""
     return f"empresas/logos/{uuid.uuid4().hex}.png"
+
+
+# Marca de "el objeto referido no existe", distinta de una empresa nula.
+_INEXISTENTE = object()
 
 
 class Empresa(models.Model):
@@ -37,13 +45,13 @@ class ModeloDeEmpresa(models.Model):
     `todos` no filtra y es solo para el admin y los comandos.
     """
 
-    # Nula en esta fase: T14 la vuelve obligatoria.
+    # La base la exige; `blank=True` porque `save()` copia la empresa del padre y
+    # hay altas de hijos que validan antes de eso.
     empresa = models.ForeignKey(
         Empresa,
         verbose_name="empresa",
         on_delete=models.PROTECT,
         related_name="+",
-        null=True,
         blank=True,
     )
 
@@ -86,23 +94,37 @@ class ModeloDeEmpresa(models.Model):
 
     def _empresa_cambiada(self):
         """Indica si se intenta cambiar la empresa ya fijada de un registro guardado."""
+        if self._state.adding:
+            return False
         if self._empresa_original is None or "empresa_id" not in self.__dict__:
             return False
         return self.empresa_id != self._empresa_original
 
     def save(self, *args, **kwargs):
-        if self._empresa_cambiada():
+        campos = kwargs.get("update_fields")
+        if (campos is None or "empresa" in campos or "empresa_id" in campos) and (
+            self._empresa_cambiada()
+        ):
             raise ValueError(
                 f"La empresa de {type(self).__name__} no se puede cambiar "
                 "después del alta."
             )
         sin_empresa = self.empresa_id is None
         self._heredar_empresa()
-        campos = kwargs.get("update_fields")
         if sin_empresa and self.empresa_id is not None and campos is not None:
             kwargs["update_fields"] = {*campos, "empresa"}
         super().save(*args, **kwargs)
-        self._empresa_original = self.empresa_id
+        # Solo se da por guardada la empresa si este `save()` la escribió.
+        escritos = kwargs.get("update_fields")
+        if escritos is None or {"empresa", "empresa_id"} & set(escritos):
+            self._empresa_original = self.empresa_id
+
+    def _empresa_de(self, nombre):
+        """Empresa de la FK `nombre`; `_INEXISTENTE` si el objeto referido no existe."""
+        try:
+            return getattr(self, nombre).empresa_id
+        except ObjectDoesNotExist:
+            return _INEXISTENTE
 
     def clean(self):
         """Rechaza el cambio de empresa y las referencias a otra empresa.
@@ -111,25 +133,31 @@ class ModeloDeEmpresa(models.Model):
         copiará). Los campos sin empresa fijada no se comparan.
         """
         super().clean()
-        errores = {}
         if self._empresa_cambiada():
-            errores[NON_FIELD_ERRORS] = (
-                "La empresa no se puede cambiar después del alta."
+            raise ValidationError(
+                {NON_FIELD_ERRORS: "La empresa no se puede cambiar después del alta."}
             )
+        errores = {}
         efectiva = self.empresa_id
         padre = self.padre_de_empresa
         if padre and getattr(self, f"{padre}_id") is not None:
-            empresa_padre = getattr(self, padre).empresa_id
+            empresa_padre = self._empresa_de(padre)
             if efectiva is None:
-                efectiva = empresa_padre
-            elif empresa_padre is not None and empresa_padre != efectiva:
+                efectiva = None if empresa_padre is _INEXISTENTE else empresa_padre
+            elif (
+                empresa_padre not in (None, _INEXISTENTE) and empresa_padre != efectiva
+            ):
                 errores[padre] = "Pertenece a otra empresa."
         if efectiva is not None:
             for nombre in self.referencias_de_empresa:
                 if getattr(self, f"{nombre}_id") is None:
                     continue
-                referido = getattr(self, nombre)
-                if referido.empresa_id is not None and referido.empresa_id != efectiva:
+                empresa_referido = self._empresa_de(nombre)
+                # Una referencia sin empresa (un usuario `plataforma`) es ajena.
+                if (
+                    empresa_referido is not _INEXISTENTE
+                    and empresa_referido != efectiva
+                ):
                     errores[nombre] = "Pertenece a otra empresa."
         if errores:
             raise ValidationError(errores)

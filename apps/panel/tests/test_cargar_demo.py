@@ -496,10 +496,9 @@ class DosEmpresasDemoTests(TestCase):
         self.assertTrue(plataforma.es_plataforma and plataforma.is_superuser)
         self.assertIsNone(plataforma.empresa_id)
 
-    def test_empresas_repetidas_y_admin_sin_empresa(self):
+    def test_empresas_repetidas_usa_la_mas_antigua(self):
         Empresa.objects.create(nombre=EMPRESA_DEMO)
-        User.objects.filter(username="demo-admin").update(empresa=None)
         call_command("cargar_demo", stdout=StringIO())
         admin = User.objects.get(username="demo-admin")
-        # Se usa la empresa demo más antigua y el administrador vuelve a ella.
+        # Se usa la empresa demo más antigua y el administrador sigue en ella.
         self.assertEqual(admin.empresa_id, self.empresa_a.pk)

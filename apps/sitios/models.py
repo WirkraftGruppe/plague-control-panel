@@ -305,10 +305,17 @@ class PuntoControl(ModeloDeEmpresa):
     def clean(self):
         super().clean()
         errores = {}
-        if self.sitio_id and self.activo and not self.sitio.activo:
+        sitio = Sitio.todos.filter(pk=self.sitio_id).first() if self.sitio_id else None
+        if sitio is not None and self.activo and not sitio.activo:
             errores["activo"] = "Un punto activo necesita un sitio activo."
-        if self.plano_id and self.plano.sitio_id != self.sitio_id:
-            errores["plano"] = "El plano pertenece a otro sitio."
+        if self.plano_id:
+            plano_sitio_id = (
+                Plano.todos.filter(pk=self.plano_id)
+                .values_list("sitio_id", flat=True)
+                .first()
+            )
+            if plano_sitio_id is not None and plano_sitio_id != self.sitio_id:
+                errores["plano"] = "El plano pertenece a otro sitio."
         if errores:
             raise ValidationError(errores)
 

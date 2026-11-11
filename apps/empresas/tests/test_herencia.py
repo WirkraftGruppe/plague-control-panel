@@ -273,9 +273,8 @@ class ValidacionConEmpresaEfectivaTests(TestCase):
             cliente.save()
         self.assertEqual(Cliente.todos.get(pk=self.cliente.pk).empresa_id, self.a.pk)
 
-    def test_asignar_empresa_a_un_registro_guardado_sin_empresa_funciona(self):
-        cliente = Cliente.todos.create(razon_social="Sin empresa")
-        self.assertIsNone(cliente.empresa_id)
+    def test_cambiar_la_empresa_de_un_registro_guardado_falla(self):
+        cliente = Cliente.todos.create(razon_social="Con empresa", empresa=self.a)
         cliente = Cliente.todos.get(pk=cliente.pk)
         cliente.empresa = self.a
         cliente.full_clean()

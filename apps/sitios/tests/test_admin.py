@@ -147,11 +147,15 @@ class PuntoControlAdminTests(TestCase):
 
     def test_corregir_coordenadas_limpia_fijada_por_escaneo(self):
         self.client.force_login(self.administrador)
+        # La ubicación la fija un empleado de la empresa al escanear el punto.
+        empleado = User.objects.create_user(
+            "fija", password="x", rol=User.Rol.EMPLEADO, empresa=una_empresa()
+        )
         PuntoControl.todos.filter(pk=self.punto.pk).update(
             latitud="-35.100000",
             longitud="-58.100000",
             ubicacion_fijada_en=timezone.now(),
-            ubicacion_fijada_por=self.administrador,
+            ubicacion_fijada_por=empleado,
         )
         url = reverse("admin:sitios_puntocontrol_change", args=[self.punto.pk])
         respuesta = self.client.post(
