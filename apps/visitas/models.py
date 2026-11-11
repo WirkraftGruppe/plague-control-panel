@@ -139,7 +139,8 @@ class Visita(ModeloDeEmpresa):
         if (
             self.estado == self.Estado.PENDIENTE
             and self.empleado_id
-            and User.objects.filter(
+            # User no tiene guardia de empresa: se consulta con _default_manager.
+            and User._default_manager.filter(
                 pk=self.empleado_id, rol=User.Rol.ADMINISTRADOR
             ).exists()
         ):
