@@ -156,7 +156,7 @@ Para ver las rutas de una app: `grep -n "path(" apps/<app>/api_urls.py apps/<app
 - Requeridas: `SECRET_KEY`, `DJANGO_ENV`, `DATABASE_URL`
 - Obligatoria en producción: `SITE_URL` (base para el contenido de los QR); sin ella `prod.py` aborta el arranque
 - Opcionales: `ALLOWED_HOSTS`, `MEDIA_ROOT`, `STORAGE_BACKEND` (`local` | `s3`), `AWS_*` cuando `s3`, `CORREO_PLATAFORMA` (contacto del operador para el User-Agent de Nominatim; conviene definirlo en producción)
-- No existen `NOMBRE_EMPRESA` ni `CORREO_CONTACTO`: salen de `Empresa`.
+- No hay variables para el nombre ni el correo de la empresa: salen de `Empresa`.
 - Plantilla: `.env.example` (versionado). `.env` no se versiona y no se lee.
 
 ## Prohibiciones de código
