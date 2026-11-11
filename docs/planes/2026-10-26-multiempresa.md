@@ -484,7 +484,7 @@ commit_base: 0927fcd
 | T10 | hecha (T4–T9 integradas; ajuste de `config` 724f926 integrado en abdf150, 905 tests OK; worktree de T11 creado) |
 | T11 | hecha (10a047f; integrada en 5235e3d, 916 tests OK) |
 | T12 | hecha (7c039f9; integrada en ff29ae4, 928 tests OK) |
-| T13 | pasos 1 y 2 hechos (T11, T14 y T12 integradas; `EMPRESA_GUARDIA` borrada en 701c934; base local recreada); paso 3: verificación TODO en curso |
+| T13 | hecha (criterios 9/9; verificación TODO sobre 5c7b016: 180/181, único FALLA `congelado.sh` por CONTRATO MODIFICADO e4ada1f, aprobado); falta la prueba manual del usuario con las dos empresas |
 | T14 | hecha (c83527d; integrada en 0cb2001, 928 tests OK; base local recreada con `migrate` + `cargar_demo`) |
 
 ### Corridas
@@ -510,6 +510,7 @@ commit_base: 0927fcd
 | 2026-11-11 18:30 | T12 (corrección fcddca3) | fcddca3 | criterios 8/8 PASA (verificador y verificador-b); veredicto global FALLA solo por CONTRATO MODIFICADO (e4ada1f) | auditor-seguridad: P-72 y P-73 cerrados; P-69 y P-70 a medio cerrar (2 importantes: P-multiempresa-77, -78); 4 menores de texto (-79 a -81) y uno de código (-82); observaciones (-83) |
 | 2026-11-11 19:30 | T12 (ronda 2, 7c039f9) | 7c039f9 | criterios 8/8 PASA (verificador y verificador-b); veredicto global FALLA solo por CONTRATO MODIFICADO (e4ada1f) | auditor-seguridad: P-77, -78, -80 y -81 cerrados, P-79 a medio cerrar (docstring); 0 bloqueantes, 0 importantes, 2 menores y 3 observaciones (P-multiempresa-84); el comando de respaldo vuelca 2499 objetos sin sesiones ni tokens y `loaddata` lo restaura; presupuesto 122/500 |
 | 2026-11-11 21:30 | TODO (cierre) | 2e1ae3b | verificador y verificador-b: 179 de 181 PASA; FALLA el `[grep-0]` de T2 (`User.objects.filter` en `apps/visitas/models.py:142`, de la corrección d83cd32 de T14) y `congelado.sh` (CONTRATO MODIFICADO e4ada1f, aprobado); suite 928 OK | auditor-seguridad final: 0 bloqueantes, ningún pendiente importante frena el merge; 2 fugas menores nuevas (P-multiempresa-85, -86); el FALLA de T2 se corrige en T14 (b88faa5) y se repite la verificación |
+| 2026-11-11 22:30 | TODO (cierre, 2.ª) | 5c7b016 | verificador y verificador-b: 180/181 PASA; único FALLA `congelado.sh` (CONTRATO MODIFICADO e4ada1f, aprobado por el usuario); suite 928 OK; el `[grep-0]` de T2 pasa tras b88faa5 | auditor-seguridad final (sobre 2e1ae3b; la diferencia es una línea sin cambio de comportamiento): 0 bloqueantes |
 | | T10 | | | |
 | 2026-11-11 13:10 | T11 | 10a047f | criterios 20/20 PASA (verificador y verificador-b); veredicto global FALLA solo por CONTRATO MODIFICADO (e4ada1f); suite 916 OK | auditor-seguridad: 0 bloqueantes, 0 importantes, 3 menores y 6 observaciones (P-multiempresa-55 a 61); aislamiento: 13 de 14 mutaciones en rojo (la 14.ª, `CerrarVisitaView`, filtra también por empleado); P-12 y P-13 resueltos, P-14 documentado; presupuesto 1022/1400 |
 | | T11 | | | |
