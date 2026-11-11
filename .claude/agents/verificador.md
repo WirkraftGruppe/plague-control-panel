@@ -125,7 +125,7 @@ Después de los criterios, y solo después, puedes anotar hasta cinco observacio
 cosas que viste **mientras ejecutabas** y que el contrato no cubre: un archivo tocado
 que no figura en la subtarea (`git diff --name-only <commit_base>..HEAD`), un test
 nuevo que no asserta nada, un `TODO` o `pass` recién agregado, un `skip` en un test,
-un dato de una empresa escrito a mano en una plantilla o en el código (el nombre sale de `NOMBRE_EMPRESA`). Van en una sección
+un dato de una empresa escrito a mano en una plantilla o en el código (el nombre sale de `Empresa.nombre`). Van en una sección
 aparte, no cambian el veredicto, y no las investigas: las señalas con archivo y línea.
 
 ## Formato del informe

@@ -6,7 +6,7 @@ Un solo tema, claro y neutro, para el panel de gestión. Fuente de verdad del c�
 
 - Uso solo en computadora. Ancho mínimo soportado: 1280 px (`.panel { min-width: 1280px }`). No hay versión móvil ni puntos de corte.
 - Las plantillas de dominio consumen los tokens y las clases; no declaran colores propios ni editan `base.html` ni `panel.css`.
-- El nombre de la empresa sale de `NOMBRE_EMPRESA`; ninguna plantilla lo escribe. El logo es `static/img/logo.png`, con el texto alternativo tomado de `NOMBRE_EMPRESA`.
+- El nombre de la empresa sale de `Empresa.nombre`; ninguna plantilla lo escribe. El logo de la barra lateral es el de su `Empresa` (texto alternativo: su nombre); sin logo, se muestra el nombre. El login y el título dicen "Detach".
 
 ## Color
 

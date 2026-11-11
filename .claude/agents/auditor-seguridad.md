@@ -95,7 +95,7 @@ sitio. Todo lo que debilite eso es hallazgo:
   con `X-Robots-Tag`, sin datos). Sin formularios públicos que escriban en la base ni
   envíen correo. Si aparece uno, es hallazgo por sí solo.
 - Un template con el nombre o datos de una empresa escritos a mano es hallazgo menor:
-  el nombre sale de `NOMBRE_EMPRESA`.
+  el nombre sale de `Empresa.nombre`.
 - Cabeceras (CSP, HSTS, `X-Content-Type-Options`), `DEBUG=False`, `ALLOWED_HOSTS`
   correctos en producción: `check --deploy` sin advertencias.
 

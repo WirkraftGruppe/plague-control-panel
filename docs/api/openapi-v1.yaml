@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: API de Detach
   version: 1.0.0
-  description: API de la app móvil de los empleados de MAControl S.A.
+  description: API de la app móvil de los empleados.
 paths:
   /api/v1/:
     get:
@@ -75,7 +75,9 @@ paths:
   /api/v1/fotos/{codigo}/:
     get:
       operationId: fotos_retrieve
-      description: Devuelve el JPEG; 404 si no existe y 403 si no corresponde.
+      description: |-
+        Devuelve el JPEG; 404 si no existe o es de otra empresa, 403 si no
+        corresponde.
       summary: Descargar una foto
       parameters:
       - in: path
@@ -99,7 +101,7 @@ paths:
         '403':
           description: La foto es de otro empleado.
         '404':
-          description: La foto no existe.
+          description: La foto no existe o es de otra empresa.
   /api/v1/me/historial/:
     get:
       operationId: me_historial_list
