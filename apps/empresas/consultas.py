@@ -1,19 +1,13 @@
 """Guardia de consultas por empresa: ningún queryset se evalúa sin saber de quién es."""
 
-import warnings
 from contextlib import contextmanager
 from contextvars import ContextVar
 
-from django.conf import settings
 from django.db import models
 
 
 class ConsultaSinEmpresa(Exception):
     """Se evaluó una consulta de un modelo de empresa sin filtrar por empresa."""
-
-
-class ConsultaSinEmpresaAdvertencia(UserWarning):
-    """Lo mismo que `ConsultaSinEmpresa`, en el modo `advertir` de la guardia."""
 
 
 # True dentro de `sin_filtro_empresa()`: las consultas no se verifican.
@@ -39,10 +33,22 @@ def empresa_de(request):
 
 
 class EmpresaQuerySet(models.QuerySet):
-    """Queryset que exige `de_empresa()` antes de evaluarse.
+    """Queryset que exige `de_empresa()` antes de evaluarse: la guardia siempre lanza.
 
     Quedan fuera de la guardia `.none()`, los querysets de un manager relacionado o
     de `prefetch_related` (traen la instancia en los hints) y `sin_filtro_empresa()`.
+
+    Límites (la garantía principal es el test de aislamiento generado,
+    `test_aislamiento.py` del panel y de la API, no esta guardia):
+    - Un queryset pasado a `Prefetch(queryset=...)` recibe el hint `instance` y, si
+      después se reutiliza solo, queda exento.
+    - `db_manager(hints={"instance": x})` o `_add_hints(instance=x)` con una instancia
+      cargada de la base eximen todo el modelo; fuera de los tests y de este módulo
+      nadie los usa (lo comprueba un `[grep-0]`).
+    - Un queryset sin `de_empresa` usado como subconsulta (`filter(pk__in=...)`,
+      `Subquery`, `Exists`) se compila como SQL y no pasa por la guardia: las
+      subconsultas se revisan a mano y las cubre el test de aislamiento.
+    - `bulk_update()`, `bulk_create()`, `defer()` y `only()` no se verifican.
     """
 
     _empresa_marcada = False
@@ -77,21 +83,29 @@ class EmpresaQuerySet(models.QuerySet):
         """Quita la marca y el hint al combinar si alguna parte no es segura.
 
         Si Django devolvió una de las partes tal cual (por ejemplo un `.none()`), se
-        respeta: esa parte ya tiene su propio estado.
+        respeta antes de cualquier re-envoltorio: esa parte ya tiene su propio estado.
         """
+        if any(resultado is parte for parte in partes):
+            return resultado
         if not isinstance(resultado, EmpresaQuerySet):
             # Con slice a la izquierda Django arma el resultado con `_base_manager`
-            # (QuerySet común, sin guardia): se lo vuelve a envolver.
+            # (QuerySet común, sin guardia): se lo vuelve a envolver, conservando
+            # el tipo de resultado, los prefetch y los objetos relacionados conocidos.
             convertido = self.__class__(
                 model=resultado.model,
                 query=resultado.query,
                 using=resultado._db,
                 hints=dict(self._hints),
             )
+            for atributo in (
+                "_iterable_class",
+                "_fields",
+                "_prefetch_related_lookups",
+                "_known_related_objects",
+            ):
+                setattr(convertido, atributo, getattr(resultado, atributo))
             convertido._empresa_marcada = self._empresa_marcada
             resultado = convertido
-        if any(resultado is parte for parte in partes):
-            return resultado
         if not all(
             isinstance(parte, EmpresaQuerySet) and parte._es_segura()
             for parte in partes
@@ -123,13 +137,10 @@ class EmpresaQuerySet(models.QuerySet):
     def _verificar_empresa(self):
         if _sin_filtro.get() or self._es_segura():
             return
-        mensaje = (
+        raise ConsultaSinEmpresa(
             f"Consulta de {self.model.__name__} sin filtrar por empresa: "
             "use .de_empresa(empresa)."
         )
-        if getattr(settings, "EMPRESA_GUARDIA", "advertir") == "exigir":
-            raise ConsultaSinEmpresa(mensaje)
-        warnings.warn(mensaje, ConsultaSinEmpresaAdvertencia, stacklevel=3)
 
     def _fetch_all(self):
         if self._result_cache is None:

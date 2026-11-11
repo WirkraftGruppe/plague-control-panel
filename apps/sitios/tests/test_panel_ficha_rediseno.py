@@ -83,9 +83,9 @@ class FichaRedisenoTests(TestCase):
         self.url_turno = reverse("panel:visitas:nuevo_turno", args=[self.sitio.pk])
 
     def vencer(self, dias):
-        PuntoControl.objects.filter(pk=self.general.pk).update(
-            proximo_vencimiento=self.hoy + timedelta(days=dias)
-        )
+        PuntoControl.objects.de_empresa(una_empresa()).filter(
+            pk=self.general.pk
+        ).update(proximo_vencimiento=self.hoy + timedelta(days=dias))
 
     def test_cabecera_con_datos_y_acciones(self):
         self.vencer(-2)
@@ -125,9 +125,9 @@ class FichaRedisenoTests(TestCase):
             nombre="Planta baja",
             imagen=SimpleUploadedFile("p.png", _png()),
         )
-        PuntoControl.objects.filter(pk=self.general.pk).update(
-            plano=plano, x=Decimal("0.2"), y=Decimal("0.3"), orden=0
-        )
+        PuntoControl.objects.de_empresa(una_empresa()).filter(
+            pk=self.general.pk
+        ).update(plano=plano, x=Decimal("0.2"), y=Decimal("0.3"), orden=0)
         segundo = PuntoControl.objects.create(
             sitio=self.sitio,
             nombre="Cocina",
@@ -220,9 +220,9 @@ class FichaPlanoTests(FichaRedisenoTests):
             nombre="Planta baja",
             imagen=SimpleUploadedFile("p.png", _png()),
         )
-        PuntoControl.objects.filter(pk=self.general.pk).update(
-            plano=plano, x=Decimal("0.2"), y=Decimal("0.3"), orden=0
-        )
+        PuntoControl.objects.de_empresa(una_empresa()).filter(
+            pk=self.general.pk
+        ).update(plano=plano, x=Decimal("0.2"), y=Decimal("0.3"), orden=0)
         html = self.client.get(self.url).content.decode()
         self.assertIn("sitios/ficha_plano.js", html)
         self.assertIn("sitios/ficha.css", html)

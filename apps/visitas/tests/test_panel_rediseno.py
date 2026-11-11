@@ -80,7 +80,10 @@ class NuevoTurnoLateralTests(TestCase):
             reverse("panel:sitios:ficha", args=[self.sitio.pk]),
         )
         self.assertEqual(
-            Visita.objects.filter(estado=Visita.Estado.PENDIENTE).count(), 1
+            Visita.objects.de_empresa(una_empresa())
+            .filter(estado=Visita.Estado.PENDIENTE)
+            .count(),
+            1,
         )
 
     def test_post_sin_htmx_crea_el_mismo_turno(self):
@@ -88,7 +91,9 @@ class NuevoTurnoLateralTests(TestCase):
         self.assertRedirects(
             respuesta, reverse("panel:sitios:ficha", args=[self.sitio.pk])
         )
-        turno = Visita.objects.get(estado=Visita.Estado.PENDIENTE)
+        turno = Visita.objects.de_empresa(una_empresa()).get(
+            estado=Visita.Estado.PENDIENTE
+        )
         self.assertEqual(turno.items.count(), 2)
 
     def test_post_htmx_con_errores_devuelve_el_parcial(self):
@@ -97,7 +102,7 @@ class NuevoTurnoLateralTests(TestCase):
         self.assertNotIn("HX-Redirect", respuesta)
         self.assertTemplateUsed(respuesta, "visitas/panel/_nuevo_turno_lateral.html")
         self.assertIn("puntos", respuesta.context["form"].errors)
-        self.assertFalse(Visita.objects.exists())
+        self.assertFalse(Visita.objects.de_empresa(una_empresa()).exists())
 
     def test_todos_los_puntos_tildados(self):
         respuesta = self.client.get(self.url, headers=HTMX)

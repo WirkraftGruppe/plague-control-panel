@@ -46,7 +46,7 @@ class MenuActivoTests(TestCase):
 
     def _sitio(self, nombre, dias=-1, activo=True):
         sitio = Sitio.objects.create(cliente=self.cliente, nombre=nombre, activo=activo)
-        PuntoControl.objects.filter(sitio=sitio).update(
+        PuntoControl.objects.de_empresa(una_empresa()).filter(sitio=sitio).update(
             proximo_vencimiento=timezone.localdate() + datetime.timedelta(days=dias)
         )
         return sitio

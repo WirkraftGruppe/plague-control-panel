@@ -162,5 +162,8 @@ class UbicacionTests(SinArchivosMixin, TestCase):
         self.assertEqual(self.punto.longitud, Decimal("-57.700000"))
         self.assertEqual(self.punto.history.first().history_user, self.empleado)
         self.assertEqual(
-            Visita.objects.get(pk=revision.visita_id).empleado, self.empleado
+            Visita.objects.de_empresa(una_empresa())
+            .get(pk=revision.visita_id)
+            .empleado,
+            self.empleado,
         )

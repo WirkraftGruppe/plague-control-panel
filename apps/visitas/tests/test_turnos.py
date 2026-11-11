@@ -116,7 +116,7 @@ class CrearTurnoTests(BaseTurnoTests):
         with self.assertRaises(ValidationError) as contexto:
             self.turno([])
         self.assertIn("puntos", contexto.exception.message_dict)
-        self.assertFalse(Visita.objects.exists())
+        self.assertFalse(Visita.objects.de_empresa(una_empresa()).exists())
 
     def test_punto_de_otro_sitio_da_error(self):
         otro = Sitio.objects.create(cliente=self.sitio.cliente, nombre="Otra")
@@ -124,8 +124,8 @@ class CrearTurnoTests(BaseTurnoTests):
         with self.assertRaises(ValidationError) as contexto:
             self.turno([(self.general, self.roedores), (ajeno, self.roedores)])
         self.assertIn("puntos", contexto.exception.message_dict)
-        self.assertFalse(Visita.objects.exists())
-        self.assertFalse(ItemTurno.objects.exists())
+        self.assertFalse(Visita.objects.de_empresa(una_empresa()).exists())
+        self.assertFalse(ItemTurno.objects.de_empresa(una_empresa()).exists())
 
     def test_rechaza_punto_inactivo_repetido_servicio_inactivo_y_administrador(self):
         self.sala.activo = False
@@ -147,7 +147,7 @@ class CrearTurnoTests(BaseTurnoTests):
         with self.assertRaises(ValidationError) as contexto:
             self.turno([(self.general, self.roedores)], empleado=self.admin)
         self.assertIn("empleado", contexto.exception.message_dict)
-        self.assertFalse(Visita.objects.exists())
+        self.assertFalse(Visita.objects.de_empresa(una_empresa()).exists())
 
 
 class RevisionTurnoTests(BaseTurnoTests):
@@ -176,16 +176,20 @@ class RevisionTurnoTests(BaseTurnoTests):
     def test_punto_sin_servicio_fuera_del_turno_da_error(self):
         self.turno([(self.sala, self.roedores)])
         visita = self.abrir()
-        PuntoControl.objects.filter(pk=self.techo.pk).update(servicio=None)
+        PuntoControl.objects.de_empresa(una_empresa()).filter(pk=self.techo.pk).update(
+            servicio=None
+        )
         with self.assertRaises(ValidationError) as contexto:
             self.revisar(visita, self.techo)
         self.assertEqual(
             contexto.exception.message_dict["qr_codigo"],
             ["El punto no tiene servicio asignado."],
         )
-        self.assertFalse(Revision.objects.exists())
+        self.assertFalse(Revision.objects.de_empresa(una_empresa()).exists())
         # Dentro del turno el punto sin servicio sí se revisa: manda el ítem.
-        PuntoControl.objects.filter(pk=self.sala.pk).update(servicio=None)
+        PuntoControl.objects.de_empresa(una_empresa()).filter(pk=self.sala.pk).update(
+            servicio=None
+        )
         self.assertEqual(self.revisar(visita, self.sala).servicio, self.roedores)
 
     def test_planilla_de_punto_sale_del_servicio_resuelto(self):
@@ -264,7 +268,7 @@ class CerrarTurnoTests(BaseTurnoTests):
 class CargaManualTests(BaseTurnoTests):
     def setUp(self):
         super().setUp()
-        Sitio.objects.filter(pk=self.sitio.pk).update(
+        Sitio.objects.de_empresa(una_empresa()).filter(pk=self.sitio.pk).update(
             creado=timezone.now() - timedelta(days=30)
         )
         self.sitio.refresh_from_db()
@@ -302,8 +306,8 @@ class CargaManualTests(BaseTurnoTests):
         with self.assertRaises(ValidationError) as contexto:
             self.cargar(productos_aplicados=[item])
         self.assertIn("productos_aplicados.0.cantidad", contexto.exception.message_dict)
-        self.assertFalse(MovimientoStock.objects.exists())
-        self.assertFalse(Visita.objects.exists())
+        self.assertFalse(MovimientoStock.objects.de_empresa(una_empresa()).exists())
+        self.assertFalse(Visita.objects.de_empresa(una_empresa()).exists())
 
     def test_fecha_anterior_al_alta_del_sitio_da_error(self):
         with self.assertRaises(ValidationError) as contexto:
@@ -315,7 +319,7 @@ class CargaManualTests(BaseTurnoTests):
             contexto.exception.message_dict["realizada_en"],
             ["La fecha no puede ser anterior al alta del sitio."],
         )
-        self.assertFalse(Visita.objects.exists())
+        self.assertFalse(Visita.objects.de_empresa(una_empresa()).exists())
 
     def test_servicio_por_punto_y_items_de_la_visita_nueva(self):
         visita = self.cargar()

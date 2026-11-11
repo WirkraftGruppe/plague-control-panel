@@ -134,7 +134,9 @@ class PuntoControlTests(TestCase):
         with self.assertRaises(ValidationError) as error:
             punto.clean()
         self.assertIn("plano", error.exception.message_dict)
-        Sitio.objects.filter(pk=self.sitio.pk).update(activo=False)
+        Sitio.objects.de_empresa(una_empresa()).filter(pk=self.sitio.pk).update(
+            activo=False
+        )
         self.sitio.refresh_from_db()
         punto = PuntoControl(sitio=self.sitio, nombre="Techo", activo=True)
         with self.assertRaises(ValidationError) as error:

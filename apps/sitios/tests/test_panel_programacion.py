@@ -114,7 +114,9 @@ class ResponsableSitioTests(TestCase):
             reverse("panel:sitios:alta"), self._datos(self.empleado)
         )
         self.assertEqual(respuesta.status_code, 302)
-        self.assertEqual(Sitio.objects.get().responsable, self.empleado)
+        self.assertEqual(
+            Sitio.objects.de_empresa(una_empresa()).get().responsable, self.empleado
+        )
 
     def test_administrador_no_puede_ser_responsable(self):
         respuesta = self.client.post(
@@ -122,4 +124,4 @@ class ResponsableSitioTests(TestCase):
         )
         self.assertEqual(respuesta.status_code, 200)
         self.assertIn("responsable", respuesta.context["form"].errors)
-        self.assertFalse(Sitio.objects.exists())
+        self.assertFalse(Sitio.objects.de_empresa(una_empresa()).exists())

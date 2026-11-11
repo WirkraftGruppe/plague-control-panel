@@ -168,7 +168,9 @@ class AccesoTests(TestCase):
         visita = Visita.objects.create(
             sitio=cls.sitio, empleado=cls.empleado, origen=Visita.Origen.APP
         )
-        punto = PuntoControl.objects.get(sitio=cls.sitio, orden=0)
+        punto = PuntoControl.objects.de_empresa(una_empresa()).get(
+            sitio=cls.sitio, orden=0
+        )
         revision = Revision.objects.create(
             visita=visita,
             punto=punto,

@@ -36,7 +36,7 @@ class TipoServicioAbmTests(TestCase):
     def test_alta_genera_slug(self):
         respuesta = self.alta()
         self.assertRedirects(respuesta, reverse("panel:servicios:listado"))
-        servicio = TipoServicio.objects.get()
+        servicio = TipoServicio.objects.de_empresa(una_empresa()).get()
         self.assertEqual(servicio.slug, "control-de-roedores")
         self.assertTrue(servicio.activo)
 
@@ -44,7 +44,11 @@ class TipoServicioAbmTests(TestCase):
         self.alta()
         self.alta()
         self.alta()
-        slugs = set(TipoServicio.objects.values_list("slug", flat=True))
+        slugs = set(
+            TipoServicio.objects.de_empresa(una_empresa()).values_list(
+                "slug", flat=True
+            )
+        )
         self.assertEqual(
             slugs,
             {"control-de-roedores", "control-de-roedores-2", "control-de-roedores-3"},
@@ -81,7 +85,7 @@ class TipoServicioAbmTests(TestCase):
             self.assertEqual(self.client.get(ruta).status_code, 403)
             envio = self.client.post(ruta, {"nombre": "X", "activo": "on"})
             self.assertEqual(envio.status_code, 403)
-        self.assertEqual(TipoServicio.objects.count(), 1)
+        self.assertEqual(TipoServicio.objects.de_empresa(una_empresa()).count(), 1)
 
     def test_no_hay_ruta_de_borrado_de_servicio(self):
         servicio = TipoServicio.objects.create(nombre="Roedores", empresa=una_empresa())

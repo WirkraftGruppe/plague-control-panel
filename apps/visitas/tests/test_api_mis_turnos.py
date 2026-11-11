@@ -94,8 +94,12 @@ class RevisionRespuestaTests(ApiVisitasBase):
             items=[(self.punto, self.tipo)],
             asignada_por=self.admin,
         )
-        Visita.objects.filter(pk=turno.pk).update(estado=Visita.Estado.REALIZADA)
-        Visita.objects.filter(pk=dentro.pk).update(estado=Visita.Estado.ABIERTA)
+        Visita.objects.de_empresa(una_empresa()).filter(pk=turno.pk).update(
+            estado=Visita.Estado.REALIZADA
+        )
+        Visita.objects.de_empresa(una_empresa()).filter(pk=dentro.pk).update(
+            estado=Visita.Estado.ABIERTA
+        )
         r = self._post(dentro)
         self.assertEqual(r.status_code, 201, r.content)
         self.assertIs(r.data["fuera_de_turno"], False)
