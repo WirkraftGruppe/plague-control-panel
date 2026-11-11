@@ -131,7 +131,7 @@ Para ver las rutas de una app: `grep -n "path(" apps/<app>/api_urls.py apps/<app
 
 ## Roles (`apps/accounts`)
 - `User.rol` ∈ {`plataforma`, `administrador`, `empleado`}; properties `es_plataforma`, `es_administrador`, `es_empleado`. `User.empresa` es nula solo en `plataforma` y obligatoria en los otros dos (`CheckConstraint`); los nombres de usuario son únicos globales.
-- **Plataforma**: operador de Detach, sin empresa. Único rol con `/admin/` (da de alta empresas, suprime datos, regenera QR); no entra al panel ni a la API. `createsuperuser` crea `plataforma`.
+- **Plataforma**: operador de Detach, sin empresa. Único rol con `/admin/` (da de alta empresas, suprime datos, regenera QR); no entra al panel. Obtiene un token de la API, pero solo alcanza `GET /api/v1/` y el esquema; todo lo demás le da 403. `createsuperuser` crea `plataforma`.
 - **Administrador**: panel completo de su empresa. **Empleado**: solo la API; ve sus visitas asignadas, resuelve QR de puntos, abre visitas, registra revisiones y las cierra, consulta y descarga su historial.
 - `is_staff` **solo** habilita `/admin/` (y solo lo tiene `plataforma`); no significa "administrador del panel". El panel exige `rol == administrador` con su propio mixin; la API exige el rol en cada permission class.
 - Las cuentas se crean a mano desde el panel (cada administrador, las de su empresa), el admin (`plataforma`) o `crear_usuario --empresa`; sin autorregistro, sin recuperación de contraseña pública en etapa 1.
@@ -164,7 +164,7 @@ Para ver las rutas de una app: `grep -n "path(" apps/<app>/api_urls.py apps/<app
 - Ningún queryset de la API devuelve visitas de otro empleado a un empleado: `get_queryset()` filtra por `request.user` salvo rol administrador. `if user.is_staff` nunca decide acceso a datos.
 - Ninguna regla de negocio en templates ni en `admin.py`; van en `services.py` de la app que corresponde.
 - Ninguna plantilla ni código escribe el nombre de una empresa: sale de `Empresa.nombre`.
-- Toda consulta de modelos de empresa en el panel y la API se acota con `Modelo.objects.de_empresa(empresa)`; `todos` está prohibido ahí (solo admin y comandos), y fuera de ellos `sin_filtro_empresa()` exige justificación. La empresa de un registro es inmutable tras el alta. Un identificador de otra empresa da 404.
+- Toda consulta de modelos de empresa en el panel y la API se acota con `Modelo.objects.de_empresa(empresa)`; `todos` y `sin_filtro_empresa()` están prohibidos en vistas, formularios, serializers y templatetags (`todos` solo en admin, comandos y métodos de modelo, filtrando por la propia pk o la empresa propia). La empresa sale de `request.empresa` (panel), `empresa_de(request)` (API) o un objeto ya acotado; nunca del cuerpo ni de la URL. `User` no tiene guardia: se filtra a mano con `.filter(empresa=…)`. La empresa de un registro es inmutable tras el alta (vive en `save()` y `clean()`; `update()`, `bulk_update()` y `bulk_create()` la saltean, y también la coherencia con el padre: no se usan con `empresa` ni para crear hijos fuera de `services.py` revisados). Un identificador de otra empresa da 404.
 - Ninguna ruta pública (`/`, `/q/<uuid>/`) tiene formularios que escriban en la base ni envíen correo.
 - Coordenadas y fotos son datos personales de los empleados (dónde estuvieron y cuándo): no se exponen en `/q/<uuid>/` ni en ninguna página pública, y no se registran en logs.
 - No se escriben migraciones a mano salvo `RunPython` justificado en su docstring.

@@ -47,7 +47,9 @@ Con la base vacía no hay usuarios ni empresas. Desde la consola del servicio (`
 
 ## 5 bis. Respaldo y comandos que recorren toda la base
 Los modelos de empresa tienen una guardia que lanza `ConsultaSinEmpresa` al listar sin acotar por empresa, y fallan cerrado:
-- `dumpdata` va siempre con `--all` (usa el manager sin guardia): `python manage.py dumpdata --all > respaldo.json`. Sin `--all` falla.
+- `dumpdata` va siempre con `--all` (usa el manager sin guardia): `python manage.py dumpdata --all > respaldo.json`. Sin `--all` falla. Excluí lo que no se respalda con `--exclude sessions --exclude token_blacklist --exclude contenttypes --exclude auth.permission` y usá `--natural-foreign`; escribí con `-o` a una ruta fuera del volumen de media.
+- **Advertencia:** el archivo tiene datos personales y hashes de contraseñas. Va cifrado, no se deja en el contenedor y se borra al bajarlo. El respaldo recomendado sigue siendo el de Postgres.
+- `sin_filtro_empresa()` no se usa en `manage.py shell` de producción para consultas ad hoc.
 - Los comandos de `django-simple-history` que recorren todos los registros (`clean_duplicate_history --auto`, `populate_history`) fallan con la guardia. Si hace falta correrlos, hay que envolverlos en `with sin_filtro_empresa():` (`apps.empresas.consultas`), por ejemplo desde un comando propio.
 
 ## 6. Por qué `cargar_demo` no corre sobre Postgres

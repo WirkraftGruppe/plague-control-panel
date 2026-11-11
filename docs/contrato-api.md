@@ -12,10 +12,12 @@ límite de pedidos (throttle) y el rol que la puede usar. Todas las rutas cuelga
   además ese rol; `Pública` no pide token.
 - **Empresas**: cada usuario pertenece a una empresa y la API solo le muestra datos de ella.
   Con la empresa inactiva, `POST /api/v1/auth/token/` no emite tokens y cualquier ruta
-  con un token vigente responde 401 (`code = empresa_inactiva`). Un identificador de otra
+  con un token vigente responde 401, sin `code`: el cuerpo es
+  `{"detalle": "La empresa está inactiva.", "campos": {}}` y se reconoce por `detalle`. Un identificador de otra
   empresa (`<pk>`, `<codigo>`, un `qr_codigo`, una `visita` en el cuerpo) responde igual
-  que uno inexistente: 404 en las rutas con identificador en la URL y el mismo 400 de
-  validación que un objeto inexistente cuando va en el cuerpo. Nunca 403 ni un mensaje
+  que uno inexistente: 404 en las rutas con identificador en la URL, y también para una
+  `visita` en el cuerpo de `revisiones/` (404, no 400); el 400 igual al de un inexistente
+  queda para `qr_codigo` y `producto` en el cuerpo. Nunca 403 ni un mensaje
   que distinga "existe pero es de otra empresa".
 - **Catálogo de productos** (`GET /api/v1/productos/`): cada producto trae `unidad_base`
   (unidad en que se lleva el stock), `modo_unidad` (`unica` o `equivalentes`) y
