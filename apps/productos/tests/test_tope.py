@@ -34,7 +34,7 @@ class TopeCantidadTests(TestCase):
             services.registrar_ingreso(
                 self.producto, Decimal("99999999"), True, self.admin
             )
-        self.assertEqual(MovimientoStock.objects.count(), 0)
+        self.assertEqual(MovimientoStock.objects.de_empresa(una_empresa()).count(), 0)
 
     def test_formulario_de_movimiento_desbordado_da_error_en_cantidad(self):
         form = MovimientoForm(

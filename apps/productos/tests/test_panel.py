@@ -43,7 +43,9 @@ class ProductoPanelTests(TestCase):
             },
         )
         self.assertRedirects(respuesta, reverse("panel:productos:listado"))
-        producto = Producto.objects.get(nombre_comercial="Raticida X")
+        producto = Producto.objects.de_empresa(una_empresa()).get(
+            nombre_comercial="Raticida X"
+        )
         self.assertTrue(producto.activo)
 
         self.client.post(

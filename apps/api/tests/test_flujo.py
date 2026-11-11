@@ -137,9 +137,12 @@ class FlujoEmpleadoTests(TestCase):
         self.assertEqual(
             [v["id"] for v in historial.data["results"]], [abierta.data["id"]]
         )
-        visita = Visita.objects.get(pk=abierta.data["id"])
+        visita = Visita.objects.de_empresa(una_empresa()).get(pk=abierta.data["id"])
         self.assertEqual(
-            ProductoAplicado.objects.filter(revision__visita=visita).count(), 1
+            ProductoAplicado.objects.de_empresa(una_empresa())
+            .filter(revision__visita=visita)
+            .count(),
+            1,
         )
         urls = historial.data["results"][0]["revisiones"][0]["fotos"]
         self.assertEqual(len(urls), 2)
@@ -209,10 +212,16 @@ class ModoCampoFlujoTests(TestCase):
         )
         self.assertEqual(punto.status_code, 201, punto.content)
         # El servicio de un punto dado de alta en campo lo asigna el administrador.
-        PuntoControl.objects.filter(pk=punto.data["id"]).update(servicio=tipo)
+        PuntoControl.objects.de_empresa(una_empresa()).filter(
+            pk=punto.data["id"]
+        ).update(servicio=tipo)
 
         api = con_token("emp")
-        qr = PuntoControl.objects.get(pk=punto.data["id"]).qr_codigo
+        qr = (
+            PuntoControl.objects.de_empresa(una_empresa())
+            .get(pk=punto.data["id"])
+            .qr_codigo
+        )
         resuelto = api.post(f"/api/v1/qr/{qr}/resolver/")
         self.assertEqual(resuelto.status_code, 200, resuelto.content)
         abierta = api.post(
@@ -238,6 +247,8 @@ class ModoCampoFlujoTests(TestCase):
         )
         self.assertEqual(creada.status_code, 201, creada.content)
 
-        marcador = PuntoControl.objects.get(pk=punto.data["id"])
+        marcador = PuntoControl.objects.de_empresa(una_empresa()).get(
+            pk=punto.data["id"]
+        )
         self.assertEqual(float(marcador.latitud), -36.1005)
         self.assertEqual(float(marcador.longitud), -57.8005)

@@ -52,18 +52,20 @@ class AbrirVisitaSitioApiTests(ApiVisitasBase):
     def test_sin_turno_crea_visita_sin_items(self):
         r = self._abrir()
         self.assertEqual(r.status_code, 201, r.content)
-        visita = Visita.objects.get(pk=r.data["id"])
+        visita = Visita.objects.de_empresa(una_empresa()).get(pk=r.data["id"])
         self.assertEqual(visita.sitio, self.sitio)
         self.assertEqual(visita.origen, Visita.Origen.APP)
         self.assertEqual(visita.estado, Visita.Estado.ABIERTA)
         self.assertEqual(visita.items.count(), 0)
-        self.assertFalse(ItemTurno.objects.exists())
+        self.assertFalse(ItemTurno.objects.de_empresa(una_empresa()).exists())
 
     def test_el_qr_de_otro_sitio_abre_en_ese_sitio(self):
         otro = Sitio.objects.create(cliente=self.sitio.cliente, nombre="Otra")
         r = self._abrir(otro.puntos.get(orden=0))
         self.assertEqual(r.status_code, 201, r.content)
-        self.assertEqual(Visita.objects.get(pk=r.data["id"]).sitio, otro)
+        self.assertEqual(
+            Visita.objects.de_empresa(una_empresa()).get(pk=r.data["id"]).sitio, otro
+        )
 
     def test_el_pedido_no_acepta_un_sitio_elegido_por_el_cliente(self):
         otro = Sitio.objects.create(cliente=self.sitio.cliente, nombre="Otra")
@@ -73,7 +75,10 @@ class AbrirVisitaSitioApiTests(ApiVisitasBase):
             format="json",
         )
         self.assertEqual(r.status_code, 201, r.content)
-        self.assertEqual(Visita.objects.get(pk=r.data["id"]).sitio, self.sitio)
+        self.assertEqual(
+            Visita.objects.de_empresa(una_empresa()).get(pk=r.data["id"]).sitio,
+            self.sitio,
+        )
 
 
 class RevisionFotosApiTests(ApiVisitasBase):
@@ -85,7 +90,7 @@ class RevisionFotosApiTests(ApiVisitasBase):
         r = self._post(self.visita, fotos=None)
         self.assertEqual(r.status_code, 201, r.content)
         self.assertEqual(r.data["fotos"], [])
-        self.assertEqual(Revision.objects.count(), 1)
+        self.assertEqual(Revision.objects.de_empresa(una_empresa()).count(), 1)
 
     def test_dos_fotos_da_201(self):
         r = self._post(self.visita, fotos=[jpeg_chico(), jpeg_chico()])
@@ -96,7 +101,7 @@ class RevisionFotosApiTests(ApiVisitasBase):
         r = self._post(self.visita, fotos=[jpeg_chico() for _ in range(3)])
         self.assertEqual(r.status_code, 400, r.content)
         self.assertIn("fotos", r.data["campos"])
-        self.assertFalse(Revision.objects.exists())
+        self.assertFalse(Revision.objects.de_empresa(una_empresa()).exists())
 
     def test_punto_sin_servicio_fuera_del_turno_da_400(self):
         self.punto.servicio = None
@@ -104,7 +109,7 @@ class RevisionFotosApiTests(ApiVisitasBase):
         r = self._post(self.visita)
         self.assertEqual(r.status_code, 400, r.content)
         self.assertIn("El punto no tiene servicio asignado.", str(r.data["campos"]))
-        self.assertFalse(Revision.objects.exists())
+        self.assertFalse(Revision.objects.de_empresa(una_empresa()).exists())
 
 
 class RevisionCantidadApiTests(ApiVisitasBase):
@@ -141,10 +146,12 @@ class RevisionCantidadApiTests(ApiVisitasBase):
         )
         self.assertEqual(r.status_code, 400, r.content)
         self.assertIn("productos_aplicados.0.cantidad", r.data["campos"])
-        self.assertFalse(ProductoAplicado.objects.exists())
-        self.assertFalse(Revision.objects.exists())
+        self.assertFalse(ProductoAplicado.objects.de_empresa(una_empresa()).exists())
+        self.assertFalse(Revision.objects.de_empresa(una_empresa()).exists())
         self.assertFalse(
-            MovimientoStock.objects.filter(tipo=MovimientoStock.Tipo.CONSUMO).exists()
+            MovimientoStock.objects.de_empresa(una_empresa())
+            .filter(tipo=MovimientoStock.Tipo.CONSUMO)
+            .exists()
         )
         self.assertEqual(stock(self.concentrado), antes)
 

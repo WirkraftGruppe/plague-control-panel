@@ -81,10 +81,17 @@ class AmbitoTests(TestCase):
             tipo="texto",
             ambito=CampoPlanilla.Ambito.VISITA,
         )
-        tipo = TipoServicio.objects.prefetch_related("campos").get(pk=tipo.pk)
+        tipo = (
+            TipoServicio.objects.de_empresa(una_empresa())
+            .prefetch_related("campos")
+            .get(pk=tipo.pk)
+        )
         with self.assertNumQueries(0):
             claves_punto = [c["clave"] for c in tipo.esquema_planilla()]
             claves_visita = [c["clave"] for c in tipo.esquema_planilla("visita")]
         self.assertEqual(claves_punto, ["p"])
         self.assertEqual(claves_visita, ["v"])
-        self.assertEqual(CampoPlanilla.objects.get(clave="p").ambito, "punto")
+        self.assertEqual(
+            CampoPlanilla.objects.de_empresa(una_empresa()).get(clave="p").ambito,
+            "punto",
+        )

@@ -56,7 +56,7 @@ class ConsumoTests(SinArchivosMixin, TestCase):
             self._item(self.cebo, cantidad="3", unidad="unidad"),
         ]
         # Las cargas manuales son anteriores a hoy: el sitio ya existía.
-        Sitio.objects.filter(pk=self.sitio.pk).update(
+        Sitio.objects.de_empresa(una_empresa()).filter(pk=self.sitio.pk).update(
             creado=timezone.now() - timedelta(days=60)
         )
         self.sitio.refresh_from_db()
@@ -72,7 +72,9 @@ class ConsumoTests(SinArchivosMixin, TestCase):
         return item
 
     def _consumos(self):
-        return MovimientoStock.objects.filter(tipo=MovimientoStock.Tipo.CONSUMO)
+        return MovimientoStock.objects.de_empresa(una_empresa()).filter(
+            tipo=MovimientoStock.Tipo.CONSUMO
+        )
 
     def _cargar(self, **extra):
         argumentos = {
@@ -105,7 +107,7 @@ class ConsumoTests(SinArchivosMixin, TestCase):
             fotos=[jpeg_chico()],
         )
         self.assertEqual(self._consumos().count(), 2)
-        for aplicado in ProductoAplicado.objects.all():
+        for aplicado in ProductoAplicado.objects.de_empresa(una_empresa()).all():
             movimiento = aplicado.movimiento
             self.assertEqual(movimiento.tipo, MovimientoStock.Tipo.CONSUMO)
             self.assertEqual(movimiento.usuario, self.empleado)
@@ -119,15 +121,21 @@ class ConsumoTests(SinArchivosMixin, TestCase):
         consumos = self._consumos()
         self.assertEqual(consumos.count(), 2)
         self.assertEqual({m.usuario for m in consumos}, {self.admin})
-        self.assertFalse(ProductoAplicado.objects.filter(movimiento=None).exists())
-        self.assertEqual(Visita.objects.filter(origen="manual").count(), 1)
+        self.assertFalse(
+            ProductoAplicado.objects.de_empresa(una_empresa())
+            .filter(movimiento=None)
+            .exists()
+        )
+        self.assertEqual(
+            Visita.objects.de_empresa(una_empresa()).filter(origen="manual").count(), 1
+        )
 
     def test_carga_manual_fallida_no_deja_movimiento(self):
         falsa = SimpleUploadedFile("x.jpg", b"no es imagen", "image/jpeg")
         with self.assertRaises(ValidationError):
             self._cargar(fotos=[falsa])
         self.assertFalse(self._consumos().exists())
-        self.assertFalse(ProductoAplicado.objects.exists())
+        self.assertFalse(ProductoAplicado.objects.de_empresa(una_empresa()).exists())
         # Una falla posterior a guardar los aplicados también revierte los consumos.
         with mock.patch(
             "apps.visitas.services.cerrar_visita", side_effect=ValidationError("x")

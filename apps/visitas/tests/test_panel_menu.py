@@ -51,7 +51,7 @@ class MenuTests(TestCase):
         self.assertContains(self._menu(), 'class="contador-menu">2<')
         otra.delete()
         self.assertContains(self._menu(), 'class="contador-menu">1<')
-        Visita.objects.filter(pk=self.visita.pk).update(
+        Visita.objects.de_empresa(una_empresa()).filter(pk=self.visita.pk).update(
             incidencia_revisada_en=timezone.now()
         )
         self.assertNotContains(self._menu(), "contador-menu")

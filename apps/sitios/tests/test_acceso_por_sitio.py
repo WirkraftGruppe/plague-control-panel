@@ -53,7 +53,9 @@ class AccesoPorSitioTests(TestCase):
         # Una visita pendiente o abierta propia en el sitio da acceso.
         pendiente = self.visita(self.sitio)
         self.assertEqual(self.api.get(self.url_plano).status_code, 200)
-        Visita.objects.filter(pk=pendiente.pk).update(estado=Visita.Estado.ABIERTA)
+        Visita.objects.de_empresa(una_empresa()).filter(pk=pendiente.pk).update(
+            estado=Visita.Estado.ABIERTA
+        )
         self.assertEqual(self.api.get(self.url_plano).status_code, 200)
 
     def test_plano_con_visita_en_otro_sitio_da_404(self):

@@ -18,6 +18,7 @@ from apps.empresas.tests.ayudas import una_empresa
 from apps.sitios import services as servicios_sitio
 from apps.visitas.models import Revision, Visita
 from apps.visitas.services import cerrar_visita
+from apps.visitas.tests.ayudas_empresa import dos_empresas
 from apps.visitas.tests.test_models import crear_revision, crear_visita, punto_de
 
 
@@ -128,7 +129,7 @@ class RevisionDemoTests(TestCase):
     def test_crea_revision_con_foto_y_guardas(self):
         punto, empleado = self.preparar()
         self.ejecutar("General")
-        revision = Revision.objects.get()
+        revision = Revision.objects.de_empresa(una_empresa()).get()
         self.assertEqual(revision.punto, punto)
         self.assertEqual(revision.visita.empleado, empleado)
         self.assertEqual(revision.visita.estado, Visita.Estado.ABIERTA)
@@ -137,8 +138,13 @@ class RevisionDemoTests(TestCase):
 
         # Segunda corrida: reutiliza la visita abierta.
         self.ejecutar("General")
-        self.assertEqual(Visita.objects.filter(estado=Visita.Estado.ABIERTA).count(), 1)
-        self.assertEqual(Revision.objects.count(), 2)
+        self.assertEqual(
+            Visita.objects.de_empresa(una_empresa())
+            .filter(estado=Visita.Estado.ABIERTA)
+            .count(),
+            1,
+        )
+        self.assertEqual(Revision.objects.de_empresa(una_empresa()).count(), 2)
 
         # Guardas: sin DEBUG o fuera de development no toca nada.
         with override_settings(DEBUG=False):
@@ -147,15 +153,32 @@ class RevisionDemoTests(TestCase):
         with mock.patch.dict(os.environ, {"DJANGO_ENV": "production"}):
             with self.assertRaisesMessage(CommandError, "DJANGO_ENV=development"):
                 self.ejecutar("General")
-        self.assertEqual(Revision.objects.count(), 2)
+        self.assertEqual(Revision.objects.de_empresa(una_empresa()).count(), 2)
 
     def test_lejos_marca_incidencia_de_ubicacion(self):
         self.preparar()
         self.ejecutar("General", "--lejos")
-        revision = Revision.objects.get()
+        revision = Revision.objects.de_empresa(una_empresa()).get()
         self.assertTrue(revision.incidencia_ubicacion)
         self.assertGreater(revision.distancia_m, 500)
 
     def test_punto_inexistente(self):
         with self.assertRaises(CommandError):
             self.ejecutar("No existe")
+
+    def test_con_dos_empresas_exige_y_respeta_la_empresa(self):
+        punto, empleado = self.preparar()
+        # Otra empresa con un punto y un empleado del mismo nombre.
+        _, lado_b = dos_empresas()
+        punto_b = lado_b.sitio.puntos.get(orden=0)
+        punto_b.nombre = "General"
+        punto_b.save()
+        servicios_sitio.fijar_ubicacion(punto_b, Decimal("-36.2"), Decimal("-57.9"))
+
+        with self.assertRaisesMessage(CommandError, "--empresa"):
+            self.ejecutar("General")
+        self.ejecutar("General", "--empresa", lado_b.empresa.nombre)
+        revision = Revision.objects.de_empresa(lado_b.empresa).get()
+        self.assertEqual(revision.punto, punto_b)
+        self.assertEqual(revision.visita.empleado, lado_b.empleado)
+        self.assertFalse(Revision.objects.de_empresa(una_empresa()).exists())

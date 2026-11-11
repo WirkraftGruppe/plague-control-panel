@@ -220,7 +220,7 @@ class Command(BaseCommand):
     def _tipos(self):
         """Tipos de servicio de la demo por slug; los que faltan se crean sin pisar."""
         return [
-            TipoServicio.todos.get_or_create(
+            TipoServicio.objects.de_empresa(self.empresa).get_or_create(
                 empresa=self.empresa, slug=slug, defaults={"nombre": nombre}
             )[0]
             for slug, nombre in TIPOS.items()

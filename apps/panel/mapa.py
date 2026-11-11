@@ -42,7 +42,7 @@ def sitios_para_mapa(empresa, cliente=None, servicio=None, estado=None):
         ).distinct()
 
     sitios = list(sitios)
-    resumen = resumen_de_sitios(sitios, timezone.localdate())
+    resumen = resumen_de_sitios(sitios, timezone.localdate(), empresa)
     resultado = []
     for sitio in sitios:
         color, vencimiento = resumen[sitio.pk]

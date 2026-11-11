@@ -61,7 +61,7 @@ class PlanillaPanelTests(TestCase):
         self.assertRedirects(
             respuesta, reverse("panel:servicios:campos", args=[self.tipo.pk])
         )
-        nuevo = CampoPlanilla.objects.get(clave="estado")
+        nuevo = CampoPlanilla.objects.de_empresa(una_empresa()).get(clave="estado")
         self.assertEqual(nuevo.opciones, ["Bueno", "Malo"])
         self.assertTrue(nuevo.activo)
 
@@ -71,7 +71,9 @@ class PlanillaPanelTests(TestCase):
             {"orden": 2, "etiqueta": "E", "clave": "e", "tipo": "opcion"},
         )
         self.assertEqual(respuesta.status_code, 200)
-        self.assertFalse(CampoPlanilla.objects.filter(clave="e").exists())
+        self.assertFalse(
+            CampoPlanilla.objects.de_empresa(una_empresa()).filter(clave="e").exists()
+        )
 
     def test_desactivar_saca_el_campo_del_esquema(self):
         url = reverse("panel:servicios:campo_desactivar", args=[self.campo.pk])
@@ -81,7 +83,11 @@ class PlanillaPanelTests(TestCase):
         self.campo.refresh_from_db()
         self.assertFalse(self.campo.activo)
         self.assertEqual(self.tipo.esquema_planilla(), [])
-        self.assertTrue(CampoPlanilla.objects.filter(pk=self.campo.pk).exists())
+        self.assertTrue(
+            CampoPlanilla.objects.de_empresa(una_empresa())
+            .filter(pk=self.campo.pk)
+            .exists()
+        )
 
     def test_reactivar_campo_vuelve_al_esquema(self):
         self.campo.activo = False
@@ -187,4 +193,8 @@ class PlanillaPanelTests(TestCase):
         for nombre in ("campo_editar", "campo_desactivar"):
             url = reverse(f"panel:servicios:{nombre}", args=[self.campo.pk])
             self.client.delete(url)
-        self.assertTrue(CampoPlanilla.objects.filter(pk=self.campo.pk).exists())
+        self.assertTrue(
+            CampoPlanilla.objects.de_empresa(una_empresa())
+            .filter(pk=self.campo.pk)
+            .exists()
+        )

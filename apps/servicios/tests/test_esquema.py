@@ -27,7 +27,11 @@ class EsquemaTests(TestCase):
         self.assertEqual(claves, ["a", "b"])
 
     def test_usa_el_prefetch(self):
-        tipo = TipoServicio.objects.prefetch_related("campos").get(pk=self.tipo.pk)
+        tipo = (
+            TipoServicio.objects.de_empresa(una_empresa())
+            .prefetch_related("campos")
+            .get(pk=self.tipo.pk)
+        )
         with self.assertNumQueries(0):
             esquema = tipo.esquema_planilla()
         self.assertEqual(len(esquema), 2)

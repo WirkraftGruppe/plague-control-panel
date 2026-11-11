@@ -29,7 +29,7 @@ class SuprimirSitioTests(_BaseSitio):
         pk = self.sitio.pk
         self.assertEqual(Sitio.history.filter(id=pk).count(), 2)
         services.suprimir_sitio(self.sitio)
-        self.assertFalse(Sitio.objects.filter(pk=pk).exists())
+        self.assertFalse(Sitio.objects.de_empresa(una_empresa()).filter(pk=pk).exists())
         self.assertEqual(Sitio.history.filter(id=pk).count(), 0)
 
     def _visita(self, sitio):
@@ -48,7 +48,7 @@ class SuprimirSitioTests(_BaseSitio):
         pk = self.sitio.pk
         with self.assertRaises(ProtectedError):
             services.suprimir_sitio(self.sitio)
-        self.assertTrue(Sitio.objects.filter(pk=pk).exists())
+        self.assertTrue(Sitio.objects.de_empresa(una_empresa()).filter(pk=pk).exists())
         self.assertEqual(Sitio.history.filter(id=pk).count(), 1)
 
     def test_suprimir_sitios_informa_los_que_tienen_visitas(self):
@@ -57,15 +57,21 @@ class SuprimirSitioTests(_BaseSitio):
         pk_libre = self.sitio.pk
         resultado = services.suprimir_sitios([self.sitio, con_visita])
         self.assertEqual(resultado, (1, [con_visita]))
-        self.assertFalse(Sitio.objects.filter(pk=pk_libre).exists())
+        self.assertFalse(
+            Sitio.objects.de_empresa(una_empresa()).filter(pk=pk_libre).exists()
+        )
         self.assertEqual(Sitio.history.filter(id=pk_libre).count(), 0)
-        self.assertTrue(Sitio.objects.filter(pk=con_visita.pk).exists())
+        self.assertTrue(
+            Sitio.objects.de_empresa(una_empresa()).filter(pk=con_visita.pk).exists()
+        )
 
     def test_suprimir_borra_puntos_y_su_historial(self):
         pk = self.sitio.pk
         self.assertEqual(PuntoControl.history.filter(sitio_id=pk).count(), 1)
         services.suprimir_sitio(self.sitio)
-        self.assertFalse(PuntoControl.objects.filter(sitio_id=pk).exists())
+        self.assertFalse(
+            PuntoControl.objects.de_empresa(una_empresa()).filter(sitio_id=pk).exists()
+        )
         self.assertEqual(PuntoControl.history.filter(sitio_id=pk).count(), 0)
 
 
@@ -189,7 +195,7 @@ class FijarUbicacionTests(_BaseSitio):
             ),
         ):
             punto = self.sitio.puntos.get()
-            PuntoControl.objects.filter(pk=punto.pk).update(
+            PuntoControl.objects.de_empresa(una_empresa()).filter(pk=punto.pk).update(
                 ubicacion_fijada_por=administrador,
                 ubicacion_fijada_en=datetime.datetime(2026, 3, 1, tzinfo=datetime.UTC),
             )
@@ -201,7 +207,9 @@ class FijarUbicacionTests(_BaseSitio):
     def test_fijar_ubicacion_usa_la_fila_releida(self):
         """El punto en memoria quedó viejo: manda lo que hay en la base."""
         punto = self.sitio.puntos.get()
-        PuntoControl.objects.filter(pk=punto.pk).update(activo=False)
+        PuntoControl.objects.de_empresa(una_empresa()).filter(pk=punto.pk).update(
+            activo=False
+        )
         administrador = User.objects.create_user(
             username="adm",
             password="x",

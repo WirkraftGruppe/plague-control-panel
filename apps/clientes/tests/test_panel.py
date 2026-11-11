@@ -61,7 +61,7 @@ class ClientePanelTests(TestCase):
         )
         cliente.refresh_from_db()
         self.assertFalse(cliente.activo)
-        self.assertEqual(Cliente.objects.count(), 1)
+        self.assertEqual(Cliente.objects.de_empresa(una_empresa()).count(), 1)
 
     def test_ficha_lista_sus_sitios(self):
         cliente = Cliente.objects.create(
@@ -80,7 +80,7 @@ class ClientePanelTests(TestCase):
             reverse("panel:clientes:alta"),
             {"razon_social": "Nuevo SA", "activo": "on"},
         )
-        cliente = Cliente.objects.get(razon_social="Nuevo SA")
+        cliente = Cliente.objects.de_empresa(una_empresa()).get(razon_social="Nuevo SA")
         self.assertRedirects(
             respuesta,
             reverse("panel:clientes:ficha", args=[cliente.pk]),

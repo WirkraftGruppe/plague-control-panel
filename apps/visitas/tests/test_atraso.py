@@ -5,6 +5,7 @@ from uuid import uuid4
 from django.test import override_settings
 from django.utils import timezone
 
+from apps.empresas.tests.ayudas import una_empresa
 from apps.visitas.models import Revision, Visita
 from apps.visitas.tests.test_api import MEDIA_TEMPORAL, BaseApiTests, jpeg_chico
 
@@ -39,7 +40,7 @@ class AtrasoMaximoTests(BaseApiTests):
         r = self._post_con_atraso(169)
         self.assertEqual(r.status_code, 400, r.content)
         self.assertIn("168", str(r.data["campos"]["realizada_en"]))
-        self.assertFalse(Revision.objects.exists())
+        self.assertFalse(Revision.objects.de_empresa(una_empresa()).exists())
 
     def test_realizada_en_dentro_del_limite_se_acepta(self):
         r = self._post_con_atraso(167)
@@ -59,6 +60,8 @@ class AtrasoMaximoTests(BaseApiTests):
         with override_settings(ATRASO_MAXIMO_HORAS=1):
             r = self._post_con_atraso(167, cliente_uuid)
         self.assertEqual(r.status_code, 409, r.content)
-        self.assertEqual(Revision.objects.count(), 1)
-        self.assertEqual(r.data["revision"], Revision.objects.get().id)
+        self.assertEqual(Revision.objects.de_empresa(una_empresa()).count(), 1)
+        self.assertEqual(
+            r.data["revision"], Revision.objects.de_empresa(una_empresa()).get().id
+        )
         self.assertEqual(r.data["visita"], self.visita.id)

@@ -74,9 +74,9 @@ class MapaTests(TestCase):
         sitio = self.sitio("Mezclado")
         self.punto(sitio, 60)
         self.assertEqual(self.datos()["Mezclado"]["estado"], "sin_programar")
-        PuntoControl.objects.filter(sitio=sitio, proximo_vencimiento=None).update(
-            activo=False
-        )
+        PuntoControl.objects.de_empresa(una_empresa()).filter(
+            sitio=sitio, proximo_vencimiento=None
+        ).update(activo=False)
         self.assertEqual(self.datos()["Mezclado"]["estado"], "al_dia")
         self.punto(sitio, 3)
         self.assertEqual(self.datos()["Mezclado"]["estado"], "proxima")
@@ -86,7 +86,9 @@ class MapaTests(TestCase):
         self.assertEqual(set(self.datos(estado="al_dia")), set())
         self.punto(sitio, None)
         self.assertEqual(self.datos()["Mezclado"]["estado"], "vencida")
-        PuntoControl.objects.filter(sitio=sitio).update(activo=False)
+        PuntoControl.objects.de_empresa(una_empresa()).filter(sitio=sitio).update(
+            activo=False
+        )
         self.assertEqual(self.datos()["Mezclado"]["estado"], "sin_programar")
         self.assertEqual(set(self.datos(estado="sin_programar")), {"Mezclado"})
 
@@ -114,7 +116,9 @@ class MapaTests(TestCase):
         self.punto(sitio, 30)
         self.punto(sitio, 5)
         inactivo = self.punto(sitio, -9)
-        PuntoControl.objects.filter(pk=inactivo.pk).update(activo=False)
+        PuntoControl.objects.de_empresa(una_empresa()).filter(pk=inactivo.pk).update(
+            activo=False
+        )
 
         sitio_json = self.datos()["Planta"]
 

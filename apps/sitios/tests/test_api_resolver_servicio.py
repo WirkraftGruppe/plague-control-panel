@@ -92,7 +92,9 @@ class ResolverServicioTests(BaseResolverTests):
         ajeno = User.objects.create_user(
             username="otro", password="x", empresa=una_empresa()
         )
-        Visita.objects.filter(pk=turno.pk).update(empleado=ajeno)
+        Visita.objects.de_empresa(una_empresa()).filter(pk=turno.pk).update(
+            empleado=ajeno
+        )
         punto = self._resolver()["punto"]
         self.assertFalse(punto["en_turno"])
         self.assertEqual(punto["servicio"]["id"], self.desrat.id)
@@ -196,7 +198,9 @@ class ResolverCoherenteConRevisionTests(BaseResolverTests):
         abierta = cuerpo["visita_abierta_propia"]
         abrir_id = abierta or self._abrir()
         servicio = (
-            TipoServicio.objects.get(pk=cuerpo["punto"]["servicio"]["id"])
+            TipoServicio.objects.de_empresa(una_empresa()).get(
+                pk=cuerpo["punto"]["servicio"]["id"]
+            )
             if cuerpo["punto"]["servicio"]
             else None
         )
@@ -218,13 +222,15 @@ class ResolverCoherenteConRevisionTests(BaseResolverTests):
         self.assertFalse(cuerpo["punto"]["en_turno"])
         self.assertEqual(revision["servicio"]["id"], self.desrat.id)
         self.assertTrue(revision["fuera_de_turno"])
-        self.assertEqual(Revision.objects.get().visita_id, abierta.id)
+        self.assertEqual(
+            Revision.objects.de_empresa(una_empresa()).get().visita_id, abierta.id
+        )
 
     def test_abierto_y_pendiente_con_el_punto_devuelve_y_guarda_el_del_abierto(self):
         self.punto.servicio = self.desrat
         self.punto.save()
         abierto = self._turno(self.fumiga)
-        Visita.objects.filter(pk=abierto.pk).update(
+        Visita.objects.de_empresa(una_empresa()).filter(pk=abierto.pk).update(
             estado=Visita.Estado.ABIERTA, abierta_en=timezone.now()
         )
         self._turno(self.desrat, dias=2)

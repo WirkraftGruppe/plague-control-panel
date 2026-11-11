@@ -4,6 +4,7 @@ from datetime import timedelta
 
 from django.utils import timezone
 
+from apps.empresas.tests.ayudas import una_empresa
 from apps.sitios.models import Sitio
 from apps.visitas.services import abrir_visita, registrar_visita_manual
 from apps.visitas.tests.test_services import jpeg_chico
@@ -54,7 +55,7 @@ class VencimientoTests(BaseTurnoTests):
         self.assertIsNone(self.sala.proximo_vencimiento)
 
     def test_carga_manual_actualiza_el_vencimiento(self):
-        Sitio.objects.filter(pk=self.sitio.pk).update(
+        Sitio.objects.de_empresa(una_empresa()).filter(pk=self.sitio.pk).update(
             creado=timezone.now() - timedelta(days=30)
         )
         self.sitio.refresh_from_db()

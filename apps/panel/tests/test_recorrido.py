@@ -110,7 +110,9 @@ class RecorridoTests(TestCase):
             },
         )
         self.assertRedirects(respuesta, url_sitio)
-        pendiente = Visita.objects.get(sitio=self.sitio, estado=Visita.Estado.PENDIENTE)
+        pendiente = Visita.objects.de_empresa(una_empresa()).get(
+            sitio=self.sitio, estado=Visita.Estado.PENDIENTE
+        )
 
         # Completar esa pendiente con la carga manual.
         self._get_200(url_manual)
@@ -147,7 +149,7 @@ class RecorridoTests(TestCase):
         self.assertEqual(pendiente.origen, Visita.Origen.MANUAL)
         self.assertEqual(pendiente.asignada_por, self.admin)
         self._get_200(url_visita)
-        foto = Foto.objects.get(revision__visita=pendiente)
+        foto = Foto.objects.de_empresa(una_empresa()).get(revision__visita=pendiente)
         self._get_200(reverse("panel:visitas:foto", args=[foto.codigo]))
         # La ficha de la visita muestra la revisión del punto con su foto.
         ficha = self._get_200(url_visita)
@@ -183,7 +185,7 @@ class RecorridoTests(TestCase):
                 ),
             },
         )
-        plano = Plano.objects.get(sitio=sitio)
+        plano = Plano.objects.de_empresa(una_empresa()).get(sitio=sitio)
         self.assertRedirects(
             respuesta,
             f"{reverse('panel:sitios:ficha', args=[sitio.pk])}"
@@ -205,7 +207,9 @@ class RecorridoTests(TestCase):
                 "y": "0.3000",
             },
         )
-        punto = PuntoControl.objects.get(sitio=sitio, nombre="Cocina")
+        punto = PuntoControl.objects.de_empresa(una_empresa()).get(
+            sitio=sitio, nombre="Cocina"
+        )
         self.assertEqual(respuesta.status_code, 302)
         movido = self.client.post(
             reverse("panel:sitios:punto_posicion", args=[punto.pk]),
@@ -241,7 +245,7 @@ class RecorridoTests(TestCase):
                 ],
             },
         )
-        visita = Visita.objects.get(sitio=self.sitio)
+        visita = Visita.objects.de_empresa(una_empresa()).get(sitio=self.sitio)
         self.assertRedirects(
             respuesta, reverse("panel:visitas:ficha", args=[visita.pk])
         )

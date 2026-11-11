@@ -64,7 +64,9 @@ class FichaProductoTests(TestCase):
             respuesta, reverse("panel:productos:ficha", args=[self.producto.pk])
         )
         self.assertEqual(services.stock(self.producto), Decimal("6"))
-        movimiento = MovimientoStock.objects.get(tipo="ajuste")
+        movimiento = MovimientoStock.objects.de_empresa(una_empresa()).get(
+            tipo="ajuste"
+        )
         self.assertEqual(movimiento.usuario, self.admin)
 
     def test_ingreso_en_envases_desde_el_panel(self):
@@ -89,7 +91,7 @@ class FichaProductoTests(TestCase):
         )
         self.assertEqual(respuesta.status_code, 200)
         self.assertTrue(respuesta.context["form"].errors)
-        self.assertEqual(MovimientoStock.objects.count(), 0)
+        self.assertEqual(MovimientoStock.objects.de_empresa(una_empresa()).count(), 0)
 
     def test_ingreso_no_positivo_se_rechaza(self):
         self.client.force_login(self.admin)
@@ -98,7 +100,7 @@ class FichaProductoTests(TestCase):
             {"tipo": "ingreso", "cantidad": "0"},
         )
         self.assertEqual(respuesta.status_code, 200)
-        self.assertEqual(MovimientoStock.objects.count(), 0)
+        self.assertEqual(MovimientoStock.objects.de_empresa(una_empresa()).count(), 0)
 
     def test_empleado_no_accede(self):
         self.client.force_login(self.empleado)
