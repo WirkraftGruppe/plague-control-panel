@@ -485,7 +485,7 @@ commit_base: 0927fcd
 | T11 | hecha (10a047f; integrada en 5235e3d, 916 tests OK) |
 | T12 | pendiente |
 | T13 | pendiente |
-| T14 | en corrección (menores 1 y 2 del auditor: P-multiempresa-62 y -63), sin integrar |
+| T14 | verificada tras la corrección c83527d (7/7 x2), integrándose |
 
 ### Corridas
 
@@ -505,6 +505,7 @@ commit_base: 0927fcd
 | | T4–T9 | | | |
 | 2026-11-10 14:45 | T10 (paso 2, 724f926) | 724f926 | criterios 11/11 PASA (verificador y verificador-b; el verificador-b escribió PASA en lugar de FALLA por CONTRATO MODIFICADO); suite 905 OK | auditor-seguridad: 0 bloqueantes, 0 importantes; `prod.py` conserva el resto de sus exigencias; `check --deploy` con las mismas 3 advertencias que deab13c; 2 menores y observaciones (P-multiempresa-51 a 54); presupuesto 35/300 |
 | 2026-11-11 15:00 | T14 | 2689d10 | criterios 7/7 PASA (verificador y verificador-b); veredicto global FALLA solo por CONTRATO MODIFICADO (e4ada1f); suite 920 OK; migraciones aplican desde cero con `empresa_id NOT NULL` y el CHECK de `User` | auditor-seguridad: 0 bloqueantes, 0 importantes, 2 menores (P-multiempresa-62, regresión de P-21; -63) y 7 observaciones (P-multiempresa-64 a 67); cierra P-20, -23, -29, -32, -37, -38, -41, -42, -50; presupuesto 214/600 |
+| 2026-11-11 16:30 | T14 (corrección d83cd32, c83527d) | c83527d | criterios 7/7 PASA (verificador y verificador-b); veredicto global FALLA solo por CONTRATO MODIFICADO (e4ada1f); suite 928 OK | auditor-seguridad: P-multiempresa-62 y -63 cerrados, P-24 completo (incluye `Visita.clean`); 0 bloqueantes, 0 importantes, 0 menores, 3 observaciones (P-multiempresa-68); 5 de los 8 tests nuevos fallan sobre 2689d10; presupuesto 323/600 |
 | | T10 | | | |
 | 2026-11-11 13:10 | T11 | 10a047f | criterios 20/20 PASA (verificador y verificador-b); veredicto global FALLA solo por CONTRATO MODIFICADO (e4ada1f); suite 916 OK | auditor-seguridad: 0 bloqueantes, 0 importantes, 3 menores y 6 observaciones (P-multiempresa-55 a 61); aislamiento: 13 de 14 mutaciones en rojo (la 14.ª, `CerrarVisitaView`, filtra también por empleado); P-12 y P-13 resueltos, P-14 documentado; presupuesto 1022/1400 |
 | | T11 | | | |
@@ -595,6 +596,7 @@ commit_base: 0927fcd
 - P-multiempresa-65 [observación] Admin de usuarios: mensajes duplicados ("Este rol exige una empresa." de `ReglaRolEmpresaMixin`, `apps/accounts/admin.py:25-26`, y el de `User.clean`); `create_superuser(empresa_id=X)` sin `rol` da `IntegrityError` en vez del `ValueError` (`apps/accounts/models.py:14` mira solo `empresa`). Origen: auditor-seguridad sobre T14.
 - P-multiempresa-66 [observación] `crear_usuario`: acepta una empresa inactiva (resto de P-19, sin dueño), pide la contraseña antes de validar la empresa y ningún test fija el rechazo sin `--empresa`; el paso de un `plataforma` a administrador o empleado con empresa en el admin funciona y no tiene test. Origen: auditor-seguridad sobre T14.
 - P-multiempresa-67 [observación] Código muerto en `cargar_demo` (`apps/panel/management/commands/cargar_demo.py:113-115` y `:129-133`, rama de `demo-*` sin empresa) desde T14; `test_herencia.py:276` (`test_cambiar_la_empresa_de_un_registro_guardado_falla`) comprueba en parte un guardado que funciona y repite otro test. Origen: verificador y auditor-seguridad sobre T14.
+- P-multiempresa-68 [observación] Tras la corrección de T14: un `plataforma` heredado en un campo de solo lectura del admin (`ubicacion_fijada_por`, `incidencia_revisada_por`; solo posible por `update()` o shell) da 500 al editar, porque `clean()` devuelve el error con la clave de un campo que no está en el formulario (`apps/empresas/models.py:152-161`); el docstring de `ModeloDeEmpresa.clean` (`:133`) dice que los campos sin empresa no se comparan, y ahora una referencia sin empresa cuenta como ajena; mensajes duplicados cuando el `empleado` de una visita es un `plataforma`. Origen: auditor-seguridad sobre la corrección de T14.
 - Orden de integración de la ola 3: T5 y T6 por sí solas dan 500 a un administrador sin empresa; recién `AdministradorRequeridoMixin` de T4 cierra la sesión antes. Integrar T4 antes que T5 y T6 (orden del plan). Origen: auditor-seguridad sobre la ola 3.
 
 ### Decisiones
