@@ -59,7 +59,7 @@ Si falta alguno de los cinco, no empiezas: devuelves qué falta y terminas.
    durante ella. El presupuesto no es golf: está prohibido recortar comentarios, docs,
    tests o líneas en blanco para entrar. Si el trabajo no entra, lo reportas en "fuera
    o a medias" con el exceso; partir la subtarea es decisión del principal, no tuya.
-11. **Datos de la empresa.** El nombre sale de `NOMBRE_EMPRESA` (`config/settings/base.py`);
+11. **Datos de la empresa.** El nombre sale de `Empresa.nombre` (`apps/empresas/models.py`);
     ninguna plantilla ni código escribe el nombre de una empresa, y no inventas cifras,
     testimonios ni datos de ella. El sitio público vive en otro repositorio.
 

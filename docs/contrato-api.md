@@ -1,6 +1,6 @@
 # Contrato de la API v1
 
-Actualizado: 2026-10-20
+Actualizado: 2026-11-11
 
 Resumen legible para la app móvil de Detach. La fuente completa (cuerpos, campos,
 códigos de error) es `docs/api/openapi-v1.yaml`; este archivo agrega, por ruta, el
@@ -10,6 +10,13 @@ límite de pedidos (throttle) y el rol que la puede usar. Todas las rutas cuelga
 - **Auth**: `JWT` es un token de acceso en `Authorization: Bearer <token>` de cualquier
   usuario autenticado; `Empleado o administrador`, `Administrador` y `Empleado` piden
   además ese rol; `Pública` no pide token.
+- **Empresas**: cada usuario pertenece a una empresa y la API solo le muestra datos de ella.
+  Con la empresa inactiva, `POST /api/v1/auth/token/` no emite tokens y cualquier ruta
+  con un token vigente responde 401 (`code = empresa_inactiva`). Un identificador de otra
+  empresa (`<pk>`, `<codigo>`, un `qr_codigo`, una `visita` en el cuerpo) responde igual
+  que uno inexistente: 404 en las rutas con identificador en la URL y el mismo 400 de
+  validación que un objeto inexistente cuando va en el cuerpo. Nunca 403 ni un mensaje
+  que distinga "existe pero es de otra empresa".
 - **Catálogo de productos** (`GET /api/v1/productos/`): cada producto trae `unidad_base`
   (unidad en que se lleva el stock), `modo_unidad` (`unica` o `equivalentes`) y
   `unidades_permitidas` (las unidades en que se puede declarar una cantidad: solo la base

@@ -26,7 +26,7 @@ La raíz es un repositorio git propio. Cuando exista `mobile/`, será otro repos
 4. **Plan con criterios comprobables por máquina** (ver § Flujo de trabajo).
 5. **Delegación a subagentes con contrato** (ver § Flujo de trabajo).
 6. **Verificación independiente obligatoria** (ver § Flujo de trabajo). Ningún trabajo se reporta como terminado sin un informe del subagente `verificador`.
-7. **Datos de la empresa**: el nombre sale de `NOMBRE_EMPRESA`; ninguna plantilla ni código escribe el nombre de una empresa. Sin cifras ni datos inventados.
+7. **Datos de la empresa**: el nombre, el logo y el correo salen de `Empresa`; ninguna plantilla ni código escribe el nombre de una empresa. Sin cifras ni datos inventados. Roles: `plataforma` (operador, sin empresa, único con `/admin/`), administrador (panel de su empresa) y empleado (API). Toda consulta del panel y de la API se acota con `de_empresa(...)`; `todos` está prohibido ahí.
 
 ## El principal coordina, no ejecuta
 
