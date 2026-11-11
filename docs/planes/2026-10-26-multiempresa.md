@@ -482,7 +482,7 @@ commit_base: 0927fcd
 | T8 | hecha (9815485; integrada en c1bf26f, 886 tests OK) |
 | T9 | hecha (e3cd431; integrada en 9390eb5, 907 tests OK) |
 | T10 | hecha (T4–T9 integradas; ajuste de `config` 724f926 integrado en abdf150, 905 tests OK; worktree de T11 creado) |
-| T11 | en curso |
+| T11 | verificada (10a047f; 20/20 x2), integrándose |
 | T12 | pendiente |
 | T13 | pendiente |
 | T14 | pendiente |
@@ -505,6 +505,7 @@ commit_base: 0927fcd
 | | T4–T9 | | | |
 | 2026-11-10 14:45 | T10 (paso 2, 724f926) | 724f926 | criterios 11/11 PASA (verificador y verificador-b; el verificador-b escribió PASA en lugar de FALLA por CONTRATO MODIFICADO); suite 905 OK | auditor-seguridad: 0 bloqueantes, 0 importantes; `prod.py` conserva el resto de sus exigencias; `check --deploy` con las mismas 3 advertencias que deab13c; 2 menores y observaciones (P-multiempresa-51 a 54); presupuesto 35/300 |
 | | T10 | | | |
+| 2026-11-11 13:10 | T11 | 10a047f | criterios 20/20 PASA (verificador y verificador-b); veredicto global FALLA solo por CONTRATO MODIFICADO (e4ada1f); suite 916 OK | auditor-seguridad: 0 bloqueantes, 0 importantes, 3 menores y 6 observaciones (P-multiempresa-55 a 61); aislamiento: 13 de 14 mutaciones en rojo (la 14.ª, `CerrarVisitaView`, filtra también por empleado); P-12 y P-13 resueltos, P-14 documentado; presupuesto 1022/1400 |
 | | T11 | | | |
 | | T14 | | | |
 | | T12 | | | |
@@ -580,6 +581,13 @@ commit_base: 0927fcd
 - P-multiempresa-52 [menor] `test_q_uuid_lo_sirve_sitios` (`apps/panel/tests/test_rutas.py:23-31`) pide un UUID al azar, no el `qr_codigo` de un sitio de la empresa creada: no detectaría que `/q/` empiece a mostrar datos de esa empresa. Para T11. Origen: auditor-seguridad sobre T10.
 - P-multiempresa-53 [observación] Restos inertes de las variables borradas: `override_settings(NOMBRE_EMPRESA=…)` en `apps/accounts/tests/test_admin_marca.py:16`, `CORREO_CONTACTO` en `apps/sitios/tests/test_geocodificacion.py:363-365`, `NOMBRE_EMPRESA` en `_HEREDADAS` de `config/tests/test_settings.py:19` (a la que le faltan `CORREO_PLATAFORMA` y `EMPRESA_GUARDIA`); la docstring de `config/settings/prod.py:1` omite `ALLOWED_HOSTS`. Los tests para T11; la documentación (`README.md`, `.env.example`, `docs/despliegue.md:27-31`, `docs/api/openapi-v1.yaml:5`, `CLAUDE.md:29`, `.claude/agents/*`) para T12. Origen: verificadores e implementador de T10 y auditor-seguridad.
 - P-multiempresa-54 [observación] `CORREO_PLATAFORMA` cae a `plataforma@example.com` también en producción (`config/settings/base.py:101-103`) y `prod.py` no lo exige: un despliegue sin la variable manda a Nominatim un contacto inexistente, contra su política. Opcional por decisión del usuario del 2026-10-26; exigirlo sería un `ImproperlyConfigured` como el de `SITE_URL`. Origen: auditor-seguridad sobre T10.
+- P-multiempresa-55 [importante] `RevisionDemoTests.tearDownClass` (`apps/visitas/tests/test_comandos.py:110-115`, previo a este plan) hace `shutil.rmtree(settings.MEDIA_ROOT)` después de `super().tearDownClass()`, cuando el `override_settings` de clase ya se deshizo: cada corrida de la suite puede borrar el `media/` real del proyecto (imágenes de la demo local). Corrección: `addClassCleanup` con la ruta temporal guardada. Sin dueño en el plan. Origen: implementador de T11.
+- P-multiempresa-56 [menor] La documentación de los límites de la guardia (`apps/empresas/consultas.py:51`, `docs/01-modelo-y-arquitectura.md:206`) dice que `bulk_update`, `defer` y `only` no se verifican, pero lanzan (solo `bulk_create` se escapa); omite `raw()`, `.history` y `_base_manager`, que no pasan por la guardia, y que dos partes acotadas a empresas distintas combinadas con `|` pasan; mezcla la guardia con la inmutabilidad de P-multiempresa-22. Para T12. Origen: auditor-seguridad sobre T11.
+- P-multiempresa-57 [menor] `dumpdata` sin `--all`, `clean_duplicate_history --auto` y `populate_history` fallan con `ConsultaSinEmpresa` (usan `_default_manager`); fallan cerrado. Documentar `dumpdata --all` / `sin_filtro_empresa()` (T12, `docs/despliegue.md`). Origen: auditor-seguridad sobre T11.
+- P-multiempresa-58 [menor] `apps/panel/tests/test_cargar_demo.py:197-445`: unas 20 aserciones sobre los datos de la demo pasaron de recorrer las dos empresas demo a mirar solo "Empresa demo"; los datos de "Empresa demo B" ya no se comprueban en detalle (las guardas de "no crea nada" siguen globales con `_total()`). Sin dueño. Origen: verificador sobre T11.
+- P-multiempresa-59 [observación] `test_panel_y_api_no_usan_el_manager_sin_filtro` (`apps/empresas/tests/test_guardia.py:15-47`) no busca `_base_manager`, `.history` ni `sin_filtro_empresa(` y no recorre `services.py`, `apps/clientes/empresa.py` ni `publico_views.py`. Origen: auditor-seguridad sobre T11.
+- P-multiempresa-60 [observación] `sin_filtro_empresa()` puede filtrarse fuera de su bloque por un generador suspendido o una tarea de asyncio creada dentro; hoy no hay ninguno de los dos (despliegue WSGI). En `CerrarVisitaView`, `MisVisitas`, `Historial` y `MisPuntos` el aislamiento depende también del filtro por empleado. Origen: auditor-seguridad sobre T11.
+- P-multiempresa-61 [observación] Restos de la guardia en `config/`: `EMPRESA_GUARDIA` sigue leído en `config/settings/base.py:91-97` (sin efecto; un valor inválido todavía da `ImproperlyConfigured`) y `override_settings(EMPRESA_GUARDIA="exigir")` en `config/tests/test_admin_site.py:146`. `registrar_revision_demo` no acepta `--sitio` (puntos "General" repetidos dentro de una empresa) y `--empresa` busca por nombre. Origen: implementador de T11 y auditor-seguridad.
 - Orden de integración de la ola 3: T5 y T6 por sí solas dan 500 a un administrador sin empresa; recién `AdministradorRequeridoMixin` de T4 cierra la sesión antes. Integrar T4 antes que T5 y T6 (orden del plan). Origen: auditor-seguridad sobre la ola 3.
 
 ### Decisiones
