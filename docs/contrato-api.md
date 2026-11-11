@@ -17,7 +17,7 @@ límite de pedidos (throttle) y el rol que la puede usar. Todas las rutas cuelga
   empresa (`<pk>`, `<codigo>`, un `qr_codigo`, una `visita` en el cuerpo) responde igual
   que uno inexistente: 404 en las rutas con identificador en la URL, y también para una
   `visita` en el cuerpo de `revisiones/` (404, no 400); el 400 igual al de un inexistente
-  queda para `qr_codigo` y `producto` en el cuerpo. Nunca 403 ni un mensaje
+  queda para `qr_codigo`, `producto` y `cliente` (en `POST sitios/`) en el cuerpo. Nunca 403 ni un mensaje
   que distinga "existe pero es de otra empresa".
 - **Catálogo de productos** (`GET /api/v1/productos/`): cada producto trae `unidad_base`
   (unidad en que se lleva el stock), `modo_unidad` (`unica` o `equivalentes`) y
