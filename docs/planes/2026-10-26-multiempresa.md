@@ -482,10 +482,10 @@ commit_base: 0927fcd
 | T8 | hecha (9815485; integrada en c1bf26f, 886 tests OK) |
 | T9 | hecha (e3cd431; integrada en 9390eb5, 907 tests OK) |
 | T10 | hecha (T4–T9 integradas; ajuste de `config` 724f926 integrado en abdf150, 905 tests OK; worktree de T11 creado) |
-| T11 | verificada (10a047f; 20/20 x2), integrándose |
+| T11 | hecha (10a047f; integrada en 5235e3d, 916 tests OK) |
 | T12 | pendiente |
 | T13 | pendiente |
-| T14 | pendiente |
+| T14 | en curso |
 
 ### Corridas
 
