@@ -46,7 +46,7 @@ def _rutas_con_parametro():
 
     for ruta in recorrer(get_resolver().url_patterns, "/"):
         if ruta.startswith("/api/v1/") and "<" in ruta:
-            ruta = re.sub(r"<uuid:\w+>", SENTINELA_UUID, ruta)
+            ruta = re.sub(r"<uuid:\w+>|<str:codigo>", SENTINELA_UUID, ruta)
             yield re.sub(r"<(?:\w+:)?\w+>", SENTINELA, ruta)
 
 
