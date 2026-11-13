@@ -1017,7 +1017,24 @@ def test_plantilla_integracion_es_subtarea_numerada():
         for c in plan.criterios[n]
     )
     assert max(plan.criterios) in integraciones
-    assert len(plan.cierre_global) == 6
+    # Plantilla v2: el cierre global sale de .claude/hooks/cierre_global.json, no del plan.
+    assert "## Criterios de cierre global" not in texto_plantilla
+    assert not plan.cierre_global
+
+
+def test_plantilla_v2_sin_cierre_global_y_con_ruta_y_revisiones():
+    # Formato v2: sin bloque de cierre global, con `- **ruta**:` y `### Revisiones`; el cierre
+    # global vive en cierre_global.json con cinco comandos.
+    import json
+
+    texto_plantilla = (DIR_HOOKS.parent.parent / "docs" / "plantilla-plan.md").read_text(
+        encoding="utf-8"
+    )
+    assert "## Criterios de cierre global" not in texto_plantilla
+    assert "- **ruta**:" in texto_plantilla
+    assert "### Revisiones" in texto_plantilla
+    datos = json.loads((DIR_HOOKS / "cierre_global.json").read_text(encoding="utf-8"))
+    assert len(datos["comandos"]) == 5
 
 
 # ---------------------------------------------------------------------------
