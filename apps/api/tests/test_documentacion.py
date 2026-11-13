@@ -5,6 +5,7 @@ import re
 from django.test import TestCase
 
 from apps.accounts.models import User
+from apps.empresas.tests.ayudas import una_empresa
 
 
 class DocumentacionTests(TestCase):
@@ -14,7 +15,10 @@ class DocumentacionTests(TestCase):
 
     def test_docs_con_sesion_sin_origenes_externos(self):
         admin = User.objects.create_user(
-            "adm", password="clave-segura-123", rol=User.Rol.ADMINISTRADOR
+            "adm",
+            password="clave-segura-123",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         self.client.force_login(admin)
         respuesta = self.client.get("/api/v1/docs/")

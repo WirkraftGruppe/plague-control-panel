@@ -15,6 +15,7 @@ from PIL import Image
 
 from apps.accounts.models import User
 from apps.clientes.models import Cliente
+from apps.empresas.tests.ayudas import una_empresa
 from apps.productos.models import Producto
 from apps.servicios.models import TipoServicio
 from apps.sitios.models import Plano, PuntoControl, Sitio
@@ -44,21 +45,27 @@ class RecorridoTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.admin = User.objects.create_user(
-            "adm-rec", password="x", rol=User.Rol.ADMINISTRADOR
+            "adm-rec", password="x", rol=User.Rol.ADMINISTRADOR, empresa=una_empresa()
         )
         cls.empleado = User.objects.create_user(
-            "emp-rec", password="x", rol=User.Rol.EMPLEADO
+            "emp-rec", password="x", rol=User.Rol.EMPLEADO, empresa=una_empresa()
         )
-        cliente = Cliente.objects.create(razon_social="Cliente Recorrido")
+        cliente = Cliente.objects.create(
+            razon_social="Cliente Recorrido", empresa=una_empresa()
+        )
         cls.sitio = Sitio.objects.create(
             cliente=cliente,
             nombre="Depósito central",
             latitud=Decimal("-34.603700"),
             longitud=Decimal("-58.381600"),
         )
-        cls.tipo = TipoServicio.objects.create(nombre="Desinsectación", slug="des-rec")
+        cls.tipo = TipoServicio.objects.create(
+            nombre="Desinsectación", slug="des-rec", empresa=una_empresa()
+        )
         cls.sitio.puntos.filter(orden=0).update(servicio=cls.tipo, frecuencia_dias=30)
-        cls.producto = Producto.objects.create(nombre_comercial="Gel cucarachicida")
+        cls.producto = Producto.objects.create(
+            nombre_comercial="Gel cucarachicida", empresa=una_empresa()
+        )
 
     def setUp(self):
         cache.clear()
@@ -103,7 +110,9 @@ class RecorridoTests(TestCase):
             },
         )
         self.assertRedirects(respuesta, url_sitio)
-        pendiente = Visita.objects.get(sitio=self.sitio, estado=Visita.Estado.PENDIENTE)
+        pendiente = Visita.objects.de_empresa(una_empresa()).get(
+            sitio=self.sitio, estado=Visita.Estado.PENDIENTE
+        )
 
         # Completar esa pendiente con la carga manual.
         self._get_200(url_manual)
@@ -140,7 +149,7 @@ class RecorridoTests(TestCase):
         self.assertEqual(pendiente.origen, Visita.Origen.MANUAL)
         self.assertEqual(pendiente.asignada_por, self.admin)
         self._get_200(url_visita)
-        foto = Foto.objects.get(revision__visita=pendiente)
+        foto = Foto.objects.de_empresa(una_empresa()).get(revision__visita=pendiente)
         self._get_200(reverse("panel:visitas:foto", args=[foto.codigo]))
         # La ficha de la visita muestra la revisión del punto con su foto.
         ficha = self._get_200(url_visita)
@@ -176,7 +185,7 @@ class RecorridoTests(TestCase):
                 ),
             },
         )
-        plano = Plano.objects.get(sitio=sitio)
+        plano = Plano.objects.de_empresa(una_empresa()).get(sitio=sitio)
         self.assertRedirects(
             respuesta,
             f"{reverse('panel:sitios:ficha', args=[sitio.pk])}"
@@ -198,7 +207,9 @@ class RecorridoTests(TestCase):
                 "y": "0.3000",
             },
         )
-        punto = PuntoControl.objects.get(sitio=sitio, nombre="Cocina")
+        punto = PuntoControl.objects.de_empresa(una_empresa()).get(
+            sitio=sitio, nombre="Cocina"
+        )
         self.assertEqual(respuesta.status_code, 302)
         movido = self.client.post(
             reverse("panel:sitios:punto_posicion", args=[punto.pk]),
@@ -234,7 +245,7 @@ class RecorridoTests(TestCase):
                 ],
             },
         )
-        visita = Visita.objects.get(sitio=self.sitio)
+        visita = Visita.objects.de_empresa(una_empresa()).get(sitio=self.sitio)
         self.assertRedirects(
             respuesta, reverse("panel:visitas:ficha", args=[visita.pk])
         )

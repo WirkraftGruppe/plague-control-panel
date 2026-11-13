@@ -74,7 +74,8 @@ def regenerar_qr_lote(puntos):
 def _bloquear_punto(punto):
     """Relee el punto bloqueando la fila (dentro de un ``atomic``), con su sitio."""
     return (
-        PuntoControl.objects.select_for_update(no_key=True, of=("self",))
+        PuntoControl.objects.de_empresa(punto.empresa_id)
+        .select_for_update(no_key=True, of=("self",))
         .select_related("sitio__cliente")
         .get(pk=punto.pk)
     )
@@ -130,7 +131,8 @@ def desactivar_punto(punto):
     """
     with transaction.atomic():
         activos = list(
-            PuntoControl.objects.select_for_update()
+            PuntoControl.objects.de_empresa(punto.empresa_id)
+            .select_for_update()
             .filter(sitio_id=punto.sitio_id, activo=True)
             .values_list("pk", flat=True)
         )

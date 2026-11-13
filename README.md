@@ -2,7 +2,7 @@
 
 Detach es un sistema de gestión para empresas de control de plagas: una única aplicación Django con el panel de gestión (`/panel/`, administradores) y la API (`/api/v1/`, app móvil de los empleados). Clientes, sitios con puntos de control y QR (cada punto con su servicio, frecuencia y vencimiento), turnos, mapa, productos y certificados.
 
-`/` redirige al login del panel. El nombre de la empresa sale de la variable `NOMBRE_EMPRESA` (`config/settings/base.py`). El sitio público de cada empresa vive en otro repositorio.
+`/` redirige al login del panel. Una misma instalación sirve a varias empresas: el nombre, el logo y el correo de cada una salen de su `Empresa`, que el operador da de alta en `/admin/`. El sitio público de cada empresa vive en otro repositorio.
 
 ## Arranque (Windows, desde la raíz)
 
@@ -13,7 +13,9 @@ PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.p
 PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py runserver
 ```
 
-Variables de entorno: plantilla en `.env.example`. En producción son obligatorias `SECRET_KEY`, `DJANGO_ENV`, `DATABASE_URL`, `ALLOWED_HOSTS`, `SITE_URL` y `NOMBRE_EMPRESA`; opcional `CORREO_CONTACTO`. Despliegue: `docs/despliegue.md`.
+Variables de entorno: plantilla en `.env.example`. En producción son obligatorias `SECRET_KEY`, `DJANGO_ENV`, `DATABASE_URL`, `ALLOWED_HOSTS` y `SITE_URL`; opcional, pero conviene definirla, `CORREO_PLATAFORMA` (contacto del operador para Nominatim). Despliegue: `docs/despliegue.md`.
+
+Primer uso: `manage.py createsuperuser` crea el usuario `plataforma`; con él, en `/admin/` se da de alta la primera empresa; su primer administrador se crea con `manage.py crear_usuario <usuario> --rol administrador --empresa <id>` y el resto de los usuarios, desde `/panel/`.
 
 ## Tests y calidad
 

@@ -18,6 +18,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from apps.accounts.permisos import EsAdministrador, EsEmpleado
+from apps.empresas.consultas import empresa_de
 
 from .models import Foto, Visita
 from .serializers import (
@@ -69,7 +70,8 @@ class MisVisitasView(generics.ListAPIView):
 
     def get_queryset(self):
         return (
-            Visita.objects.filter(
+            Visita.objects.de_empresa(empresa_de(self.request))
+            .filter(
                 empleado=self.request.user,
                 estado__in=[Visita.Estado.ABIERTA, Visita.Estado.PENDIENTE],
             )
@@ -232,7 +234,12 @@ class CerrarVisitaView(APIView):
     )
     def post(self, request, pk):
         """Cierra con `cierre=empleado`; la visita de otro empleado da 404."""
-        visita = Visita.objects.filter(pk=pk, empleado=request.user).first()
+        empresa = empresa_de(request)
+        visita = (
+            Visita.objects.de_empresa(empresa)
+            .filter(pk=pk, empleado=request.user)
+            .first()
+        )
         if visita is None:
             raise NotFound("La visita no existe.")
         entrada = CerrarVisitaSerializer(data=request.data)
@@ -247,7 +254,8 @@ class CerrarVisitaView(APIView):
         except VisitaYaCerrada:
             raise VisitaYaCerradaError()
         cerrada = (
-            Visita.objects.select_related("sitio")
+            Visita.objects.de_empresa(empresa)
+            .select_related("sitio")
             .prefetch_related(*PRECARGA_REVISIONES)
             .get(pk=cerrada.pk)
         )
@@ -269,7 +277,7 @@ class HistorialView(generics.ListAPIView):
         filtros = ParametrosHistorialSerializer(data=self.request.query_params)
         filtros.is_valid(raise_exception=True)
         fechas = filtros.validated_data
-        consulta = Visita.objects.filter(
+        consulta = Visita.objects.de_empresa(empresa_de(self.request)).filter(
             empleado=self.request.user, estado=Visita.Estado.REALIZADA
         )
         if "desde" in fechas:
@@ -315,13 +323,15 @@ class FotoView(APIView):
         responses={
             (200, "image/jpeg"): OpenApiTypes.BINARY,
             403: OpenApiResponse(description="La foto es de otro empleado."),
-            404: OpenApiResponse(description="La foto no existe."),
+            404: OpenApiResponse(description="La foto no existe o es de otra empresa."),
         },
     )
     def get(self, request, codigo):
-        """Devuelve el JPEG; 404 si no existe y 403 si no corresponde."""
+        """Devuelve el JPEG; 404 si no existe o es de otra empresa, 403 si no
+        corresponde."""
         foto = (
-            Foto.objects.select_related("revision__visita")
+            Foto.objects.de_empresa(empresa_de(request))
+            .select_related("revision__visita")
             .filter(codigo=codigo)
             .first()
         )

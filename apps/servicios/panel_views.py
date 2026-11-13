@@ -13,13 +13,16 @@ from django.views.generic import (
 )
 
 from apps.accounts.mixins import AdministradorRequeridoMixin
+from apps.clientes.empresa import VistaDeEmpresaMixin
 from apps.panel.listados import ListadoPanelMixin
 
 from .models import CampoPlanilla, TipoServicio
 from .panel_forms import CampoPlanillaForm, TipoServicioForm
 
 
-class TipoServicioListadoView(AdministradorRequeridoMixin, ListadoPanelMixin):
+class TipoServicioListadoView(
+    VistaDeEmpresaMixin, AdministradorRequeridoMixin, ListadoPanelMixin
+):
     model = TipoServicio
     template_name = "servicios/panel/listado.html"
     template_parcial = "servicios/panel/_listado.html"
@@ -27,7 +30,7 @@ class TipoServicioListadoView(AdministradorRequeridoMixin, ListadoPanelMixin):
     campos_busqueda = ("nombre",)
 
 
-class TipoServicioFormularioMixin(AdministradorRequeridoMixin):
+class TipoServicioFormularioMixin(VistaDeEmpresaMixin, AdministradorRequeridoMixin):
     model = TipoServicio
     form_class = TipoServicioForm
     template_name = "servicios/panel/servicio_formulario.html"
@@ -46,7 +49,7 @@ class TipoServicioEditarView(TipoServicioFormularioMixin, UpdateView):
     titulo = "Editar servicio"
 
 
-class CamposView(AdministradorRequeridoMixin, DetailView):
+class CamposView(VistaDeEmpresaMixin, AdministradorRequeridoMixin, DetailView):
     """Editor de la planilla: todos los campos del tipo, activos o no."""
 
     model = TipoServicio
@@ -94,7 +97,9 @@ class CampoAltaView(CampoFormularioMixin):
     titulo = "Nuevo campo"
 
     def get_tipo_servicio(self):
-        return get_object_or_404(TipoServicio, pk=self.kwargs["pk"])
+        return get_object_or_404(
+            TipoServicio.objects.de_empresa(self.request.empresa), pk=self.kwargs["pk"]
+        )
 
 
 class CampoEditarView(CampoFormularioMixin):
@@ -103,7 +108,9 @@ class CampoEditarView(CampoFormularioMixin):
     def get_instancia(self):
         if not hasattr(self, "_campo"):
             self._campo = get_object_or_404(
-                CampoPlanilla.objects.select_related("tipo_servicio"),
+                CampoPlanilla.objects.de_empresa(self.request.empresa).select_related(
+                    "tipo_servicio"
+                ),
                 pk=self.kwargs["pk"],
             )
         return self._campo
@@ -119,7 +126,9 @@ class CampoDesactivarView(AdministradorRequeridoMixin, TemplateView):
 
     def get_campo(self):
         return get_object_or_404(
-            CampoPlanilla.objects.select_related("tipo_servicio"),
+            CampoPlanilla.objects.de_empresa(self.request.empresa).select_related(
+                "tipo_servicio"
+            ),
             pk=self.kwargs["pk"],
         )
 
@@ -146,7 +155,9 @@ class CampoReactivarView(AdministradorRequeridoMixin, View):
     http_method_names = ["post"]
 
     def post(self, request, *args, **kwargs):
-        campo = get_object_or_404(CampoPlanilla, pk=kwargs["pk"])
+        campo = get_object_or_404(
+            CampoPlanilla.objects.de_empresa(request.empresa), pk=kwargs["pk"]
+        )
         campo.activo = True
         campo.save(update_fields=["activo"])
         messages.success(request, "Campo reactivado.")

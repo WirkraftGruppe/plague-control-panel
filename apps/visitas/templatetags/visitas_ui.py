@@ -9,7 +9,7 @@ register = template.Library()
 
 @register.simple_tag(takes_context=True)
 def incidencias_sin_revisar(context):
-    """Visitas con incidencia sin revisar, como el filtro del listado de turnos.
+    """Visitas de la empresa con incidencia sin revisar, como el filtro del listado.
 
     Sin un administrador autenticado en la petición (login, plantillas sueltas)
     devuelve 0 sin consultar la base.
@@ -17,6 +17,11 @@ def incidencias_sin_revisar(context):
     usuario = getattr(context.get("request"), "user", None)
     if not (usuario and usuario.is_authenticated and usuario.es_administrador):
         return 0
-    return Visita.objects.filter(
-        incidencia=True, incidencia_revisada_en__isnull=True
-    ).count()
+    empresa = getattr(context.get("request"), "empresa", None)
+    if empresa is None:
+        return 0
+    return (
+        Visita.objects.de_empresa(empresa)
+        .filter(incidencia=True, incidencia_revisada_en__isnull=True)
+        .count()
+    )

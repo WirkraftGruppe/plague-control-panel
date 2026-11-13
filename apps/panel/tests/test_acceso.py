@@ -13,6 +13,7 @@ from PIL import Image
 
 from apps.accounts.models import User
 from apps.clientes.models import Cliente
+from apps.empresas.tests.ayudas import una_empresa
 from apps.panel import urls
 from apps.productos.models import Producto
 from apps.servicios.models import CampoPlanilla, TipoServicio
@@ -48,9 +49,11 @@ class AccesoPanelTests(TestCase):
         cache.clear()
         self.addCleanup(cache.clear)
         self.admin = User.objects.create_user(
-            "adm", password=CLAVE, rol=User.Rol.ADMINISTRADOR
+            "adm", password=CLAVE, rol=User.Rol.ADMINISTRADOR, empresa=una_empresa()
         )
-        self.empleado = User.objects.create_user("emp", password=CLAVE)
+        self.empleado = User.objects.create_user(
+            "emp", password=CLAVE, empresa=una_empresa()
+        )
 
     def test_anonimo_redirige_al_login(self):
         respuesta = self.client.get("/panel/")
@@ -152,14 +155,22 @@ class AccesoTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         """Un objeto real de cada modelo al que apuntan las rutas con id."""
-        cls.cliente = Cliente.objects.create(razon_social="Cliente SA")
+        cls.cliente = Cliente.objects.create(
+            razon_social="Cliente SA", empresa=una_empresa()
+        )
         cls.sitio = Sitio.objects.create(cliente=cls.cliente, nombre="Planta")
-        cls.servicio = TipoServicio.objects.create(nombre="Desinsectación", slug="d")
-        cls.empleado = User.objects.create_user("emp", password=CLAVE)
+        cls.servicio = TipoServicio.objects.create(
+            nombre="Desinsectación", slug="d", empresa=una_empresa()
+        )
+        cls.empleado = User.objects.create_user(
+            "emp", password=CLAVE, empresa=una_empresa()
+        )
         visita = Visita.objects.create(
             sitio=cls.sitio, empleado=cls.empleado, origen=Visita.Origen.APP
         )
-        punto = PuntoControl.objects.get(sitio=cls.sitio, orden=0)
+        punto = PuntoControl.objects.de_empresa(una_empresa()).get(
+            sitio=cls.sitio, orden=0
+        )
         revision = Revision.objects.create(
             visita=visita,
             punto=punto,
@@ -186,7 +197,9 @@ class AccesoTests(TestCase):
                 clave="dato",
                 tipo=CampoPlanilla.Tipo.TEXTO,
             ).pk,
-            "producto": Producto.objects.create(nombre_comercial="Producto").pk,
+            "producto": Producto.objects.create(
+                nombre_comercial="Producto", empresa=una_empresa()
+            ).pk,
         }
         cls.codigos = {"foto": str(foto.codigo)}
 

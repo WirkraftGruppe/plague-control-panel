@@ -6,6 +6,7 @@ from django.core.cache import cache
 from django.test import TestCase, override_settings
 
 from apps.accounts.models import User
+from apps.empresas.tests.ayudas import una_empresa
 
 CLAVE = "clave-segura-123"
 IP = "203.0.113.5"
@@ -16,7 +17,7 @@ class LimitesPanelTests(TestCase):
         cache.clear()
         self.addCleanup(cache.clear)
         self.admin = User.objects.create_user(
-            "adm", password=CLAVE, rol=User.Rol.ADMINISTRADOR
+            "adm", password=CLAVE, rol=User.Rol.ADMINISTRADOR, empresa=una_empresa()
         )
         self.super = User.objects.create_superuser("root", password=CLAVE)
 
@@ -88,7 +89,7 @@ class LimitesPanelTests(TestCase):
         self.assertEqual(self._ingresar("adm", CLAVE).status_code, 429)
 
     def test_empleado_sin_acceso_cuenta_como_fallo(self):
-        User.objects.create_user("emp", password=CLAVE)
+        User.objects.create_user("emp", password=CLAVE, empresa=una_empresa())
         for _ in range(5):
             self._ingresar("emp", CLAVE)
         self.assertEqual(self._ingresar("emp", CLAVE).status_code, 429)

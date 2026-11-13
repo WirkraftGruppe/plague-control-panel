@@ -9,6 +9,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from apps.accounts.models import User
+from apps.empresas.tests.ayudas import una_empresa
 from apps.visitas.models import Visita
 from apps.visitas.services import marcar_incidencia_revisada
 
@@ -20,7 +21,7 @@ class UbicacionTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.admin = User.objects.create_user(
-            "adm-ubi", password="x", rol=User.Rol.ADMINISTRADOR
+            "adm-ubi", password="x", rol=User.Rol.ADMINISTRADOR, empresa=una_empresa()
         )
 
     def setUp(self):

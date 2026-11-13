@@ -17,9 +17,26 @@ User = get_user_model()
 URL_LISTADO = reverse_lazy("panel:usuarios:listado")
 
 
+def usuarios_de_empresa(request):
+    """Cuentas de la empresa del pedido; sin empresa no hay ninguna."""
+    empresa = getattr(request, "empresa", None)
+    if empresa is None:
+        return User.objects.none()
+    return User.objects.filter(empresa=empresa)
+
+
+class EmpresaEnFormularioMixin:
+    """Pasa la empresa del pedido al formulario para fijarla antes de validar."""
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["empresa"] = self.request.empresa
+        return kwargs
+
+
 def usuarios_gestionables(request):
     """Cuentas que el solicitante puede editar: solo un superusuario ve a los demás."""
-    usuarios = User.objects.all()
+    usuarios = usuarios_de_empresa(request)
     if request.user.is_superuser:
         return usuarios
     return usuarios.filter(is_superuser=False)
@@ -32,6 +49,10 @@ class UsuarioListadoView(AdministradorRequeridoMixin, ListadoPanelMixin):
     campos_busqueda = ("username", "first_name", "last_name", "email")
     orden_permitido = ("username", "last_name", "rol", "is_active")
     ordering = ("username",)
+
+    def setup(self, request, *args, **kwargs):
+        super().setup(request, *args, **kwargs)
+        self.queryset = usuarios_de_empresa(request)
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -54,7 +75,9 @@ class UsuarioListadoView(AdministradorRequeridoMixin, ListadoPanelMixin):
         return contexto
 
 
-class UsuarioAltaView(AdministradorRequeridoMixin, CreateView):
+class UsuarioAltaView(
+    AdministradorRequeridoMixin, EmpresaEnFormularioMixin, CreateView
+):
     model = User
     form_class = UsuarioAltaForm
     template_name = "accounts/panel/formulario.html"
@@ -66,7 +89,9 @@ class UsuarioAltaView(AdministradorRequeridoMixin, CreateView):
         return super().form_valid(form)
 
 
-class UsuarioEditarView(AdministradorRequeridoMixin, UpdateView):
+class UsuarioEditarView(
+    AdministradorRequeridoMixin, EmpresaEnFormularioMixin, UpdateView
+):
     form_class = UsuarioEdicionForm
     template_name = "accounts/panel/formulario.html"
     success_url = URL_LISTADO

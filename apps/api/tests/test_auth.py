@@ -8,6 +8,7 @@ from django.test import TestCase
 from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken
 
 from apps.accounts.models import User
+from apps.empresas.tests.ayudas import una_empresa
 
 CLAVE = "clave-segura-123"
 TOKEN = "/api/v1/auth/token/"
@@ -18,7 +19,9 @@ class AuthApiTests(TestCase):
     def setUp(self):
         cache.clear()
         self.addCleanup(cache.clear)
-        self.usuario = User.objects.create_user("emp", password=CLAVE)
+        self.usuario = User.objects.create_user(
+            "emp", password=CLAVE, empresa=una_empresa()
+        )
 
     def _pedir_token(self, clave=CLAVE, usuario="emp"):
         return self.client.post(

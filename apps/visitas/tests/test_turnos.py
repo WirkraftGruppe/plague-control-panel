@@ -10,6 +10,7 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.clientes.models import Cliente
+from apps.empresas.tests.ayudas import una_empresa
 from apps.productos.models import MovimientoStock, Producto
 from apps.servicios.models import CampoPlanilla, TipoServicio
 from apps.sitios.models import PuntoControl, Sitio
@@ -33,10 +34,14 @@ class BaseTurnoTests(SinArchivosMixin, TestCase):
     """Un sitio con tres puntos y dos servicios; el General es de `roedores`."""
 
     def setUp(self):
-        cliente = Cliente.objects.create(razon_social="ACME")
+        cliente = Cliente.objects.create(razon_social="ACME", empresa=una_empresa())
         self.sitio = Sitio.objects.create(cliente=cliente, nombre="Planta")
-        self.roedores = TipoServicio.objects.create(nombre="Roedores", slug="roedores")
-        self.insectos = TipoServicio.objects.create(nombre="Insectos", slug="insectos")
+        self.roedores = TipoServicio.objects.create(
+            nombre="Roedores", slug="roedores", empresa=una_empresa()
+        )
+        self.insectos = TipoServicio.objects.create(
+            nombre="Insectos", slug="insectos", empresa=una_empresa()
+        )
         self.general = self.sitio.puntos.get(orden=0)
         self.general.servicio = self.roedores
         self.general.save()
@@ -47,10 +52,10 @@ class BaseTurnoTests(SinArchivosMixin, TestCase):
             sitio=self.sitio, nombre="Techo", orden=2, servicio=self.insectos
         )
         self.empleado = User.objects.create_user(
-            "emp", password="x", rol=User.Rol.EMPLEADO
+            "emp", password="x", rol=User.Rol.EMPLEADO, empresa=una_empresa()
         )
         self.admin = User.objects.create_user(
-            "adm", password="x", rol=User.Rol.ADMINISTRADOR
+            "adm", password="x", rol=User.Rol.ADMINISTRADOR, empresa=una_empresa()
         )
 
     def turno(self, items, **extra):
@@ -111,7 +116,7 @@ class CrearTurnoTests(BaseTurnoTests):
         with self.assertRaises(ValidationError) as contexto:
             self.turno([])
         self.assertIn("puntos", contexto.exception.message_dict)
-        self.assertFalse(Visita.objects.exists())
+        self.assertFalse(Visita.objects.de_empresa(una_empresa()).exists())
 
     def test_punto_de_otro_sitio_da_error(self):
         otro = Sitio.objects.create(cliente=self.sitio.cliente, nombre="Otra")
@@ -119,8 +124,8 @@ class CrearTurnoTests(BaseTurnoTests):
         with self.assertRaises(ValidationError) as contexto:
             self.turno([(self.general, self.roedores), (ajeno, self.roedores)])
         self.assertIn("puntos", contexto.exception.message_dict)
-        self.assertFalse(Visita.objects.exists())
-        self.assertFalse(ItemTurno.objects.exists())
+        self.assertFalse(Visita.objects.de_empresa(una_empresa()).exists())
+        self.assertFalse(ItemTurno.objects.de_empresa(una_empresa()).exists())
 
     def test_rechaza_punto_inactivo_repetido_servicio_inactivo_y_administrador(self):
         self.sala.activo = False
@@ -142,7 +147,7 @@ class CrearTurnoTests(BaseTurnoTests):
         with self.assertRaises(ValidationError) as contexto:
             self.turno([(self.general, self.roedores)], empleado=self.admin)
         self.assertIn("empleado", contexto.exception.message_dict)
-        self.assertFalse(Visita.objects.exists())
+        self.assertFalse(Visita.objects.de_empresa(una_empresa()).exists())
 
 
 class RevisionTurnoTests(BaseTurnoTests):
@@ -171,16 +176,20 @@ class RevisionTurnoTests(BaseTurnoTests):
     def test_punto_sin_servicio_fuera_del_turno_da_error(self):
         self.turno([(self.sala, self.roedores)])
         visita = self.abrir()
-        PuntoControl.objects.filter(pk=self.techo.pk).update(servicio=None)
+        PuntoControl.objects.de_empresa(una_empresa()).filter(pk=self.techo.pk).update(
+            servicio=None
+        )
         with self.assertRaises(ValidationError) as contexto:
             self.revisar(visita, self.techo)
         self.assertEqual(
             contexto.exception.message_dict["qr_codigo"],
             ["El punto no tiene servicio asignado."],
         )
-        self.assertFalse(Revision.objects.exists())
+        self.assertFalse(Revision.objects.de_empresa(una_empresa()).exists())
         # Dentro del turno el punto sin servicio sí se revisa: manda el ítem.
-        PuntoControl.objects.filter(pk=self.sala.pk).update(servicio=None)
+        PuntoControl.objects.de_empresa(una_empresa()).filter(pk=self.sala.pk).update(
+            servicio=None
+        )
         self.assertEqual(self.revisar(visita, self.sala).servicio, self.roedores)
 
     def test_planilla_de_punto_sale_del_servicio_resuelto(self):
@@ -248,7 +257,9 @@ class CerrarTurnoTests(BaseTurnoTests):
         self.assertEqual(self.visita.estado, Visita.Estado.ABIERTA)
 
     def test_servicio_ajeno_a_la_visita_da_error(self):
-        otro = TipoServicio.objects.create(nombre="Aves", slug="aves")
+        otro = TipoServicio.objects.create(
+            nombre="Aves", slug="aves", empresa=una_empresa()
+        )
         with self.assertRaises(ValidationError) as contexto:
             self.cerrar(datos={"roedores": {"resumen": "x"}, otro.slug: {}})
         self.assertIn("aves: El servicio", contexto.exception.message_dict["datos"][0])
@@ -257,12 +268,15 @@ class CerrarTurnoTests(BaseTurnoTests):
 class CargaManualTests(BaseTurnoTests):
     def setUp(self):
         super().setUp()
-        Sitio.objects.filter(pk=self.sitio.pk).update(
+        Sitio.objects.de_empresa(una_empresa()).filter(pk=self.sitio.pk).update(
             creado=timezone.now() - timedelta(days=30)
         )
         self.sitio.refresh_from_db()
         self.producto = Producto.objects.create(
-            nombre_comercial="Concentrado", unidad_base="ml", modo_unidad="equivalentes"
+            nombre_comercial="Concentrado",
+            unidad_base="ml",
+            modo_unidad="equivalentes",
+            empresa=una_empresa(),
         )
 
     def cargar(self, **extra):
@@ -292,8 +306,8 @@ class CargaManualTests(BaseTurnoTests):
         with self.assertRaises(ValidationError) as contexto:
             self.cargar(productos_aplicados=[item])
         self.assertIn("productos_aplicados.0.cantidad", contexto.exception.message_dict)
-        self.assertFalse(MovimientoStock.objects.exists())
-        self.assertFalse(Visita.objects.exists())
+        self.assertFalse(MovimientoStock.objects.de_empresa(una_empresa()).exists())
+        self.assertFalse(Visita.objects.de_empresa(una_empresa()).exists())
 
     def test_fecha_anterior_al_alta_del_sitio_da_error(self):
         with self.assertRaises(ValidationError) as contexto:
@@ -305,7 +319,7 @@ class CargaManualTests(BaseTurnoTests):
             contexto.exception.message_dict["realizada_en"],
             ["La fecha no puede ser anterior al alta del sitio."],
         )
-        self.assertFalse(Visita.objects.exists())
+        self.assertFalse(Visita.objects.de_empresa(una_empresa()).exists())
 
     def test_servicio_por_punto_y_items_de_la_visita_nueva(self):
         visita = self.cargar()

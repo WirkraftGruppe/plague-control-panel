@@ -3,6 +3,7 @@ from django.core.exceptions import PermissionDenied
 from simple_history.admin import SimpleHistoryAdmin
 
 from apps.accounts.models import User
+from apps.clientes.empresa import AdminHijoMixin
 
 from .models import Foto, ProductoAplicado, Revision, Visita
 
@@ -77,19 +78,19 @@ class SoloLectura:
         return False
 
 
-class FotoInline(SoloLectura, admin.TabularInline):
+class FotoInline(AdminHijoMixin, SoloLectura, admin.TabularInline):
     model = Foto
     extra = 0
     fields = ("imagen", "tomada_en", "orden")
 
 
-class ProductoAplicadoInline(SoloLectura, admin.TabularInline):
+class ProductoAplicadoInline(AdminHijoMixin, SoloLectura, admin.TabularInline):
     model = ProductoAplicado
     extra = 0
     fields = ("producto", "lote", "dosis", "unidad_dosis", "cantidad", "unidad")
 
 
-class RevisionInline(SoloLectura, admin.TabularInline):
+class RevisionInline(AdminHijoMixin, SoloLectura, admin.TabularInline):
     model = Revision
     extra = 0
     show_change_link = True
@@ -108,7 +109,7 @@ class RevisionInline(SoloLectura, admin.TabularInline):
 
 
 @admin.register(Visita)
-class VisitaAdmin(SimpleHistoryAdmin):
+class VisitaAdmin(AdminHijoMixin, SimpleHistoryAdmin):
     list_display = (
         "id",
         "sitio",
@@ -174,7 +175,7 @@ class VisitaAdmin(SimpleHistoryAdmin):
 
 
 @admin.register(Revision)
-class RevisionAdmin(SoloLectura, SimpleHistoryAdmin):
+class RevisionAdmin(AdminHijoMixin, SoloLectura, SimpleHistoryAdmin):
     list_display = ("id", "visita", "punto", "orden", "realizada_en")
     list_filter = ("punto__sitio",)
     search_fields = ("visita__sitio__nombre", "punto__nombre")
@@ -188,12 +189,12 @@ class RevisionAdmin(SoloLectura, SimpleHistoryAdmin):
 
 
 @admin.register(Foto)
-class FotoAdmin(SoloLectura, admin.ModelAdmin):
+class FotoAdmin(AdminHijoMixin, SoloLectura, admin.ModelAdmin):
     list_display = ("id", "revision", "tomada_en", "orden")
 
 
 @admin.register(ProductoAplicado)
-class ProductoAplicadoAdmin(SoloLectura, admin.ModelAdmin):
+class ProductoAplicadoAdmin(AdminHijoMixin, SoloLectura, admin.ModelAdmin):
     list_display = (
         "id",
         "revision",

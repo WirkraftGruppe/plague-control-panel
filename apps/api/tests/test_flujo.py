@@ -15,6 +15,7 @@ from rest_framework.test import APIClient
 
 from apps.accounts.models import User
 from apps.clientes.models import Cliente
+from apps.empresas.tests.ayudas import una_empresa
 from apps.productos.models import Producto
 from apps.servicios.models import CampoPlanilla, TipoServicio
 from apps.sitios.models import PuntoControl, Sitio
@@ -41,7 +42,7 @@ class FlujoEmpleadoTests(TestCase):
     def setUp(self):
         cache.clear()
         self.addCleanup(cache.clear)
-        cliente = Cliente.objects.create(razon_social="ACME")
+        cliente = Cliente.objects.create(razon_social="ACME", empresa=una_empresa())
         self.sitio = Sitio.objects.create(
             cliente=cliente,
             nombre="Planta 1",
@@ -50,7 +51,9 @@ class FlujoEmpleadoTests(TestCase):
             latitud="-36.100000",
             longitud="-57.800000",
         )
-        tipo = TipoServicio.objects.create(nombre="Desratización", slug="desrat")
+        tipo = TipoServicio.objects.create(
+            nombre="Desratización", slug="desrat", empresa=una_empresa()
+        )
         CampoPlanilla.objects.create(
             tipo_servicio=tipo,
             orden=1,
@@ -60,12 +63,12 @@ class FlujoEmpleadoTests(TestCase):
             obligatorio=True,
         )
         self.empleado = User.objects.create_user(
-            "emp", password=CLAVE, rol=User.Rol.EMPLEADO
+            "emp", password=CLAVE, rol=User.Rol.EMPLEADO, empresa=una_empresa()
         )
         self.otro = User.objects.create_user(
-            "otro", password=CLAVE, rol=User.Rol.EMPLEADO
+            "otro", password=CLAVE, rol=User.Rol.EMPLEADO, empresa=una_empresa()
         )
-        Producto.objects.create(nombre_comercial="Cebo X")
+        Producto.objects.create(nombre_comercial="Cebo X", empresa=una_empresa())
         self.punto = self.sitio.puntos.get(orden=0)
         self.punto.servicio = tipo
         self.punto.save()
@@ -134,9 +137,12 @@ class FlujoEmpleadoTests(TestCase):
         self.assertEqual(
             [v["id"] for v in historial.data["results"]], [abierta.data["id"]]
         )
-        visita = Visita.objects.get(pk=abierta.data["id"])
+        visita = Visita.objects.de_empresa(una_empresa()).get(pk=abierta.data["id"])
         self.assertEqual(
-            ProductoAplicado.objects.filter(revision__visita=visita).count(), 1
+            ProductoAplicado.objects.de_empresa(una_empresa())
+            .filter(revision__visita=visita)
+            .count(),
+            1,
         )
         urls = historial.data["results"][0]["revisiones"][0]["fotos"]
         self.assertEqual(len(urls), 2)
@@ -159,10 +165,16 @@ class ModoCampoFlujoTests(TestCase):
 
     def test_administrador_crea_y_empleado_escanea_sin_propuesta(self):
         """Con coordenadas fijas desde el campo, el escaneo no propone otras."""
-        cliente = Cliente.objects.create(razon_social="ACME")
-        User.objects.create_user("adm", password=CLAVE, rol=User.Rol.ADMINISTRADOR)
-        User.objects.create_user("emp", password=CLAVE, rol=User.Rol.EMPLEADO)
-        tipo = TipoServicio.objects.create(nombre="Desratización", slug="desrat")
+        cliente = Cliente.objects.create(razon_social="ACME", empresa=una_empresa())
+        User.objects.create_user(
+            "adm", password=CLAVE, rol=User.Rol.ADMINISTRADOR, empresa=una_empresa()
+        )
+        User.objects.create_user(
+            "emp", password=CLAVE, rol=User.Rol.EMPLEADO, empresa=una_empresa()
+        )
+        tipo = TipoServicio.objects.create(
+            nombre="Desratización", slug="desrat", empresa=una_empresa()
+        )
 
         def con_token(usuario):
             api = APIClient()
@@ -200,10 +212,16 @@ class ModoCampoFlujoTests(TestCase):
         )
         self.assertEqual(punto.status_code, 201, punto.content)
         # El servicio de un punto dado de alta en campo lo asigna el administrador.
-        PuntoControl.objects.filter(pk=punto.data["id"]).update(servicio=tipo)
+        PuntoControl.objects.de_empresa(una_empresa()).filter(
+            pk=punto.data["id"]
+        ).update(servicio=tipo)
 
         api = con_token("emp")
-        qr = PuntoControl.objects.get(pk=punto.data["id"]).qr_codigo
+        qr = (
+            PuntoControl.objects.de_empresa(una_empresa())
+            .get(pk=punto.data["id"])
+            .qr_codigo
+        )
         resuelto = api.post(f"/api/v1/qr/{qr}/resolver/")
         self.assertEqual(resuelto.status_code, 200, resuelto.content)
         abierta = api.post(
@@ -229,6 +247,8 @@ class ModoCampoFlujoTests(TestCase):
         )
         self.assertEqual(creada.status_code, 201, creada.content)
 
-        marcador = PuntoControl.objects.get(pk=punto.data["id"])
+        marcador = PuntoControl.objects.de_empresa(una_empresa()).get(
+            pk=punto.data["id"]
+        )
         self.assertEqual(float(marcador.latitud), -36.1005)
         self.assertEqual(float(marcador.longitud), -57.8005)

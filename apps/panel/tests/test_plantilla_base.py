@@ -7,16 +7,19 @@ from django.test import RequestFactory, SimpleTestCase
 
 
 class BaseTemplateTests(SimpleTestCase):
-    def test_titulo_es_detach_y_logo_lleva_nombre_empresa(self):
+    def test_titulo_es_detach_y_logo_dice_detach(self):
         peticion = RequestFactory().get("/")
         html = render_to_string("base.html", request=peticion)
         self.assertIn("<title>Detach</title>", html)
         self.assertIn("img/logo.png", html)
-        self.assertIn(f'alt="{settings.NOMBRE_EMPRESA}"', html)
-        for plantilla in ("panel/base.html", "panel/ingresar.html"):
-            html = render_to_string(plantilla, request=peticion)
-            self.assertIn("· Detach</title>", html, plantilla)
-            self.assertIn(f'alt="{settings.NOMBRE_EMPRESA}"', html, plantilla)
+        self.assertIn('alt="Detach"', html)
+        html = render_to_string("panel/ingresar.html", request=peticion)
+        self.assertIn("· Detach</title>", html)
+        self.assertIn('alt="Detach"', html)
+        # Sin empresa, la barra lateral dice "Detach" y no lleva ningún nombre ajeno.
+        html = render_to_string("panel/base.html", request=peticion)
+        self.assertIn("· Detach</title>", html)
+        self.assertIn('class="panel-logo-nombre">Detach<', html)
 
     def test_base_es_noindex_y_sin_tema_ni_marca_vieja(self):
         html = render_to_string("base.html")

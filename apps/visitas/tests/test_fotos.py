@@ -10,6 +10,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from PIL import Image
 
+from apps.empresas.tests.ayudas import una_empresa
 from apps.visitas.models import Foto
 
 from .test_models import crear_revision, crear_visita
@@ -87,7 +88,7 @@ class FotoTests(TestCase):
                     "grande.png", datos, content_type="image/png"
                 ),
             )
-        self.assertEqual(Foto.objects.count(), 0)
+        self.assertEqual(Foto.objects.de_empresa(una_empresa()).count(), 0)
 
     def test_mensaje_de_resolucion_excesiva(self):
         datos = _bytes(Image.new("L", (8000, 6000)), "PNG")
@@ -119,7 +120,7 @@ class FotoTests(TestCase):
                     "falso.jpg", b"esto no es una imagen", content_type="image/jpeg"
                 ),
             )
-        self.assertEqual(Foto.objects.count(), 0)
+        self.assertEqual(Foto.objects.de_empresa(una_empresa()).count(), 0)
 
     def _png_con_idat_corrupto(self, recalcular_crc):
         """PNG real con los bytes de datos del IDAT sobrescritos."""
@@ -145,7 +146,7 @@ class FotoTests(TestCase):
                             "roto.png", datos, content_type="image/png"
                         ),
                     )
-                self.assertEqual(Foto.objects.count(), 0)
+                self.assertEqual(Foto.objects.de_empresa(una_empresa()).count(), 0)
 
     def test_webp_con_dimensiones_enormes_se_rechaza(self):
         # 39,2 MP: bajo el tope de JPEG pero sobre el de WebP (16 MP).
@@ -157,7 +158,7 @@ class FotoTests(TestCase):
                     "enorme.webp", datos, content_type="image/webp"
                 ),
             )
-        self.assertEqual(Foto.objects.count(), 0)
+        self.assertEqual(Foto.objects.de_empresa(una_empresa()).count(), 0)
 
     def test_formato_no_permitido_se_rechaza(self):
         for formato in ("ICNS", "GIF", "BMP"):
@@ -168,7 +169,7 @@ class FotoTests(TestCase):
                         revision=self.revision,
                         imagen=SimpleUploadedFile("foto." + formato.lower(), datos),
                     )
-                self.assertEqual(Foto.objects.count(), 0)
+                self.assertEqual(Foto.objects.de_empresa(una_empresa()).count(), 0)
 
     def _crear(self, nombre, datos, tipo):
         return Foto.objects.create(
@@ -204,13 +205,13 @@ class FotoTests(TestCase):
         datos = datos[:fin] + chunk + datos[fin:]
         with self.assertRaises(ValidationError):
             self._crear("ztxt.png", datos, "image/png")
-        self.assertEqual(Foto.objects.count(), 0)
+        self.assertEqual(Foto.objects.de_empresa(una_empresa()).count(), 0)
 
     def test_webp_de_10_mp_se_rechaza(self):
         datos = _bytes(Image.new("L", (4000, 2500)), "WEBP", lossless=True)
         with self.assertRaises(ValidationError):
             self._crear("grande.webp", datos, "image/webp")
-        self.assertEqual(Foto.objects.count(), 0)
+        self.assertEqual(Foto.objects.de_empresa(una_empresa()).count(), 0)
 
     def test_jpeg_progresivo_grande_se_rechaza(self):
         # 20 MP: libjpeg guarda los coeficientes completos y draft no los reduce.
@@ -219,9 +220,9 @@ class FotoTests(TestCase):
             self._crear(
                 "prog.jpg", _bytes(imagen, "JPEG", progressive=True), "image/jpeg"
             )
-        self.assertEqual(Foto.objects.count(), 0)
+        self.assertEqual(Foto.objects.de_empresa(una_empresa()).count(), 0)
         self._crear("base.jpg", _bytes(imagen, "JPEG"), "image/jpeg")
-        self.assertEqual(Foto.objects.count(), 1)
+        self.assertEqual(Foto.objects.de_empresa(una_empresa()).count(), 1)
 
 
 @override_settings(MEDIA_ROOT=MEDIA_TEMPORAL)
@@ -244,7 +245,7 @@ class MemoriaImagenTests(TestCase):
         datos = _bytes(Image.new("RGB", (5000, 4000)), "JPEG", subsampling=0)
         with self.assertRaises(ValidationError):
             self._crear(datos)
-        self.assertEqual(Foto.objects.count(), 0)
+        self.assertEqual(Foto.objects.de_empresa(una_empresa()).count(), 0)
 
     def test_proporcion_extrema_se_rechaza(self):
         # 30 MP muy apaisados: draft() no reduce porque el alto ya es menor que
@@ -252,4 +253,4 @@ class MemoriaImagenTests(TestCase):
         datos = _bytes(Image.new("RGB", (20000, 1500)), "JPEG")
         with self.assertRaises(ValidationError):
             self._crear(datos)
-        self.assertEqual(Foto.objects.count(), 0)
+        self.assertEqual(Foto.objects.de_empresa(una_empresa()).count(), 0)

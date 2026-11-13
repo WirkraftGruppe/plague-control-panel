@@ -1,0 +1,10 @@
+{% extends "panel/base.html" %}
+{% block title %}Empresa · Detach{% endblock %}
+{% block panel_contenido %}
+  {% if object.logo %}
+    <div class="empresa-logo-actual">
+      <img src="{% url 'panel:empresas:logo' %}" alt="Logo actual de {{ object.nombre }}">
+    </div>
+  {% endif %}
+  {% include "panel/partials/formulario.html" with titulo="Empresa" multipart=True %}
+{% endblock %}

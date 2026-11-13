@@ -11,6 +11,7 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.clientes.models import Cliente
+from apps.empresas.tests.ayudas import una_empresa
 from apps.servicios.models import TipoServicio
 from apps.sitios.models import PuntoControl, Sitio
 from apps.visitas.models import ItemTurno, Revision, Visita
@@ -20,13 +21,22 @@ class InicioSitiosTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.hoy = timezone.localdate()
-        cls.cliente = Cliente.objects.create(razon_social="ACME")
-        cls.servicio = TipoServicio.objects.create(nombre="Roedores", slug="roedores-i")
+        cls.cliente = Cliente.objects.create(razon_social="ACME", empresa=una_empresa())
+        cls.servicio = TipoServicio.objects.create(
+            nombre="Roedores", slug="roedores-i", empresa=una_empresa()
+        )
         cls.admin = User.objects.create_user(
-            "adm-inicio", password="x", rol=User.Rol.ADMINISTRADOR
+            "adm-inicio",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         cls.empleado = User.objects.create_user(
-            "emp-inicio", password="x", rol=User.Rol.EMPLEADO, first_name="Ana"
+            "emp-inicio",
+            password="x",
+            rol=User.Rol.EMPLEADO,
+            first_name="Ana",
+            empresa=una_empresa(),
         )
 
     def setUp(self):

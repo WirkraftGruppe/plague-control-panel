@@ -4,6 +4,7 @@ from django.core.cache import cache
 from django.test import TestCase, override_settings
 
 from apps.accounts.models import User
+from apps.empresas.tests.ayudas import una_empresa
 
 CLAVE = "clave-segura-123"
 TOKEN = "/api/v1/auth/token/"
@@ -14,8 +15,10 @@ class LimitesTokenTests(TestCase):
     def setUp(self):
         cache.clear()
         self.addCleanup(cache.clear)
-        User.objects.create_user("emp", password=CLAVE)
-        User.objects.create_user("adm", password=CLAVE, rol=User.Rol.ADMINISTRADOR)
+        User.objects.create_user("emp", password=CLAVE, empresa=una_empresa())
+        User.objects.create_user(
+            "adm", password=CLAVE, rol=User.Rol.ADMINISTRADOR, empresa=una_empresa()
+        )
 
     def _pedir(self, usuario="emp", clave=CLAVE, ip=IP, **extra):
         return self.client.post(

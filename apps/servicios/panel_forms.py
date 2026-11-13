@@ -2,12 +2,13 @@
 
 from django import forms
 
+from apps.clientes.empresa import FormularioDeEmpresa
 from apps.visitas.models import Revision, Visita
 
 from .models import CampoPlanilla, TipoServicio
 
 
-class TipoServicioForm(forms.ModelForm):
+class TipoServicioForm(FormularioDeEmpresa):
     """Alta y edición del servicio; el slug se genera solo y `activo` lo retira."""
 
     class Meta:
@@ -20,9 +21,10 @@ def clave_en_uso(tipo_servicio, clave) -> bool:
     # Los datos de la visita van por servicio: `{slug: {clave: valor}}`.
     visita = {f"datos__{tipo_servicio.slug}__has_key": clave}
     revision = {"servicio": tipo_servicio, "datos__has_key": clave}
+    empresa = tipo_servicio.empresa_id
     return (
-        Visita.objects.filter(**visita).exists()
-        or Revision.objects.filter(**revision).exists()
+        Visita.objects.de_empresa(empresa).filter(**visita).exists()
+        or Revision.objects.de_empresa(empresa).filter(**revision).exists()
     )
 
 
@@ -52,6 +54,9 @@ class CampoPlanillaForm(forms.ModelForm):
     def __init__(self, *args, tipo_servicio, **kwargs):
         super().__init__(*args, **kwargs)
         self.tipo_servicio = tipo_servicio
+        if self.instance._state.adding:
+            self.instance.tipo_servicio = tipo_servicio
+            self.instance.empresa_id = tipo_servicio.empresa_id
         if self.instance.pk:
             self.initial["opciones"] = "\n".join(self.instance.opciones)
             if clave_en_uso(tipo_servicio, self.instance.clave):
@@ -67,9 +72,11 @@ class CampoPlanillaForm(forms.ModelForm):
 
     def clean_clave(self):
         clave = self.cleaned_data["clave"]
-        otros = CampoPlanilla.objects.filter(
-            tipo_servicio=self.tipo_servicio, clave=clave
-        ).exclude(pk=self.instance.pk)
+        otros = (
+            CampoPlanilla.objects.de_empresa(self.tipo_servicio.empresa_id)
+            .filter(tipo_servicio=self.tipo_servicio, clave=clave)
+            .exclude(pk=self.instance.pk)
+        )
         if otros.exists():
             raise forms.ValidationError("Ya existe un campo con esa clave.")
         return clave

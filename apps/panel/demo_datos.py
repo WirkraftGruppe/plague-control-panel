@@ -12,7 +12,9 @@ PATRON_CLIENTE_VIEJO = r"^Cliente Demo \d+$"
 SLUG_TIPO_VIEJO = "demo-control-de-plagas"
 
 TELEFONO_FICTICIO = "0000-000000"
-# Tipos reales (slug y nombre del fixture); si faltan se crean sin pisar nada.
+# Tipos de la demo (slug y nombre); si faltan se crean sin pisar nada.
+EMPRESA_DEMO = "Empresa demo"
+EMPRESA_DEMO_B = "Empresa demo B"
 TIPOS = {
     "control-plagas-urbanas": "Control de plagas urbanas",
     "servicio-mipu": "Servicio MIPU (Manejo Integral de Plagas Urbanas)",

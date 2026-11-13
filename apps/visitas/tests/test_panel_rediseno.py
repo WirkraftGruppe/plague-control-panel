@@ -7,6 +7,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from apps.accounts.models import User
+from apps.empresas.tests.ayudas import una_empresa
 from apps.servicios.models import TipoServicio
 from apps.sitios.models import PuntoControl
 from apps.visitas.models import Visita
@@ -23,7 +24,7 @@ class NuevoTurnoLateralTests(TestCase):
         cls.sitio = visita.sitio
         cls.roedores = visita.tipo
         cls.insectos = TipoServicio.objects.create(
-            nombre="Insectos", slug="insectos-lateral"
+            nombre="Insectos", slug="insectos-lateral", empresa=una_empresa()
         )
         cls.general = punto_de(visita)
         cls.sala = PuntoControl.objects.create(
@@ -31,7 +32,10 @@ class NuevoTurnoLateralTests(TestCase):
         )
         cls.empleado = visita.empleado
         cls.admin = User.objects.create_user(
-            "adm-lateral", password="x", rol=User.Rol.ADMINISTRADOR
+            "adm-lateral",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         visita.delete()
 
@@ -76,7 +80,10 @@ class NuevoTurnoLateralTests(TestCase):
             reverse("panel:sitios:ficha", args=[self.sitio.pk]),
         )
         self.assertEqual(
-            Visita.objects.filter(estado=Visita.Estado.PENDIENTE).count(), 1
+            Visita.objects.de_empresa(una_empresa())
+            .filter(estado=Visita.Estado.PENDIENTE)
+            .count(),
+            1,
         )
 
     def test_post_sin_htmx_crea_el_mismo_turno(self):
@@ -84,7 +91,9 @@ class NuevoTurnoLateralTests(TestCase):
         self.assertRedirects(
             respuesta, reverse("panel:sitios:ficha", args=[self.sitio.pk])
         )
-        turno = Visita.objects.get(estado=Visita.Estado.PENDIENTE)
+        turno = Visita.objects.de_empresa(una_empresa()).get(
+            estado=Visita.Estado.PENDIENTE
+        )
         self.assertEqual(turno.items.count(), 2)
 
     def test_post_htmx_con_errores_devuelve_el_parcial(self):
@@ -93,7 +102,7 @@ class NuevoTurnoLateralTests(TestCase):
         self.assertNotIn("HX-Redirect", respuesta)
         self.assertTemplateUsed(respuesta, "visitas/panel/_nuevo_turno_lateral.html")
         self.assertIn("puntos", respuesta.context["form"].errors)
-        self.assertFalse(Visita.objects.exists())
+        self.assertFalse(Visita.objects.de_empresa(una_empresa()).exists())
 
     def test_todos_los_puntos_tildados(self):
         respuesta = self.client.get(self.url, headers=HTMX)
@@ -106,7 +115,9 @@ class NuevoTurnoLateralTests(TestCase):
         self.assertContains(respuesta, " checked", count=2)
 
     def test_responsable_es_la_primera_opcion_de_operario(self):
-        otro = User.objects.create_user("aaa-otro", password="x", rol=User.Rol.EMPLEADO)
+        otro = User.objects.create_user(
+            "aaa-otro", password="x", rol=User.Rol.EMPLEADO, empresa=una_empresa()
+        )
         self.sitio.responsable = self.empleado
         self.sitio.save()
         respuesta = self.client.get(self.url, headers=HTMX)
@@ -143,7 +154,10 @@ class TurnosAgrupadosTests(TestCase):
         cls.empleado = base.empleado
         base.delete()
         cls.admin = User.objects.create_user(
-            "adm-grupos", password="x", rol=User.Rol.ADMINISTRADOR
+            "adm-grupos",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
 
     def setUp(self):
@@ -236,7 +250,7 @@ class TurnosAgrupadosTests(TestCase):
 
     def test_los_filtros_aplican_a_todos_los_grupos(self):
         otro = User.objects.create_user(
-            "emp-otro-g", password="x", rol=User.Rol.EMPLEADO
+            "emp-otro-g", password="x", rol=User.Rol.EMPLEADO, empresa=una_empresa()
         )
         propio = self._turno(1)
         self._turno(1, empleado=otro)

@@ -25,13 +25,18 @@ from django.views import View
 from django.views.generic import DetailView, FormView
 
 from apps.accounts.mixins import AdministradorRequeridoMixin
-from apps.accounts.models import User
+from apps.clientes.empresa import VistaDeEmpresaMixin
 from apps.panel.listados import ListadoPanelMixin
 from apps.sitios.estado import EstadoVencimiento
 from apps.sitios.models import Sitio
 
 from .models import Foto, Revision, Visita
-from .panel_forms import FormSetProductos, FormularioManual, FormularioTurno
+from .panel_forms import (
+    FormSetProductos,
+    FormularioManual,
+    FormularioTurno,
+    empleados_de_empresa,
+)
 from .planillas import filas_planilla
 from .services import crear_turno, marcar_incidencia_revisada, registrar_visita_manual
 
@@ -70,7 +75,9 @@ def _es_id_valido(valor):
     )
 
 
-class ListadoVisitas(AdministradorRequeridoMixin, ListadoPanelMixin):
+class ListadoVisitas(
+    VistaDeEmpresaMixin, AdministradorRequeridoMixin, ListadoPanelMixin
+):
     model = Visita
     template_name = "visitas/panel/listado.html"
     template_parcial = "visitas/panel/_listado.html"
@@ -86,7 +93,7 @@ class ListadoVisitas(AdministradorRequeridoMixin, ListadoPanelMixin):
 
     def get_queryset(self):
         # Subconsulta: un join con las revisiones multiplicaría las visitas.
-        en_revision = Revision.objects.filter(
+        en_revision = Revision.objects.de_empresa(self.request.empresa).filter(
             visita=OuterRef("pk"), incidencia_ubicacion=True
         )
         queryset = (
@@ -168,10 +175,9 @@ class ListadoVisitas(AdministradorRequeridoMixin, ListadoPanelMixin):
         parametros = {"q": contexto["q"], "orden": contexto["orden"], **filtros}
         contexto["querystring"] = urlencode({k: v for k, v in parametros.items() if v})
         contexto["filtros"] = filtros
-        contexto["empleados"] = User.objects.filter(
-            rol=User.Rol.EMPLEADO, is_active=True
-        ).order_by("username")
-        contexto["sitios"] = Sitio.objects.order_by("nombre")
+        empresa = self.request.empresa
+        contexto["empleados"] = empleados_de_empresa(empresa.pk)
+        contexto["sitios"] = Sitio.objects.de_empresa(empresa).order_by("nombre")
         contexto["estados"] = Visita.Estado.choices
         contexto["incidencias"] = INCIDENCIAS
 
@@ -226,7 +232,8 @@ def _historial(visita):
     return filas
 
 
-class FichaVisita(AdministradorRequeridoMixin, DetailView):
+class FichaVisita(VistaDeEmpresaMixin, AdministradorRequeridoMixin, DetailView):
+    model = Visita
     template_name = "visitas/panel/ficha.html"
     context_object_name = "visita"
     queryset = Visita.objects.select_related(
@@ -262,11 +269,11 @@ class FichaVisita(AdministradorRequeridoMixin, DetailView):
         return contexto
 
 
-class RevisarIncidencia(AdministradorRequeridoMixin, View):
+class RevisarIncidencia(VistaDeEmpresaMixin, AdministradorRequeridoMixin, View):
     http_method_names = ["post"]
 
     def post(self, request, pk):
-        visita = get_object_or_404(Visita, pk=pk)
+        visita = get_object_or_404(Visita.objects.de_empresa(request.empresa), pk=pk)
         try:
             marcar_incidencia_revisada(visita, request.user)
         except ValidationError as error:
@@ -280,7 +287,9 @@ class FotoVisita(AdministradorRequeridoMixin, View):
     http_method_names = ["get"]
 
     def get(self, request, codigo):
-        foto = get_object_or_404(Foto, codigo=codigo)
+        foto = get_object_or_404(
+            Foto.objects.de_empresa(request.empresa), codigo=codigo
+        )
         nombre = foto.imagen.name
         extension = "." + nombre.rsplit(".", 1)[-1].lower() if "." in nombre else ""
         try:
@@ -302,7 +311,8 @@ class _SitioMixin:
     @cached_property
     def sitio(self):
         return get_object_or_404(
-            Sitio.objects.select_related("cliente"), pk=self.kwargs["sitio_pk"]
+            Sitio.objects.de_empresa(self.request.empresa).select_related("cliente"),
+            pk=self.kwargs["sitio_pk"],
         )
 
     def get_form_kwargs(self):
@@ -398,8 +408,14 @@ class CargarVisitaView(AdministradorRequeridoMixin, _SitioMixin, FormView):
 
     def get_productos(self):
         if self.request.method == "POST":
-            return FormSetProductos(self.request.POST, prefix="productos")
-        return FormSetProductos(prefix="productos")
+            return FormSetProductos(
+                self.request.POST,
+                prefix="productos",
+                form_kwargs={"empresa_id": self.sitio.empresa_id},
+            )
+        return FormSetProductos(
+            prefix="productos", form_kwargs={"empresa_id": self.sitio.empresa_id}
+        )
 
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)

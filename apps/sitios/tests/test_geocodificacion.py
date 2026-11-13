@@ -11,6 +11,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from apps.accounts.models import User
+from apps.empresas.tests.ayudas import una_empresa
 from apps.sitios import geocodificacion
 
 ABRIR = "apps.sitios.geocodificacion._abrir"
@@ -25,14 +26,19 @@ class GeocodificacionTests(TestCase):
         cache.clear()
         self.addCleanup(cache.clear)
         self.admin = User.objects.create_user(
-            "adm", password="clave-segura-123", rol=User.Rol.ADMINISTRADOR
+            "adm",
+            password="clave-segura-123",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         self.url = reverse("panel:sitios:geocodificar")
 
     def test_exige_administrador(self):
         with mock.patch(ABRIR) as abrir:
             self.assertEqual(self.client.post(self.url, {"q": "x"}).status_code, 302)
-            empleado = User.objects.create_user("emp", password="clave-segura-123")
+            empleado = User.objects.create_user(
+                "emp", password="clave-segura-123", empresa=una_empresa()
+            )
             self.client.force_login(empleado)
             self.assertEqual(self.client.post(self.url, {"q": "x"}).status_code, 403)
         abrir.assert_not_called()
@@ -127,7 +133,7 @@ class GeocodificacionTests(TestCase):
         self.assertEqual(r.json()["error"], geocodificacion.MENSAJE_CARGA_MANUAL)
 
     @override_settings(
-        SITE_URL="https://ejemplo.test", CORREO_CONTACTO="a@ejemplo.test"
+        SITE_URL="https://ejemplo.test", CORREO_PLATAFORMA="a@ejemplo.test"
     )
     def test_user_agent_usa_producto_y_correo_de_settings(self):
         self.assertEqual(
@@ -350,3 +356,17 @@ class GeocodificacionTests(TestCase):
         with mock.patch(ABRIR, side_effect=error):
             r = self.client.post(self.url, {"q": "Castelli"})
         self.assertEqual(r.status_code, 503)
+
+
+class UserAgentPlataformaTests(TestCase):
+    @override_settings(
+        SITE_URL="https://ejemplo.test",
+        CORREO_PLATAFORMA="plataforma@ejemplo.test",
+        CORREO_CONTACTO="empresa@ejemplo.test",
+    )
+    def test_user_agent_usa_el_correo_de_plataforma(self):
+        agente = geocodificacion.user_agent()
+        self.assertEqual(
+            agente, "Detach/1.0 (+https://ejemplo.test; plataforma@ejemplo.test)"
+        )
+        self.assertNotIn("empresa@ejemplo.test", agente)

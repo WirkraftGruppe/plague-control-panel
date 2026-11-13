@@ -3,21 +3,20 @@ import uuid
 from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import path
 
+from apps.empresas.models import Empresa
 from apps.sitios import publico_urls, qr
 
 urlpatterns = [path("", lambda r: None, name="raiz"), *publico_urls.urlpatterns]
 
 
-@override_settings(ROOT_URLCONF=__name__, NOMBRE_EMPRESA="Empresa <Prueba>")
+@override_settings(ROOT_URLCONF=__name__)
 class PaginaQRTests(TestCase):
-    def test_q_uuid_muestra_nombre_empresa_sin_consultar_la_base(self):
+    def test_q_uuid_es_neutra_y_no_consulta_la_base(self):
         with self.assertNumQueries(0):
             respuesta = self.client.get(f"/q/{uuid.uuid4()}/")
         self.assertEqual(respuesta.status_code, 200)
-        self.assertContains(
-            respuesta, "Punto de control de Empresa &lt;Prueba&gt; — use la app"
-        )
-        self.assertContains(respuesta, 'alt="Empresa &lt;Prueba&gt;"')
+        self.assertContains(respuesta, "Punto de control de Detach — use la app")
+        self.assertContains(respuesta, 'alt="Detach"')
 
     def test_q_no_uuid_da_404(self):
         self.assertEqual(self.client.get("/q/no-es-uuid/").status_code, 404)
@@ -32,6 +31,17 @@ class PaginaQRTests(TestCase):
     def test_q_lleva_cabecera_x_robots_tag_noindex(self):
         respuesta = self.client.get(f"/q/{uuid.uuid4()}/")
         self.assertEqual(respuesta["X-Robots-Tag"], "noindex, nofollow")
+
+
+@override_settings(ROOT_URLCONF=__name__)
+class PublicoSinEmpresaTests(TestCase):
+    def test_pagina_del_qr_no_muestra_datos_de_ninguna_empresa(self):
+        empresas = [Empresa.objects.create(nombre=n) for n in ("Alfa SA", "Beta SRL")]
+        respuesta = self.client.get(f"/q/{uuid.uuid4()}/")
+        self.assertEqual(respuesta.status_code, 200)
+        for empresa in empresas:
+            self.assertNotContains(respuesta, empresa.nombre)
+        self.assertContains(respuesta, "Detach")
 
 
 class ContenidoQRTests(SimpleTestCase):

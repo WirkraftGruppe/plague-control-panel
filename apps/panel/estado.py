@@ -20,8 +20,13 @@ class EstadoSitioView(AdministradorRequeridoMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
-        sitio = get_object_or_404(Sitio, pk=self.kwargs["pk"])
-        puntos = list(PuntoControl.objects.filter(sitio=sitio, activo=True))
+        empresa = self.request.empresa
+        sitio = get_object_or_404(
+            Sitio.objects.de_empresa(empresa), pk=self.kwargs["pk"]
+        )
+        puntos = list(
+            PuntoControl.objects.de_empresa(empresa).filter(sitio=sitio, activo=True)
+        )
         estados = estados_por_vencimiento(puntos, timezone.localdate())
         contexto["puntos"] = [(p, estados[p.pk]) for p in puntos]
         return contexto

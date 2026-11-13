@@ -4,6 +4,7 @@ from django.conf import settings
 from rest_framework import serializers
 
 from apps.clientes.models import Cliente
+from apps.empresas.consultas import empresa_de
 from apps.visitas.serializers import validar_tamano_foto
 
 
@@ -137,15 +138,26 @@ def _longitud(**extra):
 class AltaSitioSerializer(_PrecisionMixin):
     """Alta de un sitio por un administrador en campo; coordenadas obligatorias."""
 
-    cliente = serializers.PrimaryKeyRelatedField(
-        queryset=Cliente.objects.filter(activo=True)
-    )
+    cliente = serializers.PrimaryKeyRelatedField(queryset=Cliente.objects.none())
     nombre = serializers.CharField(max_length=200)
     direccion = serializers.CharField(max_length=255, required=False, allow_blank=True)
     localidad = serializers.CharField(max_length=100, required=False, allow_blank=True)
     latitud = _latitud()
     longitud = _longitud()
     precision_m = serializers.FloatField(min_value=0)
+
+    def __init__(self, *args, **kwargs):
+        """El cliente se acota a los activos de la empresa del usuario.
+
+        Sin pedido (generación del esquema) no hay clientes que ofrecer.
+        """
+        super().__init__(*args, **kwargs)
+        request = self.context.get("request")
+        empresa = empresa_de(request) if request else None
+        if empresa is not None:
+            self.fields["cliente"].queryset = Cliente.objects.de_empresa(
+                empresa
+            ).filter(activo=True)
 
 
 class AltaPuntoSerializer(_PrecisionMixin):

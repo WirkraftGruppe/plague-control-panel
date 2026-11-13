@@ -15,6 +15,7 @@ from rest_framework.throttling import ScopedRateThrottle
 
 from apps.accounts.models import User
 from apps.clientes.models import Cliente
+from apps.empresas.tests.ayudas import una_empresa
 from apps.servicios.models import CampoPlanilla, TipoServicio
 from apps.sitios.api_views import (
     MAX_BYTES_PEDIDO_PUNTO,
@@ -39,7 +40,9 @@ def crear_plano(sitio, nombre="Planta baja", **extra):
 class ResolverQRTests(TestCase):
     def setUp(self):
         cache.clear()
-        self.cliente = Cliente.objects.create(razon_social="ACME")
+        self.cliente = Cliente.objects.create(
+            razon_social="ACME", empresa=una_empresa()
+        )
         self.sitio = Sitio.objects.create(
             cliente=self.cliente,
             nombre="Planta 1",
@@ -53,7 +56,9 @@ class ResolverQRTests(TestCase):
             notas="Nota interna",
         )
         self.punto = self.sitio.puntos.get()
-        self.tipo = TipoServicio.objects.create(nombre="Desratización", slug="desrat")
+        self.tipo = TipoServicio.objects.create(
+            nombre="Desratización", slug="desrat", empresa=una_empresa()
+        )
         CampoPlanilla.objects.create(
             tipo_servicio=self.tipo,
             orden=1,
@@ -63,13 +68,16 @@ class ResolverQRTests(TestCase):
             obligatorio=True,
         )
         self.empleado = User.objects.create_user(
-            username="emp", password="x", rol=User.Rol.EMPLEADO
+            username="emp", password="x", rol=User.Rol.EMPLEADO, empresa=una_empresa()
         )
         self.otro = User.objects.create_user(
-            username="otro", password="x", rol=User.Rol.EMPLEADO
+            username="otro", password="x", rol=User.Rol.EMPLEADO, empresa=una_empresa()
         )
         self.admin = User.objects.create_user(
-            username="adm", password="x", rol=User.Rol.ADMINISTRADOR
+            username="adm",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         self.cliente_api = APIClient()
         self.cliente_api.force_authenticate(self.empleado)
@@ -240,19 +248,24 @@ class ResolverQRTests(TestCase):
 @override_settings(MEDIA_ROOT=MEDIA_TEMPORAL)
 class PlanoApiTests(TestCase):
     def setUp(self):
-        cliente = Cliente.objects.create(razon_social="ACME")
+        cliente = Cliente.objects.create(razon_social="ACME", empresa=una_empresa())
         self.sitio = Sitio.objects.create(cliente=cliente, nombre="Planta 1")
         self.otro_sitio = Sitio.objects.create(cliente=cliente, nombre="Planta 2")
         self.plano = crear_plano(self.sitio)
-        self.tipo = TipoServicio.objects.create(nombre="Desratización", slug="desrat")
+        self.tipo = TipoServicio.objects.create(
+            nombre="Desratización", slug="desrat", empresa=una_empresa()
+        )
         self.empleado = User.objects.create_user(
-            username="emp", password="x", rol=User.Rol.EMPLEADO
+            username="emp", password="x", rol=User.Rol.EMPLEADO, empresa=una_empresa()
         )
         self.ajeno = User.objects.create_user(
-            username="ajeno", password="x", rol=User.Rol.EMPLEADO
+            username="ajeno", password="x", rol=User.Rol.EMPLEADO, empresa=una_empresa()
         )
         self.admin = User.objects.create_user(
-            username="adm", password="x", rol=User.Rol.ADMINISTRADOR
+            username="adm",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         self.url = f"/api/v1/planos/{self.plano.id}/imagen/"
 
@@ -290,13 +303,17 @@ class PlanoApiTests(TestCase):
         contenido = b"".join(respuesta.streaming_content)
         self.assertTrue(contenido.startswith(b"\x89PNG"))
 
-        Visita.objects.filter(pk=visita.pk).update(estado=Visita.Estado.ABIERTA)
+        Visita.objects.de_empresa(una_empresa()).filter(pk=visita.pk).update(
+            estado=Visita.Estado.ABIERTA
+        )
         self.assertEqual(self._get(self.empleado).status_code, 200)
         self.assertEqual(self._get(self.admin).status_code, 200)
 
     def test_plano_inactivo_o_inexistente_da_404(self):
         self._visita(self.sitio, self.empleado)
-        Plano.objects.filter(pk=self.plano.pk).update(activo=False)
+        Plano.objects.de_empresa(una_empresa()).filter(pk=self.plano.pk).update(
+            activo=False
+        )
         self.assertEqual(self._get(self.empleado).status_code, 404)
         self.assertEqual(self._get(self.admin).status_code, 404)
         api = APIClient()
@@ -311,10 +328,16 @@ class PlanoApiTests(TestCase):
     def test_cliente_inactivo_da_404(self):
         self._visita(self.sitio, self.empleado)
         self.assertEqual(self._get(self.empleado).status_code, 200)
-        Cliente.objects.filter(pk=self.sitio.cliente_id).update(activo=False)
+        Cliente.objects.de_empresa(una_empresa()).filter(
+            pk=self.sitio.cliente_id
+        ).update(activo=False)
         self.assertEqual(self._get(self.empleado).status_code, 404)
-        Cliente.objects.filter(pk=self.sitio.cliente_id).update(activo=True)
-        Sitio.objects.filter(pk=self.sitio.pk).update(activo=False)
+        Cliente.objects.de_empresa(una_empresa()).filter(
+            pk=self.sitio.cliente_id
+        ).update(activo=True)
+        Sitio.objects.de_empresa(una_empresa()).filter(pk=self.sitio.pk).update(
+            activo=False
+        )
         self.assertEqual(self._get(self.empleado).status_code, 404)
 
     def test_abrir_sin_qr_no_da_acceso_al_plano(self):
@@ -322,7 +345,7 @@ class PlanoApiTests(TestCase):
         api.force_authenticate(self.empleado)
         r = api.post("/api/v1/visitas/abrir/", {}, format="json")
         self.assertEqual(r.status_code, 400, r.content)
-        self.assertFalse(Visita.objects.exists())
+        self.assertFalse(Visita.objects.de_empresa(una_empresa()).exists())
         self.assertEqual(api.get("/api/v1/me/puntos/").json(), [])
         self.assertEqual(self._get(self.empleado).status_code, 404)
 
@@ -331,19 +354,26 @@ class MisPuntosTests(TestCase):
     URL = "/api/v1/me/puntos/"
 
     def setUp(self):
-        self.cliente = Cliente.objects.create(razon_social="ACME")
+        self.cliente = Cliente.objects.create(
+            razon_social="ACME", empresa=una_empresa()
+        )
         self.sitio = Sitio.objects.create(cliente=self.cliente, nombre="Planta 1")
         self.sitio2 = Sitio.objects.create(cliente=self.cliente, nombre="Planta 2")
         self.sitio3 = Sitio.objects.create(cliente=self.cliente, nombre="Planta 3")
-        self.tipo = TipoServicio.objects.create(nombre="Desratización", slug="desrat")
+        self.tipo = TipoServicio.objects.create(
+            nombre="Desratización", slug="desrat", empresa=una_empresa()
+        )
         self.empleado = User.objects.create_user(
-            username="emp", password="x", rol=User.Rol.EMPLEADO
+            username="emp", password="x", rol=User.Rol.EMPLEADO, empresa=una_empresa()
         )
         self.otro = User.objects.create_user(
-            username="otro", password="x", rol=User.Rol.EMPLEADO
+            username="otro", password="x", rol=User.Rol.EMPLEADO, empresa=una_empresa()
         )
         self.admin = User.objects.create_user(
-            username="adm", password="x", rol=User.Rol.ADMINISTRADOR
+            username="adm",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         self.api = APIClient()
         self.api.force_authenticate(self.empleado)
@@ -406,7 +436,9 @@ class MisPuntosTests(TestCase):
     def test_realizada_o_sitio_inactivo_no_cuentan_y_solo_empleados(self):
         self._visita(self.sitio, self.empleado, Visita.Estado.REALIZADA)
         self._visita(self.sitio2, self.empleado)
-        Sitio.objects.filter(pk=self.sitio2.pk).update(activo=False)
+        Sitio.objects.de_empresa(una_empresa()).filter(pk=self.sitio2.pk).update(
+            activo=False
+        )
         self.assertEqual(self.api.get(self.URL).json(), [])
         admin = APIClient()
         admin.force_authenticate(self.admin)
@@ -420,12 +452,17 @@ class ModoCampoTests(TestCase):
 
     def setUp(self):
         cache.clear()
-        self.cliente = Cliente.objects.create(razon_social="ACME")
+        self.cliente = Cliente.objects.create(
+            razon_social="ACME", empresa=una_empresa()
+        )
         self.admin = User.objects.create_user(
-            username="adm", password="x", rol=User.Rol.ADMINISTRADOR
+            username="adm",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         self.empleado = User.objects.create_user(
-            username="emp", password="x", rol=User.Rol.EMPLEADO
+            username="emp", password="x", rol=User.Rol.EMPLEADO, empresa=una_empresa()
         )
         self.api = APIClient()
         self.api.force_authenticate(self.admin)
@@ -456,7 +493,7 @@ class ModoCampoTests(TestCase):
     def test_administrador_crea_sitio_y_punto_con_coordenadas(self):
         r = self._sitio()
         self.assertEqual(r.status_code, 201, r.content)
-        sitio = Sitio.objects.get(pk=r.json()["id"])
+        sitio = Sitio.objects.de_empresa(una_empresa()).get(pk=r.json()["id"])
         self.assertEqual(float(sitio.latitud), -36.1)
         self.assertEqual(sitio.puntos.get().nombre, "General")
         self.assertEqual(sitio.history.first().history_user, self.admin)
@@ -473,7 +510,7 @@ class ModoCampoTests(TestCase):
             format="multipart",
         )
         self.assertEqual(r.status_code, 201, r.content)
-        punto = PuntoControl.objects.get(pk=r.json()["id"])
+        punto = PuntoControl.objects.de_empresa(una_empresa()).get(pk=r.json()["id"])
         self.assertEqual(float(punto.latitud), -36.1005)
         self.assertEqual(punto.orden, 1)
         self.assertRegex(punto.foto.name, r"^sitios/puntos/[0-9a-f]{32}\.jpg$")
@@ -485,12 +522,12 @@ class ModoCampoTests(TestCase):
         self.assertEqual(self._sitio().status_code, 403)
         r = self.api.post(self._url_punto(sitio), {"nombre": "X"}, format="json")
         self.assertEqual(r.status_code, 403)
-        self.assertEqual(PuntoControl.objects.count(), 1)
+        self.assertEqual(PuntoControl.objects.de_empresa(una_empresa()).count(), 1)
         self.assertEqual(APIClient().post(self.url_sitio, {}).status_code, 401)
 
     def test_precision_insuficiente_da_400(self):
         self.assertEqual(self._sitio(precision_m=50.5).status_code, 400)
-        self.assertEqual(Sitio.objects.count(), 0)
+        self.assertEqual(Sitio.objects.de_empresa(una_empresa()).count(), 0)
         sitio = Sitio.objects.create(cliente=self.cliente, nombre="Planta")
         r = self.api.post(
             self._url_punto(sitio),
@@ -504,7 +541,7 @@ class ModoCampoTests(TestCase):
         sitio = Sitio.objects.create(cliente=self.cliente, nombre="Planta")
         r = self.api.post(self._url_punto(sitio), {"nombre": "Techo"}, format="json")
         self.assertEqual(r.status_code, 201, r.content)
-        punto = PuntoControl.objects.get(pk=r.json()["id"])
+        punto = PuntoControl.objects.de_empresa(una_empresa()).get(pk=r.json()["id"])
         self.assertIsNone(punto.latitud)
         self.assertFalse(punto.foto)
         solo_latitud = {"nombre": "Y", "latitud": "-36.1", "precision_m": 5}
@@ -554,7 +591,7 @@ class ModoCampoTests(TestCase):
         self.assertEqual(self._sitio().status_code, 400)
         r = self.api.post(self._url_punto(sitio), {"nombre": "X"}, format="json")
         self.assertEqual(r.status_code, 400)
-        self.assertEqual(PuntoControl.objects.count(), 1)
+        self.assertEqual(PuntoControl.objects.de_empresa(una_empresa()).count(), 1)
 
     def test_altas_usan_cupo_alta_campo(self):
         sitio = Sitio.objects.create(cliente=self.cliente, nombre="Planta")
@@ -598,7 +635,7 @@ class ModoCampoTests(TestCase):
             format="json",
         )
         self.assertEqual(r.status_code, 201, r.content)
-        visita = Visita.objects.get(pk=r.json()["id"])
+        visita = Visita.objects.de_empresa(una_empresa()).get(pk=r.json()["id"])
         self.assertEqual(visita.empleado, self.admin)
         self.assertEqual(visita.estado, Visita.Estado.ABIERTA)
 
@@ -609,9 +646,14 @@ class AltaPuntoTests(TestCase):
 
     def setUp(self):
         cache.clear()
-        self.cliente = Cliente.objects.create(razon_social="ACME")
+        self.cliente = Cliente.objects.create(
+            razon_social="ACME", empresa=una_empresa()
+        )
         self.admin = User.objects.create_user(
-            username="adm", password="x", rol=User.Rol.ADMINISTRADOR
+            username="adm",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         self.sitio = Sitio.objects.create(cliente=self.cliente, nombre="Planta")
         self.api = APIClient()
@@ -646,10 +688,14 @@ class AltaPuntoTests(TestCase):
             format="json",
         )
         self.assertEqual(r.status_code, 201, r.content)
-        punto = PuntoControl.objects.get(pk=r.json()["id"])
+        punto = PuntoControl.objects.de_empresa(una_empresa()).get(pk=r.json()["id"])
         self.assertEqual(punto.precision_m, Decimal("12.50"))
         r = self.api.post(self.url, {"nombre": "Sin GPS"}, format="json")
-        self.assertIsNone(PuntoControl.objects.get(pk=r.json()["id"]).precision_m)
+        self.assertIsNone(
+            PuntoControl.objects.de_empresa(una_empresa())
+            .get(pk=r.json()["id"])
+            .precision_m
+        )
         r = self.api.post(
             reverse("api:sitios:ubicacion-punto", kwargs={"pk": punto.pk}),
             {"latitud": "-36.2", "longitud": "-57.9", "precision_m": 7},
@@ -671,5 +717,6 @@ class AltaPuntoTests(TestCase):
         )
         self.assertEqual(r.status_code, 201, r.content)
         self.assertEqual(
-            Sitio.objects.get(pk=r.json()["id"]).precision_m, Decimal("33.25")
+            Sitio.objects.de_empresa(una_empresa()).get(pk=r.json()["id"]).precision_m,
+            Decimal("33.25"),
         )

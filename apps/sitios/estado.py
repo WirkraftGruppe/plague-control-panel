@@ -50,16 +50,19 @@ def estados_por_vencimiento(puntos, hoy):
     return {p.pk: estado_por_vencimiento(p.proximo_vencimiento, hoy) for p in puntos}
 
 
-def resumen_de_sitios(sitios, hoy):
+def resumen_de_sitios(sitios, hoy, empresa):
     """``{id_del_sitio: ResumenSitio}`` de los puntos activos, con una sola consulta.
 
-    Un sitio sin puntos activos queda ``sin_programar`` y sin vencimiento.
+    Un sitio sin puntos activos queda ``sin_programar`` y sin vencimiento. Los puntos
+    se acotan a ``empresa``, la de los sitios.
     """
     ids = [s.pk if hasattr(s, "pk") else s for s in sitios]
     fechas = defaultdict(list)
-    for sitio_id, fecha in PuntoControl.objects.filter(
-        sitio_id__in=ids, activo=True
-    ).values_list("sitio_id", "proximo_vencimiento"):
+    for sitio_id, fecha in (
+        PuntoControl.objects.de_empresa(empresa)
+        .filter(sitio_id__in=ids, activo=True)
+        .values_list("sitio_id", "proximo_vencimiento")
+    ):
         fechas[sitio_id].append(fecha)
     resumen = {}
     for sitio_id in ids:

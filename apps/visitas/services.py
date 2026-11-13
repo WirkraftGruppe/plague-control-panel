@@ -69,8 +69,8 @@ def _transaccion_con_archivos():
             _borrar_archivos(guardadas)
 
 
-def _resolver_punto(sitio_id, qr_codigo):
-    """Punto activo del sitio que tiene ese QR; si no, error genérico.
+def _resolver_punto(sitio_id, qr_codigo, empresa_id):
+    """Punto activo del sitio (de la empresa) que tiene ese QR; si no, error genérico.
 
     Mismo mensaje para QR ajeno, punto o sitio inactivo y cliente dado de baja: no
     se revela el motivo.
@@ -80,7 +80,8 @@ def _resolver_punto(sitio_id, qr_codigo):
     except ValueError:
         raise ValidationError({"qr_codigo": MENSAJE_QR_INVALIDO})
     punto = (
-        PuntoControl.objects.select_related("sitio__cliente")
+        PuntoControl.objects.de_empresa(empresa_id)
+        .select_related("sitio__cliente")
         .filter(qr_codigo=codigo, activo=True, sitio_id=sitio_id)
         .first()
     )
@@ -89,9 +90,13 @@ def _resolver_punto(sitio_id, qr_codigo):
     return punto
 
 
-def _servicio_con_campos(pk):
-    """Servicio con sus campos de planilla precargados."""
-    return TipoServicio.objects.prefetch_related("campos").get(pk=pk)
+def _servicio_con_campos(pk, empresa_id):
+    """Servicio de la empresa con sus campos de planilla precargados."""
+    return (
+        TipoServicio.objects.de_empresa(empresa_id)
+        .prefetch_related("campos")
+        .get(pk=pk)
+    )
 
 
 def _id_producto(item):
@@ -138,15 +143,20 @@ def _errores_de_cantidad(aplicado, producto):
     return errores
 
 
-def _armar_productos(productos_aplicados):
+def _armar_productos(productos_aplicados, empresa_id):
     """Valida cada producto aplicado; devuelve (instancias sin guardar, errores).
 
     Los errores van anidados, `{posición: {campo: [mensajes]}}`, con
-    posición desde cero. Busca todos los productos del pedido en una sola consulta
-    y calcula `cantidad_base` en la unidad base del producto.
+    posición desde cero. Busca todos los productos del pedido, del catálogo de la
+    empresa, en una sola consulta y calcula `cantidad_base` en la unidad base del
+    producto.
     """
     ids = {_id_producto(item) for item in productos_aplicados} - {None}
-    catalogo = Producto.objects.filter(pk__in=ids, activo=True).in_bulk()
+    catalogo = (
+        Producto.objects.de_empresa(empresa_id)
+        .filter(pk__in=ids, activo=True)
+        .in_bulk()
+    )
     errores, instancias = {}, []
     for posicion, item in enumerate(productos_aplicados):
         producto = catalogo.get(_id_producto(item))
@@ -207,18 +217,18 @@ def _errores_planilla(esquema, datos):
     ]
 
 
-def _validar_evidencia(esquema, datos, productos_aplicados):
+def _validar_evidencia(esquema, datos, productos_aplicados, empresa_id):
     """Valida planilla y productos; devuelve (errores por campo, productos armados)."""
     errores = {}
     errores_datos = _errores_planilla(esquema, datos)
     if errores_datos:
         errores["datos"] = errores_datos
-    errores_productos, aplicados = _validar_productos(productos_aplicados)
+    errores_productos, aplicados = _validar_productos(productos_aplicados, empresa_id)
     errores.update(errores_productos)
     return errores, aplicados
 
 
-def _validar_productos(productos_aplicados):
+def _validar_productos(productos_aplicados, empresa_id):
     """Valida los productos aplicados; devuelve (errores por campo, armados)."""
     errores = {}
     if len(productos_aplicados) > MAX_PRODUCTOS:
@@ -226,7 +236,7 @@ def _validar_productos(productos_aplicados):
             f"Se permiten hasta {MAX_PRODUCTOS} productos por revisión."
         ]
         return errores, []
-    aplicados, errores_productos = _armar_productos(productos_aplicados)
+    aplicados, errores_productos = _armar_productos(productos_aplicados, empresa_id)
     for posicion, campos in errores_productos.items():
         for campo, mensajes in campos.items():
             errores[f"productos_aplicados.{posicion}.{campo}"] = mensajes
@@ -248,9 +258,13 @@ def _pendiente_para(sitio, empleado, *, bloquear=True):
 
     Con `bloquear` (por defecto) la pendiente propia queda bloqueada.
     """
-    pendientes = Visita.objects.filter(sitio=sitio, estado=Visita.Estado.PENDIENTE)
+    pendientes = Visita.objects.de_empresa(sitio.empresa_id).filter(
+        sitio=sitio, estado=Visita.Estado.PENDIENTE
+    )
     # Una pendiente con revisiones no se reutiliza.
-    sin_revisiones = ~Exists(Revision.objects.filter(visita=OuterRef("pk")))
+    sin_revisiones = ~Exists(
+        Revision.objects.de_empresa(sitio.empresa_id).filter(visita=OuterRef("pk"))
+    )
     candidatas = pendientes.select_for_update() if bloquear else pendientes
     propia = (
         candidatas.filter(sin_revisiones, empleado=empleado)
@@ -267,9 +281,8 @@ def visita_destino(*, empleado, sitio):
     y el empleado no es administrador, la pendiente más antigua sin revisiones.
     """
     abierta = (
-        Visita.objects.filter(
-            sitio=sitio, empleado=empleado, estado=Visita.Estado.ABIERTA
-        )
+        Visita.objects.de_empresa(sitio.empresa_id)
+        .filter(sitio=sitio, empleado=empleado, estado=Visita.Estado.ABIERTA)
         .order_by("pk")
         .first()
     )
@@ -287,7 +300,8 @@ def servicio_para_punto(*, visita, punto):
     item = None
     if visita is not None:
         item = (
-            ItemTurno.objects.select_related("servicio")
+            ItemTurno.objects.de_empresa(visita.empresa_id)
+            .select_related("servicio")
             .filter(visita=visita, punto=punto)
             .first()
         )
@@ -296,10 +310,11 @@ def servicio_para_punto(*, visita, punto):
     return punto.servicio, False
 
 
-def _errores_de_items(sitio_id, items):
+def _errores_de_items(sitio_id, items, empresa_id):
     """Errores de los ítems `(punto, servicio)` de un turno o carga manual.
 
-    Exige al menos uno, puntos activos del sitio sin repetir y servicios activos.
+    Exige al menos uno, puntos activos del sitio sin repetir y servicios activos,
+    unos y otros de la empresa del sitio.
     """
     if not items:
         return {"puntos": ["Elija al menos un punto de control."]}
@@ -311,6 +326,10 @@ def _errores_de_items(sitio_id, items):
         errores["puntos"] = ["Un punto no puede repetirse."]
     if any(servicio is None or not servicio.activo for _, servicio in items):
         errores["servicios"] = ["Cada punto necesita un servicio activo."]
+    elif any(servicio.empresa_id != empresa_id for _, servicio in items):
+        errores["servicios"] = ["Los servicios deben ser de la empresa del sitio."]
+    if "puntos" not in errores and any(p.empresa_id != empresa_id for p in puntos):
+        errores["puntos"] = ["Los puntos deben ser de la empresa del sitio."]
     return errores
 
 
@@ -322,11 +341,13 @@ def crear_turno(*, sitio, empleado, programada_para, items, asignada_por):
     sitio, servicios activos, un empleado activo y un sitio y cliente activos.
     Levanta `ValidationError` con errores por campo.
     """
-    errores = _errores_de_items(sitio.pk, items)
+    errores = _errores_de_items(sitio.pk, items, sitio.empresa_id)
     if not (sitio.activo and sitio.cliente.activo):
         errores["sitio"] = ["El sitio o el cliente están de baja."]
     if not (empleado.is_active and empleado.es_empleado):
         errores["empleado"] = ["Debe ser un empleado activo."]
+    elif empleado.empresa_id != sitio.empresa_id:
+        errores["empleado"] = ["El empleado debe ser de la empresa del sitio."]
     if errores:
         raise ValidationError(errores)
     with transaction.atomic():
@@ -339,7 +360,12 @@ def crear_turno(*, sitio, empleado, programada_para, items, asignada_por):
             asignada_por=asignada_por,
         )
         ItemTurno.objects.bulk_create(
-            ItemTurno(visita=visita, punto=punto, servicio=servicio)
+            ItemTurno(
+                visita=visita,
+                punto=punto,
+                servicio=servicio,
+                empresa_id=visita.empresa_id,
+            )
             for punto, servicio in items
         )
     return visita
@@ -370,8 +396,10 @@ def abrir_visita(
     """
     with transaction.atomic():
         try:
-            punto = PuntoControl.objects.select_related("sitio__cliente").get(
-                qr_codigo=UUID(str(qr_codigo)), activo=True
+            punto = (
+                PuntoControl.objects.de_empresa(empleado.empresa_id)
+                .select_related("sitio__cliente")
+                .get(qr_codigo=UUID(str(qr_codigo)), activo=True)
             )
         except (PuntoControl.DoesNotExist, ValueError):
             raise ValidationError({"qr_codigo": MENSAJE_QR_INVALIDO})
@@ -380,11 +408,15 @@ def abrir_visita(
             raise ValidationError({"qr_codigo": MENSAJE_QR_INVALIDO})
         # Orden de bloqueo: Sitio -> Visita -> PuntoControl.
         # Serializa las aperturas del mismo sitio: no quedan dos abiertas.
-        Sitio.objects.select_for_update(of=("self",)).get(pk=sitio.pk)
+        Sitio.objects.de_empresa(sitio.empresa_id).select_for_update(of=("self",)).get(
+            pk=sitio.pk
+        )
         # visita_destino no bloquea filas: se bloquean antes las visitas propias del
         # sitio que pueden ser el destino (abiertas o pendientes).
         list(
-            Visita.objects.select_for_update().filter(
+            Visita.objects.de_empresa(sitio.empresa_id)
+            .select_for_update()
+            .filter(
                 sitio=sitio,
                 empleado=empleado,
                 estado__in=[Visita.Estado.ABIERTA, Visita.Estado.PENDIENTE],
@@ -439,7 +471,11 @@ def _fijar_ubicacion_por_escaneo(punto, revision, usuario):
     precision = revision.precision_m
     if precision is None or precision > settings.PRECISION_MAXIMA_M:
         return
-    bloqueado = PuntoControl.objects.select_for_update(no_key=True).get(pk=punto.pk)
+    bloqueado = (
+        PuntoControl.objects.de_empresa(punto.empresa_id)
+        .select_for_update(no_key=True)
+        .get(pk=punto.pk)
+    )
     if bloqueado.latitud is not None and bloqueado.longitud is not None:
         return
     bloqueado.latitud = revision.latitud
@@ -484,14 +520,22 @@ def actualizar_vencimiento(punto):
     frecuencia o sin revisiones que cuenten no cambia nada, y una revisión anterior
     a la última no pisa la fecha. Bloquea el punto.
     """
-    bloqueado = PuntoControl.objects.select_for_update(no_key=True).get(pk=punto.pk)
+    bloqueado = (
+        PuntoControl.objects.de_empresa(punto.empresa_id)
+        .select_for_update(no_key=True)
+        .get(pk=punto.pk)
+    )
     if not bloqueado.frecuencia_dias:
         return bloqueado
-    ultima = Revision.objects.filter(
-        punto=bloqueado,
-        visita__estado__in=[Visita.Estado.ABIERTA, Visita.Estado.REALIZADA],
-        visita__cuenta_como_servicio=True,
-    ).aggregate(ultima=Max("realizada_en"))["ultima"]
+    ultima = (
+        Revision.objects.de_empresa(bloqueado.empresa_id)
+        .filter(
+            punto=bloqueado,
+            visita__estado__in=[Visita.Estado.ABIERTA, Visita.Estado.REALIZADA],
+            visita__cuenta_como_servicio=True,
+        )
+        .aggregate(ultima=Max("realizada_en"))["ultima"]
+    )
     if ultima is None:
         return bloqueado
     vence = timezone.localdate(ultima) + timedelta(days=bloqueado.frecuencia_dias)
@@ -510,7 +554,7 @@ def _servicio_de_la_revision(visita, punto):
     servicio, en_turno = servicio_para_punto(visita=visita, punto=punto)
     if servicio is None:
         raise ValidationError({"qr_codigo": MENSAJE_SIN_SERVICIO})
-    return _servicio_con_campos(servicio.pk), not en_turno
+    return _servicio_con_campos(servicio.pk, visita.empresa_id), not en_turno
 
 
 def _guardar_revision(
@@ -532,12 +576,12 @@ def _guardar_revision(
     guardadas,
 ):
     """Valida y crea la revisión dentro de la transacción del llamador."""
-    punto = _resolver_punto(visita.sitio_id, qr_codigo)
+    punto = _resolver_punto(visita.sitio_id, qr_codigo, visita.empresa_id)
     servicio, fuera_de_turno = _servicio_de_la_revision(visita, punto)
     errores = _validar_coordenadas(latitud, longitud, obligatorias=True)
     esquema = servicio.esquema_planilla("punto")
     errores_evidencia, aplicados = _validar_evidencia(
-        esquema, datos, productos_aplicados
+        esquema, datos, productos_aplicados, visita.empresa_id
     )
     errores.update(errores_evidencia)
     if len(fotos) > MAX_FOTOS:
@@ -580,9 +624,11 @@ def _guardar_revision(
     return revision
 
 
-def _duplicada(cliente_uuid):
+def _duplicada(cliente_uuid, empresa_id):
+    """Revisión de la empresa con ese `cliente_uuid` (la de otra empresa no cuenta)."""
     return (
-        Revision.objects.select_related("visita")
+        Revision.objects.de_empresa(empresa_id)
+        .select_related("visita")
         .filter(cliente_uuid=cliente_uuid)
         .first()
     )
@@ -627,13 +673,15 @@ def registrar_revision(
         raise ValidationError({"cliente_uuid": "Este campo es obligatorio."})
     try:
         with _transaccion_con_archivos() as guardadas:
-            existente = _duplicada(cliente_uuid)
+            existente = _duplicada(cliente_uuid, empleado.empresa_id)
             if existente:
                 raise RevisionDuplicada(existente)
             try:
                 # Se filtra por empleado al bloquear: la fila ajena no se toca.
-                visita_bd = Visita.objects.select_for_update().get(
-                    pk=getattr(visita, "pk", visita), empleado=empleado
+                visita_bd = (
+                    Visita.objects.de_empresa(empleado.empresa_id)
+                    .select_for_update()
+                    .get(pk=getattr(visita, "pk", visita), empleado=empleado)
                 )
             except (Visita.DoesNotExist, TypeError, ValueError):
                 raise VisitaNoEncontrada()
@@ -658,7 +706,7 @@ def registrar_revision(
             )
     except IntegrityError:
         # Carrera: otro pedido con el mismo `cliente_uuid` ganó.
-        existente = _duplicada(cliente_uuid)
+        existente = _duplicada(cliente_uuid, empleado.empresa_id)
         if existente:
             raise RevisionDuplicada(existente)
         raise
@@ -730,9 +778,18 @@ def cerrar_visita(
     with transaction.atomic():
         # El sitio se lee sin bloquear solo para saber cuál bloquear primero;
         # el estado se evalúa recién con la visita bloqueada.
-        sitio_id = Visita.objects.values_list("sitio_id", flat=True).get(pk=visita.pk)
-        Sitio.objects.select_for_update(of=("self",)).get(pk=sitio_id)
-        visita_bd = Visita.objects.select_for_update().get(pk=visita.pk)
+        empresa_id = visita.empresa_id
+        sitio_id = (
+            Visita.objects.de_empresa(empresa_id)
+            .values_list("sitio_id", flat=True)
+            .get(pk=visita.pk)
+        )
+        Sitio.objects.de_empresa(empresa_id).select_for_update(of=("self",)).get(
+            pk=sitio_id
+        )
+        visita_bd = (
+            Visita.objects.de_empresa(empresa_id).select_for_update().get(pk=visita.pk)
+        )
 
         if cierre == Visita.Cierre.EMPLEADO and (
             quien is None or quien.pk != visita_bd.empleado_id
@@ -770,9 +827,8 @@ def cerrar_visita(
         if cerrada_en > timezone.now() + TOLERANCIA_FUTURO:
             raise ValidationError("La fecha de cierre no puede ser futura.")
         servicios = (
-            TipoServicio.objects.filter(
-                Q(items_turno__visita=visita_bd) | Q(revisiones__visita=visita_bd)
-            )
+            TipoServicio.objects.de_empresa(empresa_id)
+            .filter(Q(items_turno__visita=visita_bd) | Q(revisiones__visita=visita_bd))
             .prefetch_related("campos")
             .distinct()
             .order_by("pk")
@@ -859,6 +915,8 @@ def registrar_visita_manual(
             ]
         if not (empleado.is_active and empleado.es_empleado):
             errores["empleado"] = ["Debe ser un empleado activo."]
+        elif empleado.empresa_id != sitio.empresa_id:
+            errores["empleado"] = ["El empleado debe ser de la empresa del sitio."]
         horas = settings.ATRASO_MAXIMO_HORAS
         atrasada = realizada_en < timezone.now() - timedelta(hours=horas)
         if atrasada and not confirmar_atraso:
@@ -867,25 +925,35 @@ def registrar_visita_manual(
                 "confirme la carga para continuar."
             ]
         items = sorted(items, key=lambda i: (i[0].orden, i[0].pk))
-        errores.update(_errores_de_items(sitio.pk, items))
+        errores.update(_errores_de_items(sitio.pk, items, sitio.empresa_id))
         servicios = {}
         for _, servicio in items:
-            if servicio is not None:
-                servicios[servicio.slug] = _servicio_con_campos(servicio.pk)
+            if servicio is not None and servicio.empresa_id == sitio.empresa_id:
+                servicios[servicio.slug] = _servicio_con_campos(
+                    servicio.pk, sitio.empresa_id
+                )
         datos = datos or {}
         esquemas_punto = {s: v.esquema_planilla("punto") for s, v in servicios.items()}
         errores_datos = _errores_planilla_visita(esquemas_punto, datos)
         if errores_datos:
             errores["datos"] = errores_datos
-        errores_productos, aplicados = _validar_productos(productos_aplicados)
+        errores_productos, aplicados = _validar_productos(
+            productos_aplicados, sitio.empresa_id
+        )
         errores.update(errores_productos)
         if len(fotos) > MAX_FOTOS:
             errores["fotos"] = [f"Se permiten hasta {MAX_FOTOS} fotos por revisión."]
         visita = None
         if pendiente is not None:
             # Orden Sitio -> Visita, como en `abrir_visita` y `cerrar_visita`.
-            Sitio.objects.select_for_update(of=("self",)).get(pk=sitio.pk)
-            visita = Visita.objects.select_for_update().get(pk=pendiente.pk)
+            Sitio.objects.de_empresa(sitio.empresa_id).select_for_update(
+                of=("self",)
+            ).get(pk=sitio.pk)
+            visita = (
+                Visita.objects.de_empresa(sitio.empresa_id)
+                .select_for_update()
+                .get(pk=pendiente.pk)
+            )
             if visita.sitio_id != sitio.pk or visita.estado != Visita.Estado.PENDIENTE:
                 errores["pendiente"] = ["La visita no es una pendiente del sitio."]
             elif visita.revisiones.exists():
@@ -911,7 +979,12 @@ def registrar_visita_manual(
         visita.save()
         if pendiente is None:
             ItemTurno.objects.bulk_create(
-                ItemTurno(visita=visita, punto=punto, servicio=servicio)
+                ItemTurno(
+                    visita=visita,
+                    punto=punto,
+                    servicio=servicio,
+                    empresa_id=visita.empresa_id,
+                )
                 for punto, servicio in items
             )
         con_item = set(visita.items.values_list("punto_id", flat=True))
@@ -961,7 +1034,11 @@ def marcar_incidencia_revisada(visita, administrador):
     que dos administradores no la revisen a la vez.
     """
     with transaction.atomic():
-        visita = Visita.objects.select_for_update().get(pk=visita.pk)
+        visita = (
+            Visita.objects.de_empresa(visita.empresa_id)
+            .select_for_update()
+            .get(pk=visita.pk)
+        )
         if visita.estado != Visita.Estado.REALIZADA:
             raise ValidationError("La incidencia se revisa con la visita cerrada.")
         con_ubicacion = (

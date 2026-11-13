@@ -12,6 +12,7 @@ from django.utils import timezone
 from PIL import Image
 
 from apps.clientes.models import Cliente
+from apps.empresas.tests.ayudas import una_empresa
 from apps.sitios import qr
 from apps.sitios.models import Plano, PuntoControl, Sitio
 
@@ -37,10 +38,15 @@ def _pdf():
 class SitioPanelTests(TestCase):
     def setUp(self):
         self.admin = User.objects.create_user(
-            "adm", password="clave-segura-123", rol=User.Rol.ADMINISTRADOR
+            "adm",
+            password="clave-segura-123",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         self.client.force_login(self.admin)
-        self.cliente = Cliente.objects.create(razon_social="ACME")
+        self.cliente = Cliente.objects.create(
+            razon_social="ACME", empresa=una_empresa()
+        )
         self.sitio = Sitio.objects.create(cliente=self.cliente, nombre="Planta Ñandú 1")
 
     def _datos(self, **extra):
@@ -138,12 +144,16 @@ class SitioPanelTests(TestCase):
         self.client.post(url)
         general.refresh_from_db()
         self.assertNotEqual(general.qr_codigo, anterior)
-        self.assertFalse(PuntoControl.objects.filter(qr_codigo=anterior).exists())
+        self.assertFalse(
+            PuntoControl.objects.de_empresa(una_empresa())
+            .filter(qr_codigo=anterior)
+            .exists()
+        )
 
     def test_alta_y_edicion_guardan_lat_lng(self):
         r = self.client.post(reverse("panel:sitios:alta"), self._datos())
         self.assertEqual(r.status_code, 302)
-        nuevo = Sitio.objects.get(nombre="Depósito Norte")
+        nuevo = Sitio.objects.de_empresa(una_empresa()).get(nombre="Depósito Norte")
         self.assertEqual(nuevo.latitud, Decimal("-35.123456"))
         self.assertEqual(nuevo.longitud, Decimal("-57.654321"))
         self.client.post(
@@ -163,7 +173,7 @@ class SitioPanelTests(TestCase):
         )
 
     def test_listado_filtra_y_exige_administrador(self):
-        otro = Cliente.objects.create(razon_social="Otra")
+        otro = Cliente.objects.create(razon_social="Otra", empresa=una_empresa())
         Sitio.objects.create(cliente=otro, nombre="Silo", activo=False)
         url = reverse("panel:sitios:listado")
         r = self.client.get(url, {"cliente": otro.pk, "activo": "0"})
@@ -171,7 +181,9 @@ class SitioPanelTests(TestCase):
         self.assertNotContains(r, "Planta")
         self.assertEqual(self.client.get(url, {"q": "Planta"}).status_code, 200)
         self.client.force_login(
-            User.objects.create_user("emp", password="clave-segura-123")
+            User.objects.create_user(
+                "emp", password="clave-segura-123", empresa=una_empresa()
+            )
         )
         self.assertEqual(self.client.get(url).status_code, 403)
 
@@ -186,16 +198,23 @@ class SitioPanelTests(TestCase):
 class _BaseAdminTests(TestCase):
     def setUp(self):
         self.admin = User.objects.create_user(
-            "adm", password="clave-segura-123", rol=User.Rol.ADMINISTRADOR
+            "adm",
+            password="clave-segura-123",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         self.client.force_login(self.admin)
-        self.cliente = Cliente.objects.create(razon_social="ACME")
+        self.cliente = Cliente.objects.create(
+            razon_social="ACME", empresa=una_empresa()
+        )
         self.sitio = Sitio.objects.create(cliente=self.cliente, nombre="Planta 1")
         self.general = self.sitio.puntos.get()
 
     def _entrar_como_empleado(self):
         self.client.force_login(
-            User.objects.create_user("emp", password="clave-segura-123")
+            User.objects.create_user(
+                "emp", password="clave-segura-123", empresa=una_empresa()
+            )
         )
 
 
@@ -301,7 +320,7 @@ class PlanoPanelTests(_BaseAdminTests):
     def test_subir_pdf_crea_plano_y_rechaza_otro_formato(self):
         r = self._subir(_pdf(), "plano.pdf")
         self.assertEqual(r.status_code, 302)
-        nuevo = Plano.objects.get(nombre="Primer piso")
+        nuevo = Plano.objects.de_empresa(una_empresa()).get(nombre="Primer piso")
         self.assertEqual((nuevo.ancho_px, nuevo.alto_px), (4000, 2000))
         buffer = BytesIO()
         Image.new("RGB", (30, 30)).save(buffer, format="GIF")
@@ -309,7 +328,7 @@ class PlanoPanelTests(_BaseAdminTests):
             r = self._subir(invalido)
             self.assertEqual(r.status_code, 200)
             self.assertContains(r, "no es una imagen JPG, PNG ni un PDF")
-        self.assertEqual(Plano.objects.count(), 2)
+        self.assertEqual(Plano.objects.de_empresa(una_empresa()).count(), 2)
 
     def test_imagen_del_plano_la_sirve_el_panel_solo_al_administrador(self):
         url = reverse("panel:sitios:plano_imagen", args=[self.plano.pk])
@@ -371,9 +390,9 @@ class PuntoPanelTests(_BaseAdminTests):
         editar = reverse("panel:sitios:punto_editar", args=[self.general.pk])
         for url in (ficha, editar):
             self.assertNotContains(self.client.get(url), "Punto fijado por escaneo")
-        PuntoControl.objects.filter(pk=self.general.pk).update(
-            ubicacion_fijada_en=timezone.now(), ubicacion_fijada_por=self.admin
-        )
+        PuntoControl.objects.de_empresa(una_empresa()).filter(
+            pk=self.general.pk
+        ).update(ubicacion_fijada_en=timezone.now(), ubicacion_fijada_por=self.admin)
         r = self.client.get(ficha, {"pestana": "datos"})
         self.assertContains(r, "Punto fijado por escaneo", count=1)
         self.assertContains(self.client.get(editar), "Punto fijado por escaneo")
@@ -391,7 +410,9 @@ class PuntoPanelTests(_BaseAdminTests):
         return {"nombre": "General", "orden": 0, "activo": "on", **extra}
 
     def _fijar_por_escaneo(self):
-        PuntoControl.objects.filter(pk=self.general.pk).update(
+        PuntoControl.objects.de_empresa(una_empresa()).filter(
+            pk=self.general.pk
+        ).update(
             latitud="-35.100000",
             longitud="-58.100000",
             ubicacion_fijada_en=timezone.now(),
@@ -412,7 +433,9 @@ class PuntoPanelTests(_BaseAdminTests):
 
     def test_corregir_coordenadas_limpia_precision(self):
         self._fijar_por_escaneo()
-        PuntoControl.objects.filter(pk=self.general.pk).update(precision_m=12)
+        PuntoControl.objects.de_empresa(una_empresa()).filter(
+            pk=self.general.pk
+        ).update(precision_m=12)
         url = reverse("panel:sitios:punto_editar", args=[self.general.pk])
         self.client.post(
             url, self._datos_edicion(latitud="-35.2", longitud="-58.100000")
@@ -480,7 +503,11 @@ class PuntoPanelTests(_BaseAdminTests):
         self.assertEqual(self.client.post(url).status_code, 302)
         punto.refresh_from_db()
         self.assertNotEqual(punto.qr_codigo, anterior)
-        self.assertFalse(PuntoControl.objects.filter(qr_codigo=anterior).exists())
+        self.assertFalse(
+            PuntoControl.objects.de_empresa(una_empresa())
+            .filter(qr_codigo=anterior)
+            .exists()
+        )
 
     def test_editar_punto_con_qr_impreso_y_desactivar(self):
         url = reverse("panel:sitios:punto_editar", args=[self.general.pk])

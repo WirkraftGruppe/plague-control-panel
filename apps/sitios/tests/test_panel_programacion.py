@@ -5,6 +5,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from apps.clientes.models import Cliente
+from apps.empresas.tests.ayudas import una_empresa
 from apps.servicios.models import TipoServicio
 from apps.sitios.models import Sitio
 
@@ -14,13 +15,18 @@ User = get_user_model()
 class ProgramacionPuntoTests(TestCase):
     def setUp(self):
         self.admin = User.objects.create_user(
-            "adm", password="clave-segura-123", rol=User.Rol.ADMINISTRADOR
+            "adm",
+            password="clave-segura-123",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         self.client.force_login(self.admin)
-        cliente = Cliente.objects.create(razon_social="ACME")
+        cliente = Cliente.objects.create(razon_social="ACME", empresa=una_empresa())
         self.sitio = Sitio.objects.create(cliente=cliente, nombre="Planta")
         self.punto = self.sitio.puntos.get()
-        self.servicio = TipoServicio.objects.create(nombre="Desinsectación")
+        self.servicio = TipoServicio.objects.create(
+            nombre="Desinsectación", empresa=una_empresa()
+        )
         self.url = reverse("panel:sitios:punto_programacion", args=[self.punto.pk])
 
     def _post(self, **extra):
@@ -64,7 +70,10 @@ class ProgramacionPuntoTests(TestCase):
 
     def test_empleado_no_accede(self):
         empleado = User.objects.create_user(
-            "emp", password="clave-segura-123", rol=User.Rol.EMPLEADO
+            "emp",
+            password="clave-segura-123",
+            rol=User.Rol.EMPLEADO,
+            empresa=una_empresa(),
         )
         self.client.force_login(empleado)
         self.assertEqual(self._post().status_code, 403)
@@ -75,12 +84,20 @@ class ProgramacionPuntoTests(TestCase):
 class ResponsableSitioTests(TestCase):
     def setUp(self):
         self.admin = User.objects.create_user(
-            "adm", password="clave-segura-123", rol=User.Rol.ADMINISTRADOR
+            "adm",
+            password="clave-segura-123",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         self.client.force_login(self.admin)
-        self.cliente = Cliente.objects.create(razon_social="ACME")
+        self.cliente = Cliente.objects.create(
+            razon_social="ACME", empresa=una_empresa()
+        )
         self.empleado = User.objects.create_user(
-            "emp", password="clave-segura-123", rol=User.Rol.EMPLEADO
+            "emp",
+            password="clave-segura-123",
+            rol=User.Rol.EMPLEADO,
+            empresa=una_empresa(),
         )
 
     def _datos(self, responsable):
@@ -97,7 +114,9 @@ class ResponsableSitioTests(TestCase):
             reverse("panel:sitios:alta"), self._datos(self.empleado)
         )
         self.assertEqual(respuesta.status_code, 302)
-        self.assertEqual(Sitio.objects.get().responsable, self.empleado)
+        self.assertEqual(
+            Sitio.objects.de_empresa(una_empresa()).get().responsable, self.empleado
+        )
 
     def test_administrador_no_puede_ser_responsable(self):
         respuesta = self.client.post(
@@ -105,4 +124,4 @@ class ResponsableSitioTests(TestCase):
         )
         self.assertEqual(respuesta.status_code, 200)
         self.assertIn("responsable", respuesta.context["form"].errors)
-        self.assertFalse(Sitio.objects.exists())
+        self.assertFalse(Sitio.objects.de_empresa(una_empresa()).exists())

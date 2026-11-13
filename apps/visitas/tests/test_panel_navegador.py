@@ -7,6 +7,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from apps.accounts.models import User
+from apps.empresas.tests.ayudas import una_empresa
 
 from .test_models import crear_visita
 
@@ -20,7 +21,10 @@ class PanelLateralNavegadorTests(TestCase):
         visita = crear_visita()
         cls.sitio = visita.sitio
         cls.admin = User.objects.create_user(
-            "adm-navegador", password="x", rol=User.Rol.ADMINISTRADOR
+            "adm-navegador",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         visita.delete()
 
