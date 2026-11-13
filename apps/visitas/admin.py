@@ -161,7 +161,10 @@ class VisitaAdmin(AdminHijoMixin, SimpleHistoryAdmin):
             )
         base = super().get_readonly_fields(request, obj)
         if obj is None or obj.estado == Visita.Estado.PENDIENTE:
-            return base + CAMPOS_REGISTRO_APP
+            base = base + CAMPOS_REGISTRO_APP
+            if obj is not None and obj.items.exists():
+                # Cambiar el sitio dejaría ítems de puntos de otro sitio.
+                base = base + ("sitio",)
         return base
 
     def has_delete_permission(self, request, obj=None):

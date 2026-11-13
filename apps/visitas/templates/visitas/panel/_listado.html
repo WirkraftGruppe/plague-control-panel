@@ -1,25 +1,36 @@
 {% load panel_ui %}
-<div id="listado">
-  <form class="buscador" method="get" role="search"
-        hx-get="." hx-target="#listado" hx-swap="outerHTML" hx-push-url="true"
-        hx-trigger="submit, change, input changed delay:400ms from:#campo-q">
-    <label class="visually-hidden" for="campo-q">Buscar</label>
-    <input id="campo-q" type="search" name="q" value="{{ q }}" placeholder="Buscar por sitio">
+{# Filtros y buscador quedan fuera de #listado: solo la tabla se reemplaza con HTMX. #}
+{% if not request.headers.hx_request %}
+  <form class="filtros" method="get" hx-get="." hx-target="#listado" hx-swap="outerHTML" hx-push-url="true" hx-trigger="change" hx-include="#campo-q">
+    <div class="campo">
+      <label for="filtro-empleado">Empleado</label>
+      <select id="filtro-empleado" name="empleado"><option value="">Todos</option>
+        {% for e in empleados %}<option value="{{ e.pk }}"{% if filtros.empleado == e.pk|stringformat:"s" %} selected{% endif %}>{{ e.get_full_name|default:e.username }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="campo">
+      <label for="filtro-sitio">Sitio</label>
+      <select id="filtro-sitio" name="sitio"><option value="">Todos</option>
+        {% for s in sitios %}<option value="{{ s.pk }}"{% if filtros.sitio == s.pk|stringformat:"s" %} selected{% endif %}>{{ s.nombre }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="campo">
+      <label for="filtro-estado">Estado</label>
+      <select id="filtro-estado" name="estado"><option value="">Todos</option>
+        {% for valor, texto in estados %}<option value="{{ valor }}"{% if filtros.estado == valor %} selected{% endif %}>{{ texto }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="campo">
+      <label for="filtro-incidencia">Incidencia</label>
+      <select id="filtro-incidencia" name="incidencia"><option value="">Con o sin incidencia</option>
+        {% for valor, texto in incidencias %}<option value="{{ valor }}"{% if filtros.incidencia == valor %} selected{% endif %}>{{ texto }}</option>{% endfor %}
+      </select>
+    </div>
     {% if orden %}<input type="hidden" name="orden" value="{{ orden }}">{% endif %}
-    <select name="empleado" aria-label="Empleado"><option value="">Todos los empleados</option>
-      {% for e in empleados %}<option value="{{ e.pk }}"{% if filtros.empleado == e.pk|stringformat:"s" %} selected{% endif %}>{{ e.get_full_name|default:e.username }}</option>{% endfor %}
-    </select>
-    <select name="sitio" aria-label="Sitio"><option value="">Todos los sitios</option>
-      {% for s in sitios %}<option value="{{ s.pk }}"{% if filtros.sitio == s.pk|stringformat:"s" %} selected{% endif %}>{{ s.nombre }}</option>{% endfor %}
-    </select>
-    <select name="estado" aria-label="Estado"><option value="">Todos los estados</option>
-      {% for valor, texto in estados %}<option value="{{ valor }}"{% if filtros.estado == valor %} selected{% endif %}>{{ texto }}</option>{% endfor %}
-    </select>
-    <select name="incidencia" aria-label="Incidencia"><option value="">Con o sin incidencia</option>
-      {% for valor, texto in incidencias %}<option value="{{ valor }}"{% if filtros.incidencia == valor %} selected{% endif %}>{{ texto }}</option>{% endfor %}
-    </select>
-    <button class="boton boton-secundario" type="submit">Filtrar</button>
   </form>
+  <div hx-include=".filtros">{% include "panel/partials/buscador.html" with placeholder="Buscar por sitio" %}</div>
+{% endif %}
+<div id="listado">
   {% if incidencias_sin_revisar %}
     {% include "visitas/panel/_grupo_turnos.html" with titulo="Incidencias sin revisar" lista=incidencias_sin_revisar clave="incidencias" %}
   {% endif %}

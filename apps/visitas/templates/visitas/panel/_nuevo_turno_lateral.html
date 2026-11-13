@@ -10,10 +10,10 @@
   </header>
   {% endif %}
   <div class="panel-lateral-cuerpo">
-    <p>Sitio: {{ sitio.nombre }} ({{ sitio.cliente.razon_social }})</p>
     <form id="form-turno" class="formulario" method="post" action="{% url 'panel:visitas:nuevo_turno' sitio.pk %}"
           {% if lateral %}hx-post="{% url 'panel:visitas:nuevo_turno' sitio.pk %}" hx-target="#panel-lateral" hx-swap="innerHTML"{% endif %}>
       {% csrf_token %}
+      <p>Sitio: {{ sitio.nombre }} ({{ sitio.cliente.razon_social }})</p>
       {% if form.non_field_errors %}<div class="errores">{{ form.non_field_errors }}</div>{% endif %}
       {% for campo in form.visible_fields %}
         {% if not campo.field.agrupado %}
