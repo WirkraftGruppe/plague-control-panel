@@ -22,7 +22,7 @@ from apps.productos.models import Producto
 from apps.servicios.models import CampoPlanilla, TipoServicio
 from apps.sitios.models import PuntoControl, Sitio
 from apps.visitas import api_views
-from apps.visitas.models import Foto, ProductoAplicado, Revision, Visita
+from apps.visitas.models import Foto, ItemTurno, ProductoAplicado, Revision, Visita
 
 MEDIA_TEMPORAL = tempfile.mkdtemp(prefix="visitas-api-test-")
 
@@ -268,6 +268,7 @@ class AbrirVisitaTests(ApiVisitasBase):
 
     def test_pendiente_de_otro_marca_incidencia_asignacion(self):
         ajena = self._visita(self.otro, programada_para=date(2026, 9, 1))
+        ItemTurno.objects.create(visita=ajena, punto=self.punto, servicio=self.tipo)
         r = self._abrir()
         self.assertEqual(r.status_code, 201, r.content)
         nueva = Visita.objects.de_empresa(una_empresa()).get(pk=r.data["id"])

@@ -25,6 +25,7 @@ MAX_PRODUCTOS = 30
 TOLERANCIA_FUTURO = timedelta(minutes=10)
 MENSAJE_QR_INVALIDO = "El código QR no corresponde a este sitio."
 MENSAJE_SIN_SERVICIO = "El punto no tiene servicio asignado."
+MENSAJE_SERVICIO_DE_BAJA = "El servicio de este punto está dado de baja."
 MOTIVO_UBICACION_FIJADA = "Ubicación fijada por el primer escaneo"
 
 logger = logging.getLogger(__name__)
@@ -253,10 +254,11 @@ def _borrar_archivos(fotos):
             logger.exception("No se pudo borrar un archivo de foto.")
 
 
-def _pendiente_para(sitio, empleado, *, bloquear=True):
+def _pendiente_para(sitio, empleado, punto=None):
     """Pendiente propia (la más antigua) y si hay una de otro empleado.
 
-    Con `bloquear` (por defecto) la pendiente propia queda bloqueada.
+    Sin bloquear filas. Con `punto`, la de otro empleado cuenta solo si su turno
+    tiene un ítem de ese punto.
     """
     pendientes = Visita.objects.de_empresa(sitio.empresa_id).filter(
         sitio=sitio, estado=Visita.Estado.PENDIENTE
@@ -265,13 +267,21 @@ def _pendiente_para(sitio, empleado, *, bloquear=True):
     sin_revisiones = ~Exists(
         Revision.objects.de_empresa(sitio.empresa_id).filter(visita=OuterRef("pk"))
     )
-    candidatas = pendientes.select_for_update() if bloquear else pendientes
     propia = (
-        candidatas.filter(sin_revisiones, empleado=empleado)
+        pendientes.filter(sin_revisiones, empleado=empleado)
         .order_by(F("programada_para").asc(nulls_last=True), "pk")
         .first()
     )
-    return propia, pendientes.exclude(empleado=empleado).exists()
+    de_otro = pendientes.exclude(empleado=empleado)
+    if punto is not None:
+        de_otro = de_otro.filter(
+            Exists(
+                ItemTurno.objects.de_empresa(sitio.empresa_id).filter(
+                    visita=OuterRef("pk"), punto=punto
+                )
+            )
+        )
+    return propia, de_otro.exists()
 
 
 def visita_destino(*, empleado, sitio):
@@ -288,7 +298,7 @@ def visita_destino(*, empleado, sitio):
     )
     if abierta is not None or empleado.es_administrador:
         return abierta
-    return _pendiente_para(sitio, empleado, bloquear=False)[0]
+    return _pendiente_para(sitio, empleado)[0]
 
 
 def servicio_para_punto(*, visita, punto):
@@ -296,18 +306,19 @@ def servicio_para_punto(*, visita, punto):
 
     Si la visita tiene un ítem para el punto, es el de ese ítem y `en_turno` es
     `True`. Si no (o sin visita), es el servicio del punto y `en_turno` es `False`.
+    El servicio llega con sus `campos` precargados.
     """
     item = None
     if visita is not None:
         item = (
             ItemTurno.objects.de_empresa(visita.empresa_id)
-            .select_related("servicio")
             .filter(visita=visita, punto=punto)
             .first()
         )
-    if item is not None:
-        return item.servicio, True
-    return punto.servicio, False
+    servicio_id = item.servicio_id if item is not None else punto.servicio_id
+    if servicio_id is None:
+        return None, False
+    return _servicio_con_campos(servicio_id, punto.empresa_id), item is not None
 
 
 def _errores_de_items(sitio_id, items, empresa_id):
@@ -427,8 +438,7 @@ def abrir_visita(
             return destino, False
         propia = destino
         hay_de_otro = (
-            not empleado.es_administrador
-            and _pendiente_para(sitio, empleado, bloquear=False)[1]
+            not empleado.es_administrador and _pendiente_para(sitio, empleado, punto)[1]
         )
         distancia, incidencia_ubicacion = verificar(punto, latitud, longitud)
         ahora = timezone.now()
@@ -554,7 +564,9 @@ def _servicio_de_la_revision(visita, punto):
     servicio, en_turno = servicio_para_punto(visita=visita, punto=punto)
     if servicio is None:
         raise ValidationError({"qr_codigo": MENSAJE_SIN_SERVICIO})
-    return _servicio_con_campos(servicio.pk, visita.empresa_id), not en_turno
+    if not servicio.activo:
+        raise ValidationError({"qr_codigo": MENSAJE_SERVICIO_DE_BAJA})
+    return servicio, not en_turno
 
 
 def _guardar_revision(

@@ -29,15 +29,27 @@ class CampoJSON(serializers.CharField):
         "tipo": "Debe ser un JSON de tipo {tipo}.",
     }
 
-    def __init__(self, *, tipo, nombre_tipo, **kwargs):
+    @staticmethod
+    def _constante_invalida(constante):
+        """`NaN`, `Infinity` y `-Infinity` no son JSON válido para esta API."""
+        raise ValueError(constante)
+
+    def __init__(self, *, tipo, nombre_tipo, decimales_exactos=False, **kwargs):
         kwargs.setdefault("max_length", MAX_CARACTERES_JSON)
         super().__init__(**kwargs)
         self.tipo, self.nombre_tipo = tipo, nombre_tipo
+        self.decimales_exactos = decimales_exactos
 
     def to_internal_value(self, data):
         texto = super().to_internal_value(data)
         try:
-            valor = json.loads(texto)
+            # Con `decimales_exactos`, un decimal conserva su valor: un float lo
+            # redondearía. La planilla (`datos`) sigue con float.
+            valor = json.loads(
+                texto,
+                parse_float=Decimal if self.decimales_exactos else float,
+                parse_constant=self._constante_invalida,
+            )
         except (ValueError, RecursionError):
             self.fail("json")
         if not isinstance(valor, self.tipo):
@@ -79,6 +91,28 @@ class AbrirVisitaSerializer(serializers.Serializer):
     )
 
 
+ESQUEMA_PRODUCTOS_APLICADOS = {
+    "type": "array",
+    "items": {
+        "type": "object",
+        "required": ["producto", "dosis", "unidad_dosis", "cantidad", "unidad"],
+        "properties": {
+            "producto": {"type": "integer", "description": "Id del catálogo."},
+            "lote": {"type": "string"},
+            "dosis": {"type": "number"},
+            "unidad_dosis": {"type": "string"},
+            "cantidad": {"type": "number"},
+            "unidad": {"type": "string", "description": "Unidad de la cantidad."},
+        },
+    },
+}
+
+
+@extend_schema_field(ESQUEMA_PRODUCTOS_APLICADOS)
+class CampoProductosAplicados(CampoJSON):
+    """`CampoJSON` documentado como arreglo de ítems de producto aplicado."""
+
+
 class CrearRevisionSerializer(serializers.Serializer):
     """Forma y límites de una revisión; las reglas de negocio (incluido el atraso,
     que respeta la idempotencia) las aplica el servicio."""
@@ -108,7 +142,9 @@ class CrearRevisionSerializer(serializers.Serializer):
         default=None,
     )
     datos = CampoJSON(tipo=dict, nombre_tipo="objeto", default=dict)
-    productos_aplicados = CampoJSON(tipo=list, nombre_tipo="lista", default=list)
+    productos_aplicados = CampoProductosAplicados(
+        tipo=list, nombre_tipo="lista", default=list, decimales_exactos=True
+    )
     fotos = serializers.ListField(
         child=serializers.FileField(
             allow_empty_file=False, validators=[validar_tamano_foto]
