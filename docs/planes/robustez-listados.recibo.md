@@ -100,3 +100,23 @@
 - duración: 121.1 s
 - Veredicto: PASA
 
+## 2026-11-13 18:13 — tarea T2 de 2026-11-13-robustez-listados.md
+
+- HEAD verificado: a52a4e0
+- Contrato: intacto (congelado en ccb6738)
+- Criterios:
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api.tests.test_plataforma_api.PlataformaApiTests.test_plataforma_no_obtiene_token --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api.tests.test_plataforma_api.PlataformaApiTests.test_plataforma_no_renueva_token --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api.tests.test_errores_robustez.ErroresRobustezTests.test_non_field_errors_anidado_conserva_ruta --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api.tests.test_errores_robustez.ErroresRobustezTests.test_all_de_django_va_a_detalle --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api.tests.test_errores_robustez.ErroresRobustezTests.test_429_del_balde_lleva_retry_after --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api.tests.test_errores_robustez.ErroresRobustezTests.test_no_encontrado_bajo_api_devuelve_json --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api.tests.test_esquema_robustez.EsquemaRobustezTests.test_sesion_sin_empresa_activa_se_rechaza --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api.tests.test_esquema_robustez.EsquemaRobustezTests.test_postproceso_agrega_401_y_429 --keepdb`
+  - PASA (exit 0, nuevo: —) `T2 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api apps.empresas --keepdb`
+  - PASA (exit 0, nuevo: —) `T2 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 400 --subtarea T2`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 77.2 s
+- Veredicto: PASA
+
