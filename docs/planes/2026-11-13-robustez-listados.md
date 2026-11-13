@@ -301,7 +301,7 @@ Ninguna subtarea crea migraciones; las olas separan archivos y dependencias de c
 
 ## Registro de verificación
 
-commit_base: <hash del commit docs(plan): robustez-listados>
+commit_base: ccb6738
 
 | Tarea | Estado | Commit | Recibo |
 |---|---|---|---|
