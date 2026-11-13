@@ -252,10 +252,17 @@ def actualizar_programacion(
 ):
     """Guarda servicio, frecuencia y vencimiento del punto, con motivo en el historial.
 
-    Editar la frecuencia no recalcula el vencimiento.
+    Editar la frecuencia no recalcula el vencimiento. Un servicio inactivo solo se
+    admite si es el que el punto ya tiene.
     """
     with transaction.atomic():
         bloqueado = _bloquear_punto(punto)
+        if (
+            servicio is not None
+            and not servicio.activo
+            and servicio.pk != bloqueado.servicio_id
+        ):
+            raise ValidationError("El servicio está inactivo.")
         bloqueado.servicio = servicio
         bloqueado.frecuencia_dias = frecuencia_dias
         bloqueado.proximo_vencimiento = proximo_vencimiento

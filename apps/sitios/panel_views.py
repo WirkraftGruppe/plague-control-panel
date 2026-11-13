@@ -544,6 +544,12 @@ class PuntoProgramacion(_PuntoMixin, SingleObjectMixin, View):
     http_method_names = ["get", "post"]
     template_name = "sitios/panel/_fila_punto.html"
 
+    def get_queryset(self):
+        consulta = super().get_queryset()
+        return (
+            consulta.filter(activo=True) if self.request.method == "POST" else consulta
+        )
+
     def _fila(self, request, punto, form=None, estado=200):
         _marcar_vencimiento([punto])
         contexto = {
@@ -560,17 +566,25 @@ class PuntoProgramacion(_PuntoMixin, SingleObjectMixin, View):
 
     def post(self, request, pk):
         punto = self.get_object()
-        form = ProgramacionForm(request.POST, empresa=request.empresa)
+        form = ProgramacionForm(
+            request.POST,
+            empresa=request.empresa,
+            servicio_actual_id=punto.servicio_id,
+        )
         if not form.is_valid():
             return self._fila(request, punto, form, estado=422)
         datos = form.cleaned_data
-        services.actualizar_programacion(
-            punto,
-            datos["servicio"],
-            datos["frecuencia_dias"],
-            datos["proximo_vencimiento"],
-            request.user,
-        )
+        try:
+            services.actualizar_programacion(
+                punto,
+                datos["servicio"],
+                datos["frecuencia_dias"],
+                datos["proximo_vencimiento"],
+                request.user,
+            )
+        except ValidationError as error:
+            form.add_error("servicio", error)
+            return self._fila(request, punto, form, estado=422)
         return self._fila(request, punto)
 
 
@@ -651,7 +665,9 @@ class Geocodificar(AdministradorRequeridoMixin, View):
 
     def post(self, request):
         try:
-            candidatos = geocodificacion.buscar(request.POST.get("q", ""))
+            candidatos = geocodificacion.buscar(
+                request.POST.get("q", ""), request.empresa.pk
+            )
         except geocodificacion.TextoInvalido:
             return JsonResponse(
                 {"error": "Escriba una dirección de hasta 200 caracteres."}, status=400

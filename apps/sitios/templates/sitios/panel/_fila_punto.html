@@ -6,6 +6,7 @@
     <select name="servicio" aria-label="Servicio de {{ punto.nombre }}">
       <option value="">Sin servicio</option>
       {% for servicio in servicios %}<option value="{{ servicio.pk }}"{% if servicio.pk == punto.servicio_id %} selected{% endif %}>{{ servicio.nombre }}</option>{% endfor %}
+      {% if punto.servicio and not punto.servicio.activo %}<option value="{{ punto.servicio_id }}" selected>{{ punto.servicio.nombre }} (inactivo)</option>{% endif %}
     </select>
     {% if form.servicio.errors %}<span class="error" role="alert">{{ form.servicio.errors|join:" " }}</span>{% endif %}
   </td>

@@ -141,7 +141,7 @@ class GeocodificacionTests(TestCase):
             "Detach/1.0 (+https://ejemplo.test; a@ejemplo.test)",
         )
         with mock.patch(ABRIR, return_value=_respuesta()) as abrir:
-            geocodificacion.buscar("Castelli")
+            geocodificacion.buscar("Castelli", una_empresa().pk)
         cabeceras = dict(abrir.call_args.args[0].header_items())
         self.assertEqual(
             cabeceras["User-agent"],
