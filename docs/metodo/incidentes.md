@@ -1,0 +1,25 @@
+# Incidentes del método
+
+Un problema del método de trabajo mismo (no del producto) va acá, en una línea, en el
+momento en que pasa. Las reglas no se cambian en el momento: se revisan una vez por mes
+con estos incidentes y `py -3 .claude/hooks/medir_metodo.py` a la vista.
+
+Formato: `- AAAA-MM-DD — <plan|directo> — <qué pasó> — <costo: tiempo, retrabajo o riesgo>`
+
+Próxima revisión: 2026-12-13
+
+- 2026-10-23 — diseno-panel — el principal hizo `cd` a un worktree (T2) — se volvió a la raíz y se revisó `git status` en raíz y worktrees; sin daño
+- 2026-10-19 — catalogo-stock — el principal hizo `cd` a un worktree para un spot check y dejó un `cat` esperando stdin — corregido en el acto con `git status`; sin daño
+- 2026-10-07 — directo — la raíz amaneció en `plan/cierre-puntos` por un checkout manual — se volvió a `plan/correcciones-p31` sin pérdidas
+- 2026-10-05 — puntos-control — el principal hizo `cd` a un worktree (T2) para un control — corregido con `git status` en raíz y worktrees; sin daño
+- 2026-10-05 — panel — un `cd` del principal a un worktree y el renombre `form.html` a `formulario.html` quedó en el commit de T4 (P-panel-13) — retrabajo menor
+- 2026-10-04 — saneamiento — un plan sin rastrear de otra sesión (`docs/planes/2026-10-04-panel.md`) bloqueaba `worktree-integrar.sh` — con permiso del usuario se apartó al scratchpad y se restauró idéntico (SHA-256)
+- 2026-10-04 — triage — `worktree-integrar.sh` mergeó pero no pudo quitar `worktrees/triage-T1` porque el cwd del shell del principal estaba adentro (P-herramientas-plan-2) — carpeta vacía quitada con `rmdir` y rama con `git branch -d`; venv intacto
+- 2026-10-04 — contrato-app — `worktree-integrar.sh` no pudo borrar el worktree de T1 porque el shell del principal estaba dentro — limpieza a mano tras `git status` en raíz y worktrees
+- 2026-10-04 — api-movil — el cwd de la sesión quedó dentro del worktree de T1 y la sesión se cortó con T4 a medio informar — sin daño; recuperado del worktree
+- 2026-10-03 — limites-ingreso — la integración de T1 no pudo borrar la carpeta del worktree por tener la sesión su cwd adentro — limpieza con `rmdir` y `git branch -d`
+- 2026-10-03 — autenticacion — otra sesión (`menores-abiertos`) cambió la raíz a su rama un segundo después de crear `plan/autenticacion` y los commits cayeron en la rama equivocada — cherry-pick, nuevo `commit_base` y reposición de la rama ajena con autorización del usuario
+- 2026-10-03 — menores-abiertos — el principal hizo `cd` a un worktree desde su shell persistente, contra la decisión del 2026-10-02 — corregido en el momento con `git status`; sin daño
+- 2026-10-03 — directo — un `cd` del principal al worktree de T3 contra la decisión del 2026-10-02 — se volvió a la raíz y `git status` quedó limpio
+- 2026-10-02 — paralelismo — en T3, `git worktree remove` dio "Permission denied" porque el shell del principal tenía el cwd dentro del worktree — dio origen a la regla de no hacer `cd` a un worktree
+- 2026-10-02 — acciones-sitio — el implementador corrió `ruff format` y tocó `apps/sitios/models.py`, que no tenía permitido — restaurado; el diff del commit sobre ese archivo quedó vacío
