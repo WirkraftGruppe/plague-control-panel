@@ -6,9 +6,9 @@ description: Convenciones y referencia de Detach (stack, estructura de apps, com
 # Convenciones de Detach
 
 ## Qué es
-Detach: sistema de gestión para empresas de control de plagas, en una única aplicación Django. El nombre de la empresa sale de `NOMBRE_EMPRESA` (`config/settings/base.py`); el sitio público vive en otro repositorio.
+Detach: sistema de gestión para empresas de control de plagas, en una única aplicación Django. Una instalación sirve a varias empresas (`apps.empresas.Empresa`): el nombre, el logo y el correo salen de la empresa; el sitio público vive en otro repositorio y la app móvil irá en `mobile/`, también aparte.
 - **Raíz** `/` — redirige al login del panel; no hay sitio público en esta aplicación.
-- **Panel de gestión** `/panel/` — administradores: clientes, sitios con QR y la programación de cada punto, turnos, mapa, productos, certificados.
+- **Panel de gestión** `/panel/` — administradores de cada empresa: clientes, sitios con QR y la programación de cada punto, turnos, mapa, productos, certificados.
 - **API** `/api/v1/` — para la app móvil de los empleados (Expo, etapa final) y para el mapa del panel.
 
 Fuente de verdad del dominio: `docs/01-modelo-y-arquitectura.md`. Del diseño del panel: `docs/02-diseno.md`. De la API: `docs/contrato-api.md`.
@@ -26,7 +26,8 @@ Fuente de verdad del dominio: `docs/01-modelo-y-arquitectura.md`. Del diseño de
 ```
 config/            settings/{__init__,base,dev,prod}.py · urls.py · asgi/wsgi
 apps/
-  accounts/        User (rol: administrador | empleado), login del panel, JWT de la API
+  accounts/        User (rol: plataforma | administrador | empleado), login del panel, JWT de la API
+  empresas/        Empresa, guardia de consultas (`consultas.py`), middleware, JWT con empresa, logo, pantalla "Empresa"
   clientes/        Cliente
   sitios/          Sitio (lat/lng, sector, responsable), PuntoControl (qr_codigo UUID, x/y en el plano, servicio, frecuencia_dias, proximo_vencimiento), Plano
                    publico_views.py · publico_urls.py (página de aterrizaje `/q/<uuid>/`, con `X-Robots-Tag`)
@@ -94,7 +95,7 @@ bash .claude/hooks/worktree-integrar.sh <slug> T<n> <rama_destino> <ruta>...
 `T<n>` acepta sufijo de letra (`T5a`). Dentro de un worktree los comandos canónicos funcionan por la junction `venv`; nunca se toca ni se borra.
 
 - **Sin `cd` a los worktrees**: el principal usa `git -C worktrees/<slug>-T<n>` o rutas absolutas; el implementador recibe el worktree como ruta explícita y empieza cada comando Bash con `cd <worktree> && …`. Un shell con el cwd dentro del worktree impide que `worktree-integrar.sh` lo quite (exit 3).
-- **Dónde se corre `worktree-integrar.sh`**: desde el worktree de la rama destino (`worktrees/<slug>` para `plan/<slug>`), nunca desde el de la subtarea. El script borra la rama de la subtarea con `git branch -d` desde la raíz; si la raíz está en otra rama (hoy `plan/multiempresa`), ese último paso sale con 1 después de un merge y tests correctos (P-metodo-v2-5). La rama se borra a mano con `git -C <worktree destino> branch -d <slug>-T<n>`.
+- **Dónde se corre `worktree-integrar.sh`**: desde el worktree de la rama destino (`worktrees/<slug>` para `plan/<slug>`), nunca desde el de la subtarea. El script borra la rama de la subtarea con `git branch -d` desde el worktree destino; si eso falla, solo avisa (P-metodo-v2-5) y la rama se borra a mano con `git -C <worktree destino> branch -d <slug>-T<n>`. La suite de Django corre solo si la subtarea toca `apps/`, `config/`, `templates/`, `manage.py` o `requirements.txt` (P-metodo-v2-23).
 - Una integración por vez y `verificar.py tarea` tras cada una; antes de integrar se revisa `bash .claude/hooks/cambios.sh . <rama_base>`, no los informes.
 - **Ramas y plan de la sesión**: un plan es la rama `plan/<slug>` y sus subtareas `<slug>-T<n>`; los hooks derivan el plan (`docs/planes/*-<slug>.md`) de `git branch --show-current`. `main` solo recibe planes con el cierre en PASA: el principal sube `plan/<slug>` y abre el PR; el merge es del usuario. Antes de cada push: `git diff --stat <base>..HEAD`, sin secretos ni archivos ajenos al plan.
 - **Una sola sesión por worktree**: la tabla Carriles de `docs/estado.md` dice quién escribe dónde; si está ocupado, se para.
@@ -174,16 +175,17 @@ No se mantiene acá la lista de endpoints: la fuente de verdad es `config/urls.p
 | `/` | Redirige al login del panel | pública |
 | `/q/<uuid>/` | Página de aterrizaje de un QR abierto en un navegador (solo dice "use la app"); vive en `apps.sitios` (`publico_views.py`, `publico_urls.py`) y lleva `X-Robots-Tag` | pública, sin datos |
 | `/panel/` | Panel de gestión (`apps.panel`) | sesión Django + rol administrador |
-| `/admin/` | Admin técnico de Django | sesión + `is_superuser` |
+| `/admin/` | Admin técnico de Django | sesión + rol `plataforma` (superusuario) |
 | `/api/v1/` | API (`apps.api`) | JWT; empleados y administradores |
 
 Para ver las rutas de una app: `grep -n "path(" apps/<app>/api_urls.py apps/<app>/panel_urls.py`.
 
 ## Roles (`apps/accounts`)
-- `User.rol` ∈ {`administrador`, `empleado`}; properties `es_administrador`, `es_empleado`.
-- **Administrador**: panel completo. **Empleado**: solo la API; ve sus visitas asignadas, resuelve QR de puntos, abre visitas, registra revisiones y las cierra, consulta y descarga su historial.
-- `is_staff` **solo** habilita `/admin/`; no significa "administrador del panel". El panel exige `rol == administrador` con su propio mixin; la API exige el rol en cada permission class.
-- Las cuentas se crean a mano desde el panel o el admin; sin autorregistro, sin recuperación de contraseña pública en etapa 1.
+- `User.rol` ∈ {`plataforma`, `administrador`, `empleado`}; properties `es_plataforma`, `es_administrador`, `es_empleado`. `User.empresa` es nula solo en `plataforma` y obligatoria en los otros dos (`CheckConstraint`); los nombres de usuario son únicos globales.
+- **Plataforma**: operador de Detach, sin empresa. Único rol con `/admin/` (da de alta empresas, suprime datos, regenera QR); no entra al panel. Obtiene un token de la API, pero con él solo alcanza `GET /api/v1/`, el esquema, `/api/v1/docs/` y la renovación del token; todo lo demás le da 403. `createsuperuser` crea `plataforma`.
+- **Administrador**: panel completo de su empresa. **Empleado**: solo la API; ve sus visitas asignadas, resuelve QR de puntos, abre visitas, registra revisiones y las cierra, consulta y descarga su historial.
+- `is_staff` **solo** habilita `/admin/` (y solo lo tiene `plataforma`); no significa "administrador del panel". El panel exige `rol == administrador` con su propio mixin; la API exige el rol en cada permission class.
+- Las cuentas se crean a mano desde el panel (cada administrador, las de su empresa), el admin (`plataforma`) o `crear_usuario --empresa`; sin autorregistro, sin recuperación de contraseña pública en etapa 1.
 
 ## Reglas de dominio que el código hace cumplir
 - El QR identifica un punto de control (`PuntoControl.qr_codigo`), no un sitio. Una visita con `origen=app` solo se abre (`abrir_visita`, `POST /api/v1/visitas/abrir/`) con el `qr_codigo` de un punto activo: abre el turno pendiente más antiguo del empleado en el sitio de ese punto, devuelve el abierto si ya hay uno o crea una visita sin ítems; un QR inexistente o inactivo da 400. Cada escaneo es una `Revision` (`POST /api/v1/revisiones/`) con geolocalización y de 0 a 2 fotos (`MAX_FOTOS = 2`, sin mínimo), dentro de una visita abierta del empleado. No hay ruta alternativa para el empleado.
@@ -203,15 +205,17 @@ Para ver las rutas de una app: `grep -n "path(" apps/<app>/api_urls.py apps/<app
 
 ## Variables de entorno
 - Requeridas: `SECRET_KEY`, `DJANGO_ENV`, `DATABASE_URL`
-- Obligatorias en producción: `SITE_URL` (base para el contenido de los QR) y `NOMBRE_EMPRESA` (nombre de la empresa); sin ellas `prod.py` aborta el arranque
-- Opcionales: `ALLOWED_HOSTS`, `MEDIA_ROOT`, `STORAGE_BACKEND` (`local` | `s3`), `AWS_*` cuando `s3`, `CORREO_CONTACTO` (correo de contacto)
+- Obligatoria en producción: `SITE_URL` (base para el contenido de los QR); sin ella `prod.py` aborta el arranque
+- Opcionales: `ALLOWED_HOSTS`, `MEDIA_ROOT`, `STORAGE_BACKEND` (`local` | `s3`), `AWS_*` cuando `s3`, `CORREO_PLATAFORMA` (contacto del operador para el User-Agent de Nominatim; conviene definirlo en producción)
+- No hay variables para el nombre ni el correo de la empresa: salen de `Empresa`.
 - Plantilla: `.env.example` (versionado). `.env` no se versiona y no se lee.
 
 ## Prohibiciones de código
 - Todo serializer de escritura declara `fields` explícitos; `fields = "__all__"` y `exclude` son hallazgo (mass assignment).
 - Ningún queryset de la API devuelve visitas de otro empleado a un empleado: `get_queryset()` filtra por `request.user` salvo rol administrador. `if user.is_staff` nunca decide acceso a datos.
 - Ninguna regla de negocio en templates ni en `admin.py`; van en `services.py` de la app que corresponde.
-- Ninguna plantilla ni código escribe el nombre de una empresa: sale de `NOMBRE_EMPRESA`.
+- Ninguna plantilla ni código escribe el nombre de una empresa: sale de `Empresa.nombre`.
+- Toda consulta de modelos de empresa en el panel y la API se acota con `Modelo.objects.de_empresa(empresa)`; `sin_filtro_empresa()` va solo en el admin, en los comandos de `management/` y en la validación de unicidad del modelo base (`apps/empresas/models.py`); en ningún otro lugar, incluidos servicios, mixins, permisos, vistas, formularios, serializers y templatetags. `todos` se admite en el admin, en los comandos y en métodos de modelo, filtrando por la propia pk, por la empresa propia o por la pk de un padre o una referencia ya validados por `ModeloDeEmpresa.clean()`. La empresa sale de `request.empresa` (panel), `empresa_de(request)` (API) o un objeto ya acotado; nunca del cuerpo ni de la URL. `User` no tiene guardia: se filtra a mano con `.filter(empresa=…)`, y sin empresa se usa `User.objects.none()`. La empresa de un registro es inmutable tras el alta (vive en `save()` y `clean()`; `update()`, `bulk_update()` y `bulk_create()` la saltean, y también la coherencia con el padre: no se usan para cambiar `empresa`, el padre ni ninguna FK de `referencias_de_empresa`, ni para crear hijos, fuera de `services.py` revisados). Un identificador de otra empresa da 404.
 - Ninguna ruta pública (`/`, `/q/<uuid>/`) tiene formularios que escriban en la base ni envíen correo.
 - Coordenadas y fotos son datos personales de los empleados (dónde estuvieron y cuándo): no se exponen en `/q/<uuid>/` ni en ninguna página pública, y no se registran en logs.
 - No se escriben migraciones a mano salvo `RunPython` justificado en su docstring.

@@ -82,14 +82,10 @@ def leer_distancia_maxima_m():
     return valor
 
 
-# Nombre de la empresa en el admin, la API y la página del QR; provisoria hasta
-# multiempresa. Un valor vacío cae al valor por defecto.
-NOMBRE_EMPRESA = env("NOMBRE_EMPRESA", default="").strip() or "MAControl S.A."
-
-# Correo de contacto del User-Agent de las consultas a Nominatim, que lo exige;
-# provisorio hasta multiempresa, como NOMBRE_EMPRESA.
-CORREO_CONTACTO = (
-    env("CORREO_CONTACTO", default="").strip() or "administracion@macontrol.com.ar"
+# Correo de la plataforma (soporte a las empresas); el valor por defecto es de
+# desarrollo.
+CORREO_PLATAFORMA = (
+    env("CORREO_PLATAFORMA", default="").strip() or "plataforma@example.com"
 )
 
 # Una revisión o una apertura a más metros del punto (o del sitio, si el punto no
@@ -115,6 +111,7 @@ INSTALLED_APPS = [
     "drf_spectacular_sidecar",
     "csp",
     "simple_history",
+    "apps.empresas",
     "apps.accounts",
     "apps.clientes",
     "apps.sitios",
@@ -132,6 +129,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "apps.empresas.middleware.EmpresaMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "csp.middleware.CSPMiddleware",
@@ -150,7 +148,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
-                "config.contexto.empresa",
+                "apps.empresas.contexto.empresa_actual",
             ],
         },
     },
@@ -160,6 +158,8 @@ WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
 AUTH_USER_MODEL = "accounts.User"
+
+AUTHENTICATION_BACKENDS = ["apps.empresas.autenticacion.BackendConEmpresa"]
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -211,7 +211,7 @@ DATA_UPLOAD_MAX_NUMBER_FILES = 12
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework_simplejwt.authentication.JWTAuthentication"
+        "apps.empresas.autenticacion.JWTAutenticacionEmpresa"
     ],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
@@ -233,14 +233,12 @@ REST_FRAMEWORK = {
 # explotable mientras `SESSION_COOKIE_SAMESITE` siga en "Lax" (ver arriba).
 SPECTACULAR_SETTINGS = {
     "TITLE": "API de Detach",
-    # Sin doble punto cuando el nombre termina en "S.A." o similar.
-    "DESCRIPTION": "API de la app móvil de los empleados de "
-    f"{NOMBRE_EMPRESA.rstrip('.')}.",
+    "DESCRIPTION": "API de la app móvil de los empleados.",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "SERVE_PERMISSIONS": ["rest_framework.permissions.IsAuthenticated"],
     "SERVE_AUTHENTICATION": [
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "apps.empresas.autenticacion.JWTAutenticacionEmpresa",
         "rest_framework.authentication.SessionAuthentication",
     ],
     "COMPONENT_SPLIT_REQUEST": True,

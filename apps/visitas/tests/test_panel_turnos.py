@@ -12,6 +12,7 @@ from django.utils import timezone
 from PIL import Image
 
 from apps.accounts.models import User
+from apps.empresas.tests.ayudas import una_empresa
 from apps.productos.models import MovimientoStock, Producto
 from apps.servicios.models import TipoServicio
 from apps.sitios.models import Plano, PuntoControl, Sitio
@@ -35,7 +36,7 @@ class BaseTurnosTests(TestCase):
         cls.sitio = visita.sitio
         cls.roedores = visita.tipo
         cls.insectos = TipoServicio.objects.create(
-            nombre="Insectos", slug="insectos-t8"
+            nombre="Insectos", slug="insectos-t8", empresa=una_empresa()
         )
         cls.general = punto_de(visita)
         cls.sala = PuntoControl.objects.create(
@@ -46,7 +47,7 @@ class BaseTurnosTests(TestCase):
         )
         cls.empleado = visita.empleado
         cls.admin = User.objects.create_user(
-            "adm-t8", password="x", rol=User.Rol.ADMINISTRADOR
+            "adm-t8", password="x", rol=User.Rol.ADMINISTRADOR, empresa=una_empresa()
         )
         visita.delete()
 
@@ -83,7 +84,9 @@ class NuevoTurnoPanelTests(BaseTurnosTests):
         self.assertRedirects(
             respuesta, reverse("panel:sitios:ficha", args=[self.sitio.pk])
         )
-        turno = Visita.objects.get(estado=Visita.Estado.PENDIENTE)
+        turno = Visita.objects.de_empresa(una_empresa()).get(
+            estado=Visita.Estado.PENDIENTE
+        )
         servicios = {i.punto_id: i.servicio_id for i in turno.items.all()}
         self.assertEqual(
             servicios,
@@ -98,7 +101,7 @@ class NuevoTurnoPanelTests(BaseTurnosTests):
         respuesta = self.client.post(self.url, self._datos([]))
         self.assertEqual(respuesta.status_code, 200)
         self.assertIn("puntos", respuesta.context["form"].errors)
-        self.assertFalse(Visita.objects.exists())
+        self.assertFalse(Visita.objects.de_empresa(una_empresa()).exists())
 
     def test_punto_tildado_sin_servicio_da_error(self):
         datos = self._datos([self.sala], **{f"servicio_{self.sala.pk}": ""})
@@ -106,11 +109,13 @@ class NuevoTurnoPanelTests(BaseTurnosTests):
         self.assertEqual(respuesta.status_code, 200)
         self.assertIn(f"servicio_{self.sala.pk}", respuesta.context["form"].errors)
         self.assertContains(respuesta, "El punto no tiene servicio asignado.")
-        self.assertFalse(Visita.objects.exists())
+        self.assertFalse(Visita.objects.de_empresa(una_empresa()).exists())
 
     def test_html_expone_estado_y_servicio_de_cada_punto(self):
         ayer = timezone.localdate() - timedelta(days=1)
-        PuntoControl.objects.filter(pk=self.sala.pk).update(proximo_vencimiento=ayer)
+        PuntoControl.objects.de_empresa(una_empresa()).filter(pk=self.sala.pk).update(
+            proximo_vencimiento=ayer
+        )
         Plano.objects.create(
             sitio=self.sitio,
             nombre="Planta",
@@ -145,7 +150,7 @@ class CargarVisitaPanelTests(BaseTurnosTests):
         super().setUp()
         self.url = reverse("panel:visitas:cargar", args=[self.sitio.pk])
         # Las cargas son de ahora: el sitio ya existía.
-        Sitio.objects.filter(pk=self.sitio.pk).update(
+        Sitio.objects.de_empresa(una_empresa()).filter(pk=self.sitio.pk).update(
             creado=timezone.now() - timedelta(days=90)
         )
 
@@ -170,7 +175,7 @@ class CargarVisitaPanelTests(BaseTurnosTests):
             [self.general, self.sala], **{f"servicio_{self.sala.pk}": self.insectos.pk}
         )
         respuesta = self.client.post(self.url, datos)
-        visita = Visita.objects.get()
+        visita = Visita.objects.de_empresa(una_empresa()).get()
         self.assertRedirects(
             respuesta, reverse("panel:visitas:ficha", args=[visita.pk])
         )
@@ -183,7 +188,10 @@ class CargarVisitaPanelTests(BaseTurnosTests):
 
     def test_cantidad_desbordada_da_error_en_el_producto(self):
         producto = Producto.objects.create(
-            nombre_comercial="Cebo", unidad_base="ml", modo_unidad="equivalentes"
+            nombre_comercial="Cebo",
+            unidad_base="ml",
+            modo_unidad="equivalentes",
+            empresa=una_empresa(),
         )
         datos = self._datos(
             [self.general],
@@ -200,5 +208,5 @@ class CargarVisitaPanelTests(BaseTurnosTests):
         respuesta = self.client.post(self.url, datos)
         self.assertEqual(respuesta.status_code, 200)
         self.assertIn("cantidad", respuesta.context["productos"][0].errors)
-        self.assertFalse(Visita.objects.exists())
-        self.assertFalse(MovimientoStock.objects.exists())
+        self.assertFalse(Visita.objects.de_empresa(una_empresa()).exists())
+        self.assertFalse(MovimientoStock.objects.de_empresa(una_empresa()).exists())

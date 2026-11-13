@@ -3,11 +3,13 @@
 from django import forms
 from django.core.exceptions import ValidationError
 
+from apps.clientes.empresa import FormularioDeEmpresa
+
 from .models import MovimientoStock, Producto
 from .unidades import validar_cantidad_base
 
 
-class ProductoForm(forms.ModelForm):
+class ProductoForm(FormularioDeEmpresa):
     """Alta y edición del producto; `activo` permite retirarlo del catálogo."""
 
     class Meta:

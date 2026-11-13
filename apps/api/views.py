@@ -51,7 +51,8 @@ class RenovacionSerializer(TokenRefreshSerializer):
         refresh = self.token_class(attrs["refresh"])
         usuario = (
             get_user_model()
-            .objects.filter(
+            .objects.select_related("empresa")
+            .filter(
                 **{
                     api_settings.USER_ID_FIELD: refresh.payload.get(
                         api_settings.USER_ID_CLAIM
@@ -65,6 +66,8 @@ class RenovacionSerializer(TokenRefreshSerializer):
             raise AuthenticationFailed(
                 self.error_messages["no_active_account"], "no_active_account"
             )
+        if usuario.empresa is not None and not usuario.empresa.activo:
+            raise AuthenticationFailed("La empresa está inactiva.", "empresa_inactiva")
         return super().validate(attrs)
 
 

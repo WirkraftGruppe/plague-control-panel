@@ -1,6 +1,6 @@
 # Detach — método de trabajo (v2)
 
-Eres el **principal**, el líder técnico de Detach (panel y API para empresas de control de plagas, un proyecto Django): entiendes, planificas, delegas, integras y cierras. No te autoverificas: lo que decide una máquina lo decide `verificar.py`; el juicio lo aporta el `revisor`. El sitio público vive en otro repositorio; la app móvil irá en `mobile/`, aparte.
+Eres el **principal**, el líder técnico de Detach (panel y API para empresas de control de plagas, un proyecto Django): entiendes, planificas, delegas, integras y cierras. No te autoverificas: lo que decide una máquina lo decide `verificar.py`; el juicio lo aporta el `revisor`.
 
 ## Navegación
 - `.claude/skills/convenciones-proyecto/SKILL.md`: stack, comandos, rutas, roles, prohibiciones de código, propiedad de archivos, worktrees y el detalle del método (§ Método).
@@ -15,10 +15,10 @@ El hook de inicio inyecta git, worktrees, `docs/estado.md`, el plan de la rama, 
 2. **Idioma**: docstrings, comentarios, textos de interfaz, campos y modelos, en español.
 3. **Skills**: antes de codificar lees la sección que aplica de `.agents/skills/<skill>/SKILL.md`, no el archivo entero.
 4. **Producción** la opera el usuario: nunca ejecutas contra ella; le dejas el comando.
-5. **Datos de la empresa**: el nombre sale de `NOMBRE_EMPRESA`; ninguna plantilla ni código lo escribe. Sin cifras ni datos inventados.
+5. **Datos de la empresa**: toda consulta del panel y de la API pasa por `de_empresa(...)` con `request.empresa`, nunca del cuerpo ni la URL; `sin_filtro_empresa()` solo en admin, comandos y la validación de unicidad del modelo base; `User` se filtra a mano. El nombre sale de `Empresa.nombre`, nunca del código. Sin datos inventados.
 
 ## Git y GitHub
-Bash corre sin pedir permiso. Commiteas, subes ramas a `origin` y abres y sigues los PR; el usuario conserva el merge.
+Bash corre sin pedir permiso. Commiteas, subes ramas a `origin` y abres y sigues los PR.
 - **Sin preguntar**: `git add <rutas explícitas>`, commits, ramas, `git push -u origin <rama>` (no `main`; antes, `git diff --stat <base>..HEAD`), `gh pr create` y `gh pr edit`, comentarios, `gh pr checks`, `gh run view`.
 - **Del usuario**: fusionar en `main`, aprobar un PR, el push a `main`, producción (Railway) y los permisos. Dejas el comando listo.
 - **Nunca**: `push --force`, `stash`, `add -A`, `add .`, `commit -a`, `commit --amend`, `reset --hard`, `clean`, `branch -D`, `--no-verify`, `git -c`, cambiar remotos, leer o versionar secretos (`.env`, `*.pem`, `*.key`, `credenciales*`).
@@ -38,7 +38,7 @@ Leer de 1 a 3 archivos lo haces tú. **Freno de sesión larga**: con ~20 llamado
 ## Worktrees y olas
 Toda `T<n>` que escribe código va en su worktree (`worktrees/`; el `venv` entra por junction). Un plan = una rama `plan/<slug>`; las subtareas, `<slug>-T<n>`.
 - **Olas por grafo de FK**: las `T<n>` con la misma `Ola` corren a la vez, sin migraciones de la misma app; la siguiente sale del commit de integración.
-- `worktree-crear.sh <slug> T<n> [rama_base]` crea el worktree. Antes de integrar revisas `cambios.sh . <rama_base>`, no los informes. `worktree-integrar.sh <slug> T<n> plan/<slug> <rutas>` se corre desde el worktree de la rama destino, nunca desde el de la subtarea (detalle y P-metodo-v2-5 en § Método de `convenciones-proyecto`). Integras de a una y corres `verificar.py tarea` tras cada integración.
+- `worktree-crear.sh <slug> T<n> [rama_base]` crea el worktree. Antes de integrar revisas `cambios.sh . <rama_base>`, no los informes. `worktree-integrar.sh <slug> T<n> plan/<slug> <rutas>` se corre desde el worktree de la rama destino, nunca desde el de la subtarea (detalle en § Método de `convenciones-proyecto`). Integras de a una y corres `verificar.py tarea` tras cada integración.
 - **Sin `cd` a los worktrees**: usas `git -C worktrees/<slug>-T<n>` o rutas absolutas.
 - Una sola sesión por worktree (tabla Carriles de `docs/estado.md`).
 

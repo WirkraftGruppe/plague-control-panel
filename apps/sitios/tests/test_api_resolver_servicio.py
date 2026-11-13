@@ -11,6 +11,7 @@ from rest_framework.test import APIClient
 
 from apps.accounts.models import User
 from apps.clientes.models import Cliente
+from apps.empresas.tests.ayudas import una_empresa
 from apps.servicios.models import CampoPlanilla, TipoServicio
 from apps.sitios.models import Sitio
 from apps.visitas.models import Revision, Visita
@@ -24,11 +25,16 @@ class BaseResolverTests(TestCase):
     def setUp(self):
         cache.clear()
         self.sitio = Sitio.objects.create(
-            cliente=Cliente.objects.create(razon_social="ACME"), nombre="Planta 1"
+            cliente=Cliente.objects.create(razon_social="ACME", empresa=una_empresa()),
+            nombre="Planta 1",
         )
         self.punto = self.sitio.puntos.get()
-        self.desrat = TipoServicio.objects.create(nombre="Desratización", slug="desrat")
-        self.fumiga = TipoServicio.objects.create(nombre="Fumigación", slug="fumiga")
+        self.desrat = TipoServicio.objects.create(
+            nombre="Desratización", slug="desrat", empresa=una_empresa()
+        )
+        self.fumiga = TipoServicio.objects.create(
+            nombre="Fumigación", slug="fumiga", empresa=una_empresa()
+        )
         CampoPlanilla.objects.create(
             tipo_servicio=self.desrat,
             orden=1,
@@ -46,10 +52,13 @@ class BaseResolverTests(TestCase):
             ambito=CampoPlanilla.Ambito.VISITA,
         )
         self.empleado = User.objects.create_user(
-            username="emp", password="x", rol=User.Rol.EMPLEADO
+            username="emp", password="x", rol=User.Rol.EMPLEADO, empresa=una_empresa()
         )
         self.admin = User.objects.create_user(
-            username="adm", password="x", rol=User.Rol.ADMINISTRADOR
+            username="adm",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         self.api = APIClient()
         self.api.force_authenticate(self.empleado)
@@ -80,8 +89,12 @@ class ResolverServicioTests(BaseResolverTests):
         self.assertEqual(cuerpo["punto"]["servicio"]["slug"], "fumiga")
         self.assertEqual(cuerpo["visita_pendiente_propia"], turno.id)
         # Un turno ajeno no cuenta.
-        ajeno = User.objects.create_user(username="otro", password="x")
-        Visita.objects.filter(pk=turno.pk).update(empleado=ajeno)
+        ajeno = User.objects.create_user(
+            username="otro", password="x", empresa=una_empresa()
+        )
+        Visita.objects.de_empresa(una_empresa()).filter(pk=turno.pk).update(
+            empleado=ajeno
+        )
         punto = self._resolver()["punto"]
         self.assertFalse(punto["en_turno"])
         self.assertEqual(punto["servicio"]["id"], self.desrat.id)
@@ -185,7 +198,9 @@ class ResolverCoherenteConRevisionTests(BaseResolverTests):
         abierta = cuerpo["visita_abierta_propia"]
         abrir_id = abierta or self._abrir()
         servicio = (
-            TipoServicio.objects.get(pk=cuerpo["punto"]["servicio"]["id"])
+            TipoServicio.objects.de_empresa(una_empresa()).get(
+                pk=cuerpo["punto"]["servicio"]["id"]
+            )
             if cuerpo["punto"]["servicio"]
             else None
         )
@@ -207,13 +222,15 @@ class ResolverCoherenteConRevisionTests(BaseResolverTests):
         self.assertFalse(cuerpo["punto"]["en_turno"])
         self.assertEqual(revision["servicio"]["id"], self.desrat.id)
         self.assertTrue(revision["fuera_de_turno"])
-        self.assertEqual(Revision.objects.get().visita_id, abierta.id)
+        self.assertEqual(
+            Revision.objects.de_empresa(una_empresa()).get().visita_id, abierta.id
+        )
 
     def test_abierto_y_pendiente_con_el_punto_devuelve_y_guarda_el_del_abierto(self):
         self.punto.servicio = self.desrat
         self.punto.save()
         abierto = self._turno(self.fumiga)
-        Visita.objects.filter(pk=abierto.pk).update(
+        Visita.objects.de_empresa(una_empresa()).filter(pk=abierto.pk).update(
             estado=Visita.Estado.ABIERTA, abierta_en=timezone.now()
         )
         self._turno(self.desrat, dias=2)

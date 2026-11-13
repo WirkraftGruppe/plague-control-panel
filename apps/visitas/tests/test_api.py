@@ -17,6 +17,7 @@ from rest_framework.test import APIClient
 
 from apps.accounts.models import User
 from apps.clientes.models import Cliente
+from apps.empresas.tests.ayudas import una_empresa
 from apps.productos.models import Producto
 from apps.servicios.models import CampoPlanilla, TipoServicio
 from apps.sitios.models import PuntoControl, Sitio
@@ -40,7 +41,7 @@ class BaseApiTests(TestCase):
 
     def setUp(self):
         cache.clear()
-        cliente = Cliente.objects.create(razon_social="ACME")
+        cliente = Cliente.objects.create(razon_social="ACME", empresa=una_empresa())
         self.sitio = Sitio.objects.create(
             cliente=cliente,
             nombre="Planta 1",
@@ -49,7 +50,9 @@ class BaseApiTests(TestCase):
             latitud="-36.100000",
             longitud="-57.800000",
         )
-        self.tipo = TipoServicio.objects.create(nombre="Desratización", slug="desrat")
+        self.tipo = TipoServicio.objects.create(
+            nombre="Desratización", slug="desrat", empresa=una_empresa()
+        )
         CampoPlanilla.objects.create(
             tipo_servicio=self.tipo,
             orden=1,
@@ -67,7 +70,9 @@ class BaseApiTests(TestCase):
         self.api = self._api(self.empleado)
 
     def _usuario(self, nombre, rol):
-        return User.objects.create_user(username=nombre, password="x", rol=rol)
+        return User.objects.create_user(
+            username=nombre, password="x", rol=rol, empresa=una_empresa()
+        )
 
     def _api(self, usuario):
         api = APIClient()
@@ -106,7 +111,9 @@ class ApiVisitasBase(BaseApiTests):
 
     def setUp(self):
         super().setUp()
-        self.producto = Producto.objects.create(nombre_comercial="Cebo X")
+        self.producto = Producto.objects.create(
+            nombre_comercial="Cebo X", empresa=una_empresa()
+        )
 
     def _abierta(self, empleado=None, **extra):
         extra.setdefault("origen", Visita.Origen.APP)
@@ -168,7 +175,7 @@ class FlujoRevisionesTests(ApiVisitasBase):
         )
         self.assertEqual(r.status_code, 200, r.content)
         self.assertEqual(r.data["id"], pendiente.id)
-        self.assertEqual(Visita.objects.count(), 1)
+        self.assertEqual(Visita.objects.de_empresa(una_empresa()).count(), 1)
 
         for punto in (self.punto, sala, galpon):
             r = self._post(pendiente, qr_codigo=str(punto.qr_codigo))
@@ -210,7 +217,12 @@ class FlujoRevisionesTests(ApiVisitasBase):
                 r = self._post(visita)
                 self.assertEqual(r.status_code, 400, r.content)
                 self.assertIn("visita", r.data["campos"])
-        self.assertEqual(Revision.objects.filter(cliente_uuid__isnull=False).count(), 0)
+        self.assertEqual(
+            Revision.objects.de_empresa(una_empresa())
+            .filter(cliente_uuid__isnull=False)
+            .count(),
+            0,
+        )
 
     def test_las_tres_rutas_comparten_el_throttle_crear_visita(self):
         for vista in (
@@ -230,7 +242,7 @@ class FlujoRevisionesTests(ApiVisitasBase):
             format="json",
         )
         self.assertEqual(r.status_code, 201, r.content)
-        visita = Visita.objects.get(pk=r.data["id"])
+        visita = Visita.objects.de_empresa(una_empresa()).get(pk=r.data["id"])
         self.assertEqual(visita.empleado, self.admin)
         self.assertEqual(self._post(visita, api=admin).status_code, 201)
         self.assertEqual(self._cerrar(visita, api=admin).status_code, 200)
@@ -247,18 +259,18 @@ class AbrirVisitaTests(ApiVisitasBase):
     def test_sin_pendiente_crea_con_origen_app(self):
         r = self._abrir()
         self.assertEqual(r.status_code, 201, r.content)
-        visita = Visita.objects.get(pk=r.data["id"])
+        visita = Visita.objects.de_empresa(una_empresa()).get(pk=r.data["id"])
         self.assertEqual(visita.origen, Visita.Origen.APP)
         self.assertEqual(visita.estado, Visita.Estado.ABIERTA)
         self.assertFalse(visita.incidencia_asignacion)
         self.assertEqual(self._abrir().status_code, 200)
-        self.assertEqual(Visita.objects.count(), 1)
+        self.assertEqual(Visita.objects.de_empresa(una_empresa()).count(), 1)
 
     def test_pendiente_de_otro_marca_incidencia_asignacion(self):
         ajena = self._visita(self.otro, programada_para=date(2026, 9, 1))
         r = self._abrir()
         self.assertEqual(r.status_code, 201, r.content)
-        nueva = Visita.objects.get(pk=r.data["id"])
+        nueva = Visita.objects.de_empresa(una_empresa()).get(pk=r.data["id"])
         self.assertNotEqual(nueva.id, ajena.id)
         self.assertTrue(nueva.incidencia_asignacion)
         ajena.refresh_from_db()
@@ -272,7 +284,9 @@ class AbrirVisitaTests(ApiVisitasBase):
                 if r.status_code == 400:
                     self.assertIn("precision_m", r.data["campos"])
                 else:
-                    visita = Visita.objects.get(pk=r.data["id"])
+                    visita = Visita.objects.de_empresa(una_empresa()).get(
+                        pk=r.data["id"]
+                    )
                     self.assertEqual(visita.precision_m, Decimal("99999.90"))
 
     def test_sitio_inactivo_da_400(self):
@@ -281,7 +295,7 @@ class AbrirVisitaTests(ApiVisitasBase):
         r = self._abrir()
         self.assertEqual(r.status_code, 400, r.content)
         self.assertIn("qr_codigo", r.data["campos"])
-        self.assertFalse(Visita.objects.exists())
+        self.assertFalse(Visita.objects.de_empresa(una_empresa()).exists())
 
     def test_qr_invalido_da_400_con_el_mismo_mensaje(self):
         inactivo = PuntoControl.objects.create(
@@ -299,7 +313,7 @@ class AbrirVisitaTests(ApiVisitasBase):
             inactivo_r.data["campos"]["qr_codigo"],
             inexistente.data["campos"]["qr_codigo"],
         )
-        self.assertFalse(Visita.objects.exists())
+        self.assertFalse(Visita.objects.de_empresa(una_empresa()).exists())
 
 
 class CrearRevisionTests(ApiVisitasBase):
@@ -327,10 +341,17 @@ class CrearRevisionTests(ApiVisitasBase):
             observaciones="Todo en orden",
         )
         self.assertEqual(r.status_code, 201, r.content)
-        revision = Revision.objects.get(pk=r.data["id"])
+        revision = Revision.objects.de_empresa(una_empresa()).get(pk=r.data["id"])
         self.assertEqual(revision.visita, self.visita)
-        self.assertEqual(Foto.objects.filter(revision=revision).count(), 2)
-        self.assertEqual(ProductoAplicado.objects.filter(revision=revision).count(), 1)
+        self.assertEqual(
+            Foto.objects.de_empresa(una_empresa()).filter(revision=revision).count(), 2
+        )
+        self.assertEqual(
+            ProductoAplicado.objects.de_empresa(una_empresa())
+            .filter(revision=revision)
+            .count(),
+            1,
+        )
         self.assertEqual(len(r.data["fotos"]), 2)
         self.assertEqual(r.data["productos"][0]["lote"], "L1")
         self.assertNotIn("latitud", r.data)
@@ -342,7 +363,7 @@ class CrearRevisionTests(ApiVisitasBase):
                 r = self._enviar(qr_codigo=codigo)
                 self.assertEqual(r.status_code, 400)
                 self.assertIn("qr_codigo", r.data["campos"])
-        self.assertFalse(Revision.objects.exists())
+        self.assertFalse(Revision.objects.de_empresa(una_empresa()).exists())
 
     def test_qr_de_un_punto_de_otro_sitio_da_400(self):
         otro_sitio = Sitio.objects.create(
@@ -366,13 +387,13 @@ class CrearRevisionTests(ApiVisitasBase):
                 r = self._enviar(**{campo: None})
                 self.assertEqual(r.status_code, 400, r.content)
                 self.assertIn(campo, r.data["campos"])
-        self.assertFalse(Revision.objects.exists())
+        self.assertFalse(Revision.objects.de_empresa(una_empresa()).exists())
 
     def test_mas_de_dos_fotos_da_400(self):
         r = self._enviar(fotos=[jpeg_chico() for _ in range(3)])
         self.assertEqual(r.status_code, 400)
         self.assertIn("fotos", r.data["campos"])
-        self.assertFalse(Revision.objects.exists())
+        self.assertFalse(Revision.objects.de_empresa(una_empresa()).exists())
 
     def test_datos_invalidos_contra_esquema_da_400(self):
         r = self._enviar(datos=json.dumps({"cebos": "mucho", "otra": 1}))
@@ -396,7 +417,7 @@ class CrearRevisionTests(ApiVisitasBase):
         self.assertEqual(r.status_code, 409)
         self.assertNotIn("visita", r.data)
         self.assertNotIn("revision", r.data)
-        self.assertEqual(Revision.objects.count(), 1)
+        self.assertEqual(Revision.objects.de_empresa(una_empresa()).count(), 1)
 
     def test_producto_fuera_del_catalogo_da_400(self):
         productos = [
@@ -412,7 +433,7 @@ class CrearRevisionTests(ApiVisitasBase):
         r = self._enviar(productos_aplicados=json.dumps(productos))
         self.assertEqual(r.status_code, 400)
         self.assertIn("productos_aplicados.0.producto", r.data["campos"])
-        self.assertFalse(Revision.objects.exists())
+        self.assertFalse(Revision.objects.de_empresa(una_empresa()).exists())
 
     def test_cliente_uuid_es_obligatorio(self):
         r = self._enviar(cliente_uuid=None)
@@ -432,7 +453,7 @@ class CrearRevisionTests(ApiVisitasBase):
             with self.subTest(cambio=cambio):
                 r = self._enviar(**cambio)
                 self.assertEqual(r.status_code, 400, r.content)
-        self.assertFalse(Revision.objects.exists())
+        self.assertFalse(Revision.objects.de_empresa(una_empresa()).exists())
 
     def test_foto_de_mas_de_8_mb_da_400(self):
         grande = SimpleUploadedFile(
@@ -463,12 +484,12 @@ class CrearRevisionTests(ApiVisitasBase):
         self.assertEqual(r.status_code, 413)
         self.assertEqual(r.data["detalle"], "El pedido supera el tamaño permitido.")
         nuevo_archivo.assert_not_called()
-        self.assertFalse(Revision.objects.exists())
+        self.assertFalse(Revision.objects.de_empresa(una_empresa()).exists())
 
     def test_demasiados_archivos_da_413(self):
         r = self._enviar(fotos=[jpeg_chico() for _ in range(101)])
         self.assertEqual(r.status_code, 413)
-        self.assertFalse(Revision.objects.exists())
+        self.assertFalse(Revision.objects.de_empresa(una_empresa()).exists())
 
 
 class RevisionesTests(ApiVisitasBase):
@@ -486,7 +507,7 @@ class RevisionesTests(ApiVisitasBase):
                     r.json(),
                     {"detalle": "La revisión ya fue registrada.", "campos": {}},
                 )
-        self.assertEqual(Revision.objects.count(), 1)
+        self.assertEqual(Revision.objects.de_empresa(una_empresa()).count(), 1)
         # El dueño sí recibe los ids para reconciliar.
         r = self._post(de_otro, api=self._api(self.otro), cliente_uuid=clave)
         self.assertEqual(r.status_code, 409)
@@ -631,7 +652,9 @@ class HistorialTests(BaseApiTests):
         self.assertEqual(rev["datos"], {"cebos": 4})
         self.assertIn("realizada_en", rev)
         self.assertEqual(rev["productos"], [])
-        codigo = Foto.objects.get(revision__visita=propia).codigo
+        codigo = (
+            Foto.objects.de_empresa(una_empresa()).get(revision__visita=propia).codigo
+        )
         self.assertEqual(rev["fotos"], [f"/api/v1/fotos/{codigo}/"])
 
     def test_rango_de_fechas_filtra(self):

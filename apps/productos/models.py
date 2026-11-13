@@ -4,10 +4,12 @@ from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import models
 
+from apps.empresas.models import ModeloDeEmpresa
+
 from . import unidades
 
 
-class Producto(models.Model):
+class Producto(ModeloDeEmpresa):
     """Producto del catálogo; las aplicaciones de las visitas siempre apuntan acá."""
 
     nombre_comercial = models.CharField("nombre comercial", max_length=150)
@@ -60,13 +62,16 @@ class Producto(models.Model):
         return self.nombre_comercial
 
 
-class MovimientoStock(models.Model):
+class MovimientoStock(ModeloDeEmpresa):
     """Entrada o salida de stock de un producto, en unidad base y con signo."""
 
     class Tipo(models.TextChoices):
         INGRESO = "ingreso", "Ingreso"
         AJUSTE = "ajuste", "Ajuste"
         CONSUMO = "consumo", "Consumo"
+
+    padre_de_empresa = "producto"
+    referencias_de_empresa = ("usuario",)
 
     producto = models.ForeignKey(
         Producto,

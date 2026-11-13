@@ -4,6 +4,7 @@ from datetime import date
 
 from django.utils import timezone
 
+from apps.empresas.tests.ayudas import una_empresa
 from apps.servicios.models import TipoServicio
 from apps.sitios.models import PuntoControl
 from apps.visitas.models import Revision, Visita
@@ -14,7 +15,9 @@ from apps.visitas.tests.test_api import ApiVisitasBase
 class MisTurnosApiTests(ApiVisitasBase):
     def setUp(self):
         super().setUp()
-        self.fumiga = TipoServicio.objects.create(nombre="Fumigación", slug="fumiga")
+        self.fumiga = TipoServicio.objects.create(
+            nombre="Fumigación", slug="fumiga", empresa=una_empresa()
+        )
         self.deposito = PuntoControl.objects.create(
             sitio=self.sitio, nombre="Depósito", sector="Fondo", orden=1
         )
@@ -91,8 +94,12 @@ class RevisionRespuestaTests(ApiVisitasBase):
             items=[(self.punto, self.tipo)],
             asignada_por=self.admin,
         )
-        Visita.objects.filter(pk=turno.pk).update(estado=Visita.Estado.REALIZADA)
-        Visita.objects.filter(pk=dentro.pk).update(estado=Visita.Estado.ABIERTA)
+        Visita.objects.de_empresa(una_empresa()).filter(pk=turno.pk).update(
+            estado=Visita.Estado.REALIZADA
+        )
+        Visita.objects.de_empresa(una_empresa()).filter(pk=dentro.pk).update(
+            estado=Visita.Estado.ABIERTA
+        )
         r = self._post(dentro)
         self.assertEqual(r.status_code, 201, r.content)
         self.assertIs(r.data["fuera_de_turno"], False)

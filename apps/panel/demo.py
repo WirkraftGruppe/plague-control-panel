@@ -52,23 +52,27 @@ def _borrar_historial(modelo, ids):
         modelo.history.filter(id__in=ids[inicio : inicio + LOTE_HISTORIAL]).delete()
 
 
-def _clientes_demo():
-    return Cliente.objects.filter(
+def _clientes_demo(empresa):
+    return Cliente.objects.de_empresa(empresa).filter(
         Q(notas__startswith=MARCA_DEMO) | Q(razon_social__regex=PATRON_CLIENTE_VIEJO)
     )
 
 
-def _sitios_demo():
+def _sitios_demo(empresa):
     """Sitios marcados y los de un cliente demo del formato viejo (sin marca)."""
     viejos = Q(
         cliente__razon_social__regex=PATRON_CLIENTE_VIEJO,
         cliente__notas="",
     )
-    return Sitio.objects.filter(Q(notas__startswith=MARCA_DEMO) | viejos)
+    return Sitio.objects.de_empresa(empresa).filter(
+        Q(notas__startswith=MARCA_DEMO) | viejos
+    )
 
 
-def limpiar_datos_demo():
-    """Borra solo los datos de demo y devuelve cuántos sitios se eliminaron.
+def limpiar_datos_demo(empresa):
+    """Borra solo los datos de demo de la empresa y devuelve los sitios eliminados.
+
+    Nunca consulta otra empresa: todo sale de `de_empresa(empresa)`.
 
     Orden: visitas, planos y puntos con sus sitios, clientes y
     productos demo, respetando los PROTECT. Los archivos de plano y foto salen
@@ -77,38 +81,44 @@ def limpiar_datos_demo():
     marca, o un producto ya aplicado en una visita ajena, no se toca.
     """
     with transaction.atomic():
-        sitios = list(_sitios_demo())
-        visitas = Visita.objects.filter(sitio__in=sitios)
+        sitios = list(_sitios_demo(empresa))
+        visitas = Visita.objects.de_empresa(empresa).filter(sitio__in=sitios)
         ids_visitas = list(visitas.values_list("pk", flat=True))
         ids_revisiones = list(
-            Revision.objects.filter(visita__in=ids_visitas).values_list("pk", flat=True)
+            Revision.objects.de_empresa(empresa)
+            .filter(visita__in=ids_visitas)
+            .values_list("pk", flat=True)
         )
         ids_aplicados = list(
-            ProductoAplicado.objects.filter(revision__in=ids_revisiones).values_list(
-                "pk", flat=True
-            )
+            ProductoAplicado.objects.de_empresa(empresa)
+            .filter(revision__in=ids_revisiones)
+            .values_list("pk", flat=True)
         )
         ids_movimientos = list(
-            ProductoAplicado.objects.filter(
-                revision__in=ids_revisiones, movimiento__isnull=False
-            ).values_list("movimiento_id", flat=True)
+            ProductoAplicado.objects.de_empresa(empresa)
+            .filter(revision__in=ids_revisiones, movimiento__isnull=False)
+            .values_list("movimiento_id", flat=True)
         )
         visitas.delete()
         # Los consumos van después de sus aplicados: el movimiento es PROTECT.
-        MovimientoStock.objects.filter(pk__in=ids_movimientos).delete()
+        MovimientoStock.objects.de_empresa(empresa).filter(
+            pk__in=ids_movimientos
+        ).delete()
         _borrar_historial(Visita, ids_visitas)
         _borrar_historial(Revision, ids_revisiones)
         _borrar_historial(ProductoAplicado, ids_aplicados)
         for sitio in sitios:
             # Borra también el historial de sitio, puntos y planos.
             suprimir_sitio(sitio)
-        _clientes_demo().filter(sitios__isnull=True).delete()
-        productos = Producto.objects.filter(
+        _clientes_demo(empresa).filter(sitios__isnull=True).delete()
+        productos = Producto.objects.de_empresa(empresa).filter(
             nombre_comercial__endswith=SUFIJO_PRODUCTO, productoaplicado__isnull=True
         )
-        MovimientoStock.objects.filter(producto__in=productos).delete()
+        MovimientoStock.objects.de_empresa(empresa).filter(
+            producto__in=productos
+        ).delete()
         productos.delete()
-        TipoServicio.objects.filter(
+        TipoServicio.objects.de_empresa(empresa).filter(
             slug=SLUG_TIPO_VIEJO,
             puntos__isnull=True,
             items_turno__isnull=True,

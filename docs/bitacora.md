@@ -1,17 +1,9 @@
 # Bitácora de MAControl
 
 ## Estado actual
-Plan activo: docs/planes/2026-10-22-diseno-panel.md
+Plan activo: (ninguno)
 
-Planes activos (los hooks derivan el plan de la rama; la línea `Plan activo:` de arriba es el respaldo para la raíz):
-
-| plan | rama | ola actual | pendiente inmediato | sesión |
-|---|---|---|---|---|
-| (ninguno) | main | — | planificar `multiempresa`; P-diseno-panel-1 (primer clic en marcador del panel lateral) en un plan aparte | sesión 2026-10-23 |
-
-Siguiente (orden decidido el 2026-10-20; reconfirmado el 2026-10-21): `multiempresa` → despliegue. El despliegue en Railway espera a que esos planes estén en `main`, para no tener que migrar datos reales. Problemas abiertos: ver `pendientes.py`. Decisiones y cuándo preguntar: `docs/protocolo-decisiones.md` (CLAUDE.md § Reglas globales, regla 1).
-
-Problemas abiertos: ver `py -3 .claude/hooks/pendientes.py` (cada plan los declara en `## Pendientes que deja este plan`; los anteriores están en `docs/planes/2026-10-03-pendientes-heredados.md`).
+El estado vivo está en `docs/estado.md` (método v2). Problemas abiertos: `py -3 .claude/hooks/pendientes.py`.
 
 ## Entradas (la más reciente arriba)
 
@@ -22,6 +14,13 @@ Hecho:
 - `verificar.py tarea` sobre `multiempresa` T1 (contra la raíz, recibo a un temporal): todos sus criterios en PASA; veredicto FALLA solo por el contrato modificado sin línea `(usuario)`.
 - Incidente: `worktree-integrar.sh` borra la rama desde la raíz (en `plan/multiempresa`) y sale con 1 tras cada merge correcto (P-metodo-v2-5); las ramas se borraron desde el worktree del plan.
 Pendiente: cierre (auditor-seguridad, verificación TODO); el usuario aplica `docs/metodo/parche-settings.md` y decide el merge.
+
+### 2026-10-26 — Plan `multiempresa` juzgado, listo para aprobar (sin commitear)
+Hecho:
+- Rama `plan/multiempresa` desde `main` (34a9eb0). El plan está en `docs/planes/2026-10-26-multiempresa.md`, **sin commitear** (untracked): 14 subtareas en 4 olas, 92 `[test]`, `seguridad: sí`.
+- 14 rondas de `juez-plan` más una acotada a los últimos cambios. Las dos últimas dieron 0 bloqueantes. Las decisiones de diseño tomadas en el camino están en `### Decisiones` y `### Decisiones del plan`: FK en dos fases (T2 nula, T14 `null=False` con `blank=True`), excepciones de propiedad sin paralelo y `[grep-0]` con `git grep … ':!*/tests/*'`. Las reglas transversales están en `## Contexto mínimo`.
+- Observaciones abiertas conocidas: el hook Stop no alcanza a correr todos los criterios en 780 s (la verificación TODO real la hace `verificador`); algunos criterios son de regresión y ya pasan antes de su subtarea.
+Pendiente: visto bueno del usuario al plan → commit `docs(plan): multiempresa` → `commit_base:` → T1 (worktree, `implementador`, `verificador`, `verificador-b`, `auditor-seguridad`).
 
 ### 2026-10-23 — `diseno-panel` fusionado en `main`
 Hecho:

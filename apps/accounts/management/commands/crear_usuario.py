@@ -7,6 +7,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import IntegrityError
 
 from apps.accounts.limites import normalizar_usuario
+from apps.empresas.models import Empresa
 
 
 class Command(BaseCommand):
@@ -20,6 +21,7 @@ class Command(BaseCommand):
         parser.add_argument("--nombre", default="")
         parser.add_argument("--apellido", default="")
         parser.add_argument("--email", default="")
+        parser.add_argument("--empresa", type=int, help="Id de la empresa.")
 
     def handle(self, *args, **opciones):
         User = get_user_model()
@@ -28,6 +30,12 @@ class Command(BaseCommand):
         if any(normalizar_usuario(existente) == username for existente in existentes):
             raise CommandError(f"El usuario «{username}» ya existe.")
 
+        empresa = None
+        if opciones["empresa"] is not None:
+            empresa = Empresa.objects.filter(pk=opciones["empresa"]).first()
+            if empresa is None:
+                raise CommandError(f"No existe la empresa {opciones['empresa']}.")
+
         contrasena = getpass("Contraseña: ")
         if contrasena != getpass("Repita la contraseña: "):
             raise CommandError("Las contraseñas no coinciden.")
@@ -35,6 +43,7 @@ class Command(BaseCommand):
         usuario = User(
             username=username,
             rol=opciones["rol"],
+            empresa=empresa,
             first_name=opciones["nombre"],
             last_name=opciones["apellido"],
             email=opciones["email"],

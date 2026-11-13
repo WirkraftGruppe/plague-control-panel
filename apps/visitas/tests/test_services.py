@@ -17,6 +17,7 @@ from django.utils import timezone
 from PIL import Image
 
 from apps.accounts.models import User
+from apps.empresas.tests.ayudas import una_empresa
 from apps.productos.models import Producto
 from apps.servicios.models import CampoPlanilla
 from apps.sitios.models import PuntoControl, Sitio
@@ -112,7 +113,9 @@ class CicloVisitaTests(SinArchivosMixin, TestCase):
         self.empleado = self.visita.empleado
         self.sitio = self.visita.sitio
         self.punto = punto_de(self.visita)
-        self.producto = Producto.objects.create(nombre_comercial="Cebo")
+        self.producto = Producto.objects.create(
+            nombre_comercial="Cebo", empresa=una_empresa()
+        )
 
     def revisar(self, visita, **extra):
         argumentos = {
@@ -181,7 +184,7 @@ class CicloVisitaTests(SinArchivosMixin, TestCase):
 
     def test_abrir_es_idempotente_y_crea_con_incidencia_si_la_pendiente_es_ajena(self):
         otro = User.objects.create_user(
-            username="emp-b", password="x", rol=User.Rol.EMPLEADO
+            username="emp-b", password="x", rol=User.Rol.EMPLEADO, empresa=una_empresa()
         )
         self.visita.empleado = otro
         self.visita.save()
@@ -194,7 +197,7 @@ class CicloVisitaTests(SinArchivosMixin, TestCase):
         otra, creada = abrir(empleado=self.empleado, sitio=self.sitio)
         self.assertFalse(creada)
         self.assertEqual(otra.pk, visita.pk)
-        self.assertEqual(Visita.objects.count(), 2)
+        self.assertEqual(Visita.objects.de_empresa(una_empresa()).count(), 2)
 
     def test_abrir_rechaza_sitio_inactivo(self):
         sitio = self.sitio
@@ -215,20 +218,20 @@ class CicloVisitaTests(SinArchivosMixin, TestCase):
                 with self.assertRaises(ValidationError) as contexto:
                     self.revisar(visita, **extra)
                 self.assertIn(nombre.split("_")[0], contexto.exception.message_dict)
-        self.assertEqual(Revision.objects.count(), 0)
-        self.assertEqual(Foto.objects.count(), 0)
+        self.assertEqual(Revision.objects.de_empresa(una_empresa()).count(), 0)
+        self.assertEqual(Foto.objects.de_empresa(una_empresa()).count(), 0)
 
         self.punto.activo = False
         self.punto.save()
         with self.assertRaises(ValidationError) as contexto:
             self.revisar(visita)
         self.assertIn("qr_codigo", contexto.exception.message_dict)
-        self.assertEqual(Revision.objects.count(), 0)
+        self.assertEqual(Revision.objects.de_empresa(una_empresa()).count(), 0)
 
     def test_revision_exige_visita_abierta_y_propia(self):
         pendiente = crear_visita()
         otro = User.objects.create_user(
-            username="emp-c", password="x", rol=User.Rol.EMPLEADO
+            username="emp-c", password="x", rol=User.Rol.EMPLEADO, empresa=una_empresa()
         )
         propia = abierta()
         for nombre, visita, empleado in (
@@ -250,7 +253,7 @@ class CicloVisitaTests(SinArchivosMixin, TestCase):
                         **COORDENADAS,
                     )
                 self.assertIn("visita", contexto.exception.message_dict)
-        self.assertEqual(Revision.objects.count(), 0)
+        self.assertEqual(Revision.objects.de_empresa(una_empresa()).count(), 0)
 
     def test_mismo_punto_dos_veces_la_ultima_manda(self):
         visita, _ = abrir(empleado=self.empleado, sitio=self.sitio)
@@ -301,7 +304,11 @@ class CicloVisitaTests(SinArchivosMixin, TestCase):
     def test_qr_de_otro_sitio_se_rechaza(self):
         visita, _ = abrir(empleado=self.empleado, sitio=self.sitio)
         otro_sitio = crear_visita().sitio
-        ajeno = PuntoControl.objects.filter(sitio=otro_sitio).first()
+        ajeno = (
+            PuntoControl.objects.de_empresa(una_empresa())
+            .filter(sitio=otro_sitio)
+            .first()
+        )
         for nombre, codigo in (
             ("de otro sitio", ajeno.qr_codigo),
             ("inexistente", uuid4()),
@@ -314,8 +321,8 @@ class CicloVisitaTests(SinArchivosMixin, TestCase):
                     contexto.exception.message_dict["qr_codigo"],
                     ["El código QR no corresponde a este sitio."],
                 )
-        self.assertEqual(Revision.objects.count(), 0)
-        self.assertEqual(Foto.objects.count(), 0)
+        self.assertEqual(Revision.objects.de_empresa(una_empresa()).count(), 0)
+        self.assertEqual(Foto.objects.de_empresa(una_empresa()).count(), 0)
 
     def test_cliente_uuid_repetido_levanta_revision_duplicada(self):
         visita, _ = abrir(empleado=self.empleado, sitio=self.sitio)
@@ -324,7 +331,7 @@ class CicloVisitaTests(SinArchivosMixin, TestCase):
         with self.assertRaises(RevisionDuplicada) as contexto:
             self.revisar(visita, cliente_uuid=codigo)
         self.assertEqual(contexto.exception.revision.pk, primera.pk)
-        self.assertEqual(Revision.objects.count(), 1)
+        self.assertEqual(Revision.objects.de_empresa(una_empresa()).count(), 1)
         with self.assertRaises(ValidationError) as contexto:
             self.revisar(visita, cliente_uuid=None)
         self.assertIn("cliente_uuid", contexto.exception.message_dict)
@@ -346,7 +353,7 @@ class CicloVisitaTests(SinArchivosMixin, TestCase):
         with self.assertRaises(ValidationError) as contexto:
             self.revisar(visita, fotos=[jpeg_chico(), basura])
         self.assertIn("fotos", contexto.exception.message_dict)
-        self.assertEqual(Revision.objects.count(), 0)
+        self.assertEqual(Revision.objects.de_empresa(una_empresa()).count(), 0)
         self.assertEqual(set(Path(MEDIA_TEMPORAL).glob("visitas/fotos/*")), previos)
 
     def test_planilla_de_punto_se_valida_y_se_copia_el_esquema(self):
@@ -390,7 +397,10 @@ class CerrarVisitaTests(SinArchivosMixin, TestCase):
 
     def otro_empleado(self):
         return User.objects.create_user(
-            username="emp-otro", password="x", rol=User.Rol.EMPLEADO
+            username="emp-otro",
+            password="x",
+            rol=User.Rol.EMPLEADO,
+            empresa=una_empresa(),
         )
 
     def test_cerrar_no_toca_el_vencimiento_del_punto(self):
@@ -445,7 +455,10 @@ class CerrarVisitaTests(SinArchivosMixin, TestCase):
     def test_exige_quien_corresponde_al_tipo_de_cierre(self):
         visita = self.con_revision()
         admin = User.objects.create_user(
-            username="admin-svc", password="x", rol=User.Rol.ADMINISTRADOR
+            username="admin-svc",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         for quien, cierre in (
             (self.otro_empleado(), Visita.Cierre.EMPLEADO),
@@ -520,8 +533,8 @@ class CerrarVisitaTests(SinArchivosMixin, TestCase):
 
     def test_doble_cierre_con_lecturas_distintas(self):
         creada = self.con_revision()
-        primera = Visita.objects.get(pk=creada.pk)
-        segunda = Visita.objects.get(pk=creada.pk)
+        primera = Visita.objects.de_empresa(una_empresa()).get(pk=creada.pk)
+        segunda = Visita.objects.de_empresa(una_empresa()).get(pk=creada.pk)
         cerrada = cerrar_visita(
             primera, quien=primera.empleado, cierre=Visita.Cierre.EMPLEADO
         )
@@ -531,7 +544,9 @@ class CerrarVisitaTests(SinArchivosMixin, TestCase):
         )
         self.assertEqual(repetida.cerrada_en, cerrada.cerrada_en)
         # Si la había cerrado un administrador, el empleado no la cierra.
-        Visita.objects.filter(pk=creada.pk).update(cierre=Visita.Cierre.ADMINISTRADOR)
+        Visita.objects.de_empresa(una_empresa()).filter(pk=creada.pk).update(
+            cierre=Visita.Cierre.ADMINISTRADOR
+        )
         with self.assertRaises(VisitaYaCerrada):
             cerrar_visita(
                 segunda, quien=segunda.empleado, cierre=Visita.Cierre.EMPLEADO
@@ -555,7 +570,10 @@ class CerrarVisitaTests(SinArchivosMixin, TestCase):
     def test_falla_de_validacion_no_muta_la_instancia(self):
         visita = self.con_revision()
         admin = User.objects.create_user(
-            username="admin-svc2", password="x", rol=User.Rol.ADMINISTRADOR
+            username="admin-svc2",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         empleado_original = visita.empleado
         with self.assertRaises(ValidationError):
@@ -594,7 +612,10 @@ class AdministradorEnCampoTests(SinArchivosMixin, TestCase):
         self.general.save()
         self.empleado = self.pendiente.empleado
         self.admin = User.objects.create_user(
-            username="adm-campo", password="x", rol=User.Rol.ADMINISTRADOR
+            username="adm-campo",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
 
     def test_no_toma_pendiente_ni_toca_el_vencimiento(self):
@@ -637,7 +658,10 @@ class ManualPorPuntosTests(SinArchivosMixin, TestCase):
         self.empleado = self.pendiente.empleado
         self.sitio = self.pendiente.sitio
         self.admin = User.objects.create_user(
-            username="admin-man", password="x", rol=User.Rol.ADMINISTRADOR
+            username="admin-man",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         self.general = punto_de(self.pendiente)
         self.sala = PuntoControl.objects.create(
@@ -646,10 +670,12 @@ class ManualPorPuntosTests(SinArchivosMixin, TestCase):
         self.techo = PuntoControl.objects.create(
             sitio=self.sitio, nombre="Techo", orden=2
         )
-        self.producto = Producto.objects.create(nombre_comercial="Cebo")
+        self.producto = Producto.objects.create(
+            nombre_comercial="Cebo", empresa=una_empresa()
+        )
         self.fecha = timezone.now() - timedelta(hours=3)
         # Las cargas son anteriores a hoy: el sitio ya existía.
-        Sitio.objects.filter(pk=self.sitio.pk).update(
+        Sitio.objects.de_empresa(una_empresa()).filter(pk=self.sitio.pk).update(
             creado=timezone.now() - timedelta(days=60)
         )
         self.sitio.refresh_from_db()
@@ -677,7 +703,7 @@ class ManualPorPuntosTests(SinArchivosMixin, TestCase):
             ctx.exception.message_dict["realizada_en"],
             ["La fecha y hora de la visita no puede ser posterior a la hora actual."],
         )
-        self.assertEqual(Visita.objects.count(), 1)
+        self.assertEqual(Visita.objects.de_empresa(una_empresa()).count(), 1)
         # Dentro de la tolerancia de 10 minutos se acepta.
         self.cargar(realizada_en=timezone.now() + timedelta(minutes=5))
 
@@ -718,8 +744,8 @@ class ManualPorPuntosTests(SinArchivosMixin, TestCase):
         # Fotos y productos quedan en la revisión del primer punto.
         self.assertEqual(revisiones[0].fotos.count(), 1)
         self.assertEqual(revisiones[0].productos.count(), 1)
-        self.assertEqual(Foto.objects.count(), 1)
-        self.assertEqual(ProductoAplicado.objects.count(), 1)
+        self.assertEqual(Foto.objects.de_empresa(una_empresa()).count(), 1)
+        self.assertEqual(ProductoAplicado.objects.de_empresa(una_empresa()).count(), 1)
         self.assertTrue(all(r.servicio == self.tipo for r in revisiones))
 
     def test_exige_puntos_activos_del_sitio_y_motivo(self):
@@ -737,8 +763,8 @@ class ManualPorPuntosTests(SinArchivosMixin, TestCase):
                 with self.assertRaises(ValidationError) as contexto:
                     self.cargar(**extra)
                 self.assertIn(campo, contexto.exception.message_dict)
-        self.assertEqual(Revision.objects.count(), 0)
-        self.assertEqual(Foto.objects.count(), 0)
+        self.assertEqual(Revision.objects.de_empresa(una_empresa()).count(), 0)
+        self.assertEqual(Foto.objects.de_empresa(una_empresa()).count(), 0)
 
     def test_atraso_exige_confirmacion_y_queda_en_el_historial(self):
         vieja = timezone.now() - timedelta(hours=200)
@@ -755,8 +781,8 @@ class ManualPorPuntosTests(SinArchivosMixin, TestCase):
         with self.assertRaises(ValidationError) as contexto:
             self.cargar(fotos=[jpeg_chico(), basura])
         self.assertIn("fotos", contexto.exception.message_dict)
-        self.assertEqual(Revision.objects.count(), 0)
-        self.assertEqual(Visita.objects.count(), 1)
+        self.assertEqual(Revision.objects.de_empresa(una_empresa()).count(), 0)
+        self.assertEqual(Visita.objects.de_empresa(una_empresa()).count(), 1)
         self.assertEqual(set(Path(MEDIA_TEMPORAL).glob("visitas/fotos/*")), previos)
         self.pendiente.refresh_from_db()
         self.assertEqual(self.pendiente.estado, Visita.Estado.PENDIENTE)
@@ -773,7 +799,9 @@ class RegistrarRevisionTests(SinArchivosMixin, TestCase):
         self.tipo = pendiente.tipo
         self.punto = punto_de(pendiente)
         self.visita, _ = abrir(empleado=self.empleado, sitio=self.sitio)
-        self.producto = Producto.objects.create(nombre_comercial="Cebo")
+        self.producto = Producto.objects.create(
+            nombre_comercial="Cebo", empresa=una_empresa()
+        )
         self.archivos_previos = self.archivos_en_disco()
 
     def archivos_en_disco(self):
@@ -797,9 +825,9 @@ class RegistrarRevisionTests(SinArchivosMixin, TestCase):
         return registrar_revision(**argumentos)
 
     def assertNadaCreado(self):
-        self.assertEqual(Revision.objects.count(), 0)
-        self.assertEqual(Foto.objects.count(), 0)
-        self.assertEqual(ProductoAplicado.objects.count(), 0)
+        self.assertEqual(Revision.objects.de_empresa(una_empresa()).count(), 0)
+        self.assertEqual(Foto.objects.de_empresa(una_empresa()).count(), 0)
+        self.assertEqual(ProductoAplicado.objects.de_empresa(una_empresa()).count(), 0)
         self.assertEqual(self.archivos_en_disco(), self.archivos_previos)
 
     def item_valido(self, producto=None):
@@ -893,7 +921,7 @@ class RegistrarRevisionTests(SinArchivosMixin, TestCase):
         self.assertNadaCreado()
 
     def test_productos_se_buscan_en_una_consulta(self):
-        otro = Producto.objects.create(nombre_comercial="Gel")
+        otro = Producto.objects.create(nombre_comercial="Gel", empresa=una_empresa())
         items = [self.item_valido(p) for p in (self.producto, otro, self.producto)]
         with CaptureQueriesContext(connection) as consultas:
             self.registrar(productos_aplicados=items)
@@ -952,7 +980,10 @@ class BloqueosTests(SinArchivosMixin, TestCase):
             )
         self.assertEqual(al_cerrar, [Sitio, Visita])
         otro = User.objects.create_user(
-            username="emp-bloqueo", password="x", rol=User.Rol.EMPLEADO
+            username="emp-bloqueo",
+            password="x",
+            rol=User.Rol.EMPLEADO,
+            empresa=una_empresa(),
         )
         with espiar_bloqueos() as al_abrir:
             abrir(empleado=otro, sitio=self.sitio)
@@ -961,7 +992,10 @@ class BloqueosTests(SinArchivosMixin, TestCase):
     def test_manual_bloquea_sitio_antes_que_pendiente(self):
         pendiente = crear_visita(programada_para=date(2026, 9, 1))
         admin = User.objects.create_user(
-            username="adm-orden", password="x", rol=User.Rol.ADMINISTRADOR
+            username="adm-orden",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         with espiar_bloqueos() as modelos:
             registrar_visita_manual(
@@ -998,16 +1032,23 @@ class BloqueosTests(SinArchivosMixin, TestCase):
 
     def test_pendiente_usada_cuenta_como_servicio(self):
         pendiente = crear_visita(programada_para=date(2026, 9, 1))
-        Visita.objects.filter(pk=pendiente.pk).update(cuenta_como_servicio=False)
+        Visita.objects.de_empresa(una_empresa()).filter(pk=pendiente.pk).update(
+            cuenta_como_servicio=False
+        )
         visita, _ = abrir(empleado=pendiente.empleado, sitio=pendiente.sitio)
         self.assertEqual(visita.pk, pendiente.pk)
         visita.refresh_from_db()
         self.assertTrue(visita.cuenta_como_servicio)
 
         otra = crear_visita(programada_para=date(2026, 9, 2))
-        Visita.objects.filter(pk=otra.pk).update(cuenta_como_servicio=False)
+        Visita.objects.de_empresa(una_empresa()).filter(pk=otra.pk).update(
+            cuenta_como_servicio=False
+        )
         admin = User.objects.create_user(
-            username="adm-cs", password="x", rol=User.Rol.ADMINISTRADOR
+            username="adm-cs",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         manual = registrar_visita_manual(
             sitio=otra.sitio,
@@ -1027,7 +1068,10 @@ class BloqueosTests(SinArchivosMixin, TestCase):
 
     def test_revision_filtra_por_empleado_al_bloquear(self):
         ajeno = User.objects.create_user(
-            username="emp-ajeno", password="x", rol=User.Rol.EMPLEADO
+            username="emp-ajeno",
+            password="x",
+            rol=User.Rol.EMPLEADO,
+            empresa=una_empresa(),
         )
         with CaptureQueriesContext(connection) as consultas:
             with self.assertRaises(VisitaNoEncontrada):
@@ -1059,7 +1103,10 @@ class BloqueosTests(SinArchivosMixin, TestCase):
         punto.frecuencia_dias = 30
         punto.save()
         admin = User.objects.create_user(
-            username="adm-rol", password="x", rol=User.Rol.ADMINISTRADOR
+            username="adm-rol",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         de_admin, _ = abrir(empleado=admin, sitio=self.sitio)
         de_empleado, _ = abrir(empleado=self.empleado, sitio=self.sitio)
@@ -1092,7 +1139,10 @@ class PrecisionTests(SinArchivosMixin, TestCase):
         visita.refresh_from_db()
         self.assertEqual(visita.precision_m, Decimal("8.50"))
         otro = User.objects.create_user(
-            username="emp-prec", password="x", rol=User.Rol.EMPLEADO
+            username="emp-prec",
+            password="x",
+            rol=User.Rol.EMPLEADO,
+            empresa=una_empresa(),
         )
         nueva, _ = abrir(empleado=otro, sitio=sitio)
         nueva.refresh_from_db()
@@ -1112,7 +1162,7 @@ class EsquemaTests(TestCase):
             clave="cebos",
             tipo=CampoPlanilla.Tipo.NUMERO,
         )
-        servicio = _servicio_con_campos(visita.tipo.pk)
+        servicio = _servicio_con_campos(visita.tipo.pk, visita.empresa_id)
         with self.assertNumQueries(0):
             esquema = servicio.esquema_planilla("punto")
             servicio.esquema_planilla("visita")

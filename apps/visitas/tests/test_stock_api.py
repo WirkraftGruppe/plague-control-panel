@@ -5,6 +5,7 @@ from decimal import Decimal
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 
+from apps.empresas.tests.ayudas import una_empresa
 from apps.productos.models import MovimientoStock, Producto
 from apps.productos.services import registrar_ingreso, stock
 from apps.visitas.models import ProductoAplicado, Revision
@@ -19,6 +20,7 @@ class StockRevisionApiTests(ApiVisitasBase):
             nombre_comercial="Concentrado en galones",
             unidad_base="gal",
             modo_unidad="equivalentes",
+            empresa=una_empresa(),
         )
         registrar_ingreso(self.galones, Decimal("10"), False, self.empleado)
 
@@ -38,12 +40,14 @@ class StockRevisionApiTests(ApiVisitasBase):
         return self._post(self.visita, productos_aplicados=json.dumps(items), **cambios)
 
     def _consumos(self):
-        return MovimientoStock.objects.filter(tipo=MovimientoStock.Tipo.CONSUMO)
+        return MovimientoStock.objects.de_empresa(una_empresa()).filter(
+            tipo=MovimientoStock.Tipo.CONSUMO
+        )
 
     def test_dos_litros_en_producto_en_galones_guarda_0_5283_y_descuenta(self):
         r = self._enviar([self._item()])
         self.assertEqual(r.status_code, 201, r.content)
-        aplicado = ProductoAplicado.objects.get()
+        aplicado = ProductoAplicado.objects.de_empresa(una_empresa()).get()
         self.assertEqual(aplicado.cantidad_base, Decimal("0.5283"))
         self.assertEqual((aplicado.cantidad, aplicado.unidad), (Decimal("2"), "l"))
         self.assertEqual(aplicado.unidad_dosis, "ml/l")
@@ -58,12 +62,15 @@ class StockRevisionApiTests(ApiVisitasBase):
         r = self._enviar([self._item(producto, unidad=unidad)])
         self.assertEqual(r.status_code, 400, r.content)
         self.assertIn("productos_aplicados.0.unidad", r.data["campos"])
-        self.assertFalse(Revision.objects.exists())
+        self.assertFalse(Revision.objects.de_empresa(una_empresa()).exists())
         self.assertFalse(self._consumos().exists())
 
     def test_modo_unica_con_otra_unidad_da_400_en_el_producto(self):
         unica = Producto.objects.create(
-            nombre_comercial="Solo litros", unidad_base="l", modo_unidad="unica"
+            nombre_comercial="Solo litros",
+            unidad_base="l",
+            modo_unidad="unica",
+            empresa=una_empresa(),
         )
         self._comprobar_400_en_unidad(unica, "ml")
 
@@ -74,7 +81,7 @@ class StockRevisionApiTests(ApiVisitasBase):
         falsa = SimpleUploadedFile("x.jpg", b"no es imagen", "image/jpeg")
         r = self._enviar([self._item()], fotos=[falsa])
         self.assertEqual(r.status_code, 400, r.content)
-        self.assertFalse(ProductoAplicado.objects.exists())
+        self.assertFalse(ProductoAplicado.objects.de_empresa(una_empresa()).exists())
         self.assertFalse(self._consumos().exists())
         self.assertEqual(stock(self.galones), Decimal("10"))
 
@@ -85,4 +92,4 @@ class StockRevisionApiTests(ApiVisitasBase):
         self.assertEqual(r.status_code, 400, r.content)
         self.assertIn("productos_aplicados.0.cantidad", r.data["campos"])
         self.assertIn("productos_aplicados.1.cantidad", r.data["campos"])
-        self.assertFalse(Revision.objects.exists())
+        self.assertFalse(Revision.objects.de_empresa(una_empresa()).exists())

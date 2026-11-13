@@ -6,7 +6,6 @@ from decimal import Decimal
 from io import StringIO
 from unittest import mock
 
-from django.conf import settings
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.db import OperationalError
@@ -14,9 +13,11 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from apps.accounts.models import User
+from apps.empresas.tests.ayudas import una_empresa
 from apps.sitios import services as servicios_sitio
 from apps.visitas.models import Revision, Visita
 from apps.visitas.services import cerrar_visita
+from apps.visitas.tests.ayudas_empresa import dos_empresas
 from apps.visitas.tests.test_models import crear_revision, crear_visita, punto_de
 
 
@@ -63,7 +64,10 @@ class CerrarAbiertasTests(TestCase):
 
     def test_sin_revisiones_vuelve_a_pendiente_o_se_cancela(self):
         asignador = User.objects.create_user(
-            username="adm-cmd", password="x", rol=User.Rol.ADMINISTRADOR
+            username="adm-cmd",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         asignada = abierta_hace(20, asignada_por=asignador)
         propia = abierta_hace(20)
@@ -103,12 +107,19 @@ class CerrarAbiertasTests(TestCase):
         self.assertIn("1", salida)
 
 
-@override_settings(DEBUG=True, MEDIA_ROOT=tempfile.mkdtemp(prefix="revision-demo-"))
+MEDIA_REVISION_DEMO = tempfile.mkdtemp(prefix="revision-demo-")
+
+
+@override_settings(DEBUG=True, MEDIA_ROOT=MEDIA_REVISION_DEMO)
 class RevisionDemoTests(TestCase):
+    # La ruta queda guardada en la clase: se borra el directorio temporal, nunca
+    # settings.MEDIA_ROOT, que después de deshacer el override es el media/ real.
+    media_temporal = MEDIA_REVISION_DEMO
+
     @classmethod
     def tearDownClass(cls):
+        shutil.rmtree(cls.media_temporal, ignore_errors=True)
         super().tearDownClass()
-        shutil.rmtree(settings.MEDIA_ROOT, ignore_errors=True)
 
     def preparar(self):
         visita = crear_visita(origen=Visita.Origen.APP, estado=Visita.Estado.CANCELADA)
@@ -124,7 +135,7 @@ class RevisionDemoTests(TestCase):
     def test_crea_revision_con_foto_y_guardas(self):
         punto, empleado = self.preparar()
         self.ejecutar("General")
-        revision = Revision.objects.get()
+        revision = Revision.objects.de_empresa(una_empresa()).get()
         self.assertEqual(revision.punto, punto)
         self.assertEqual(revision.visita.empleado, empleado)
         self.assertEqual(revision.visita.estado, Visita.Estado.ABIERTA)
@@ -133,8 +144,13 @@ class RevisionDemoTests(TestCase):
 
         # Segunda corrida: reutiliza la visita abierta.
         self.ejecutar("General")
-        self.assertEqual(Visita.objects.filter(estado=Visita.Estado.ABIERTA).count(), 1)
-        self.assertEqual(Revision.objects.count(), 2)
+        self.assertEqual(
+            Visita.objects.de_empresa(una_empresa())
+            .filter(estado=Visita.Estado.ABIERTA)
+            .count(),
+            1,
+        )
+        self.assertEqual(Revision.objects.de_empresa(una_empresa()).count(), 2)
 
         # Guardas: sin DEBUG o fuera de development no toca nada.
         with override_settings(DEBUG=False):
@@ -143,15 +159,32 @@ class RevisionDemoTests(TestCase):
         with mock.patch.dict(os.environ, {"DJANGO_ENV": "production"}):
             with self.assertRaisesMessage(CommandError, "DJANGO_ENV=development"):
                 self.ejecutar("General")
-        self.assertEqual(Revision.objects.count(), 2)
+        self.assertEqual(Revision.objects.de_empresa(una_empresa()).count(), 2)
 
     def test_lejos_marca_incidencia_de_ubicacion(self):
         self.preparar()
         self.ejecutar("General", "--lejos")
-        revision = Revision.objects.get()
+        revision = Revision.objects.de_empresa(una_empresa()).get()
         self.assertTrue(revision.incidencia_ubicacion)
         self.assertGreater(revision.distancia_m, 500)
 
     def test_punto_inexistente(self):
         with self.assertRaises(CommandError):
             self.ejecutar("No existe")
+
+    def test_con_dos_empresas_exige_y_respeta_la_empresa(self):
+        punto, empleado = self.preparar()
+        # Otra empresa con un punto y un empleado del mismo nombre.
+        _, lado_b = dos_empresas()
+        punto_b = lado_b.sitio.puntos.get(orden=0)
+        punto_b.nombre = "General"
+        punto_b.save()
+        servicios_sitio.fijar_ubicacion(punto_b, Decimal("-36.2"), Decimal("-57.9"))
+
+        with self.assertRaisesMessage(CommandError, "--empresa"):
+            self.ejecutar("General")
+        self.ejecutar("General", "--empresa", lado_b.empresa.nombre)
+        revision = Revision.objects.de_empresa(lado_b.empresa).get()
+        self.assertEqual(revision.punto, punto_b)
+        self.assertEqual(revision.visita.empleado, lado_b.empleado)
+        self.assertFalse(Revision.objects.de_empresa(una_empresa()).exists())

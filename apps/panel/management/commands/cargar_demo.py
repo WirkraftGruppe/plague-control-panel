@@ -4,13 +4,13 @@ import logging
 from datetime import timedelta
 from decimal import Decimal
 
-from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.clientes.models import Cliente
+from apps.empresas.models import Empresa
 from apps.panel.demo import exigir_entorno_demo, limpiar_datos_demo
 from apps.panel.demo_datos import (
     CADENCIA_HISTORIA_DIAS,
@@ -20,6 +20,8 @@ from apps.panel.demo_datos import (
     CLIENTES,
     DESFASES,
     DIAS_DE_HISTORIA,
+    EMPRESA_DEMO,
+    EMPRESA_DEMO_B,
     FRECUENCIAS,
     INCIDENCIAS_UBICACION,
     MARCA_DEMO,
@@ -42,6 +44,12 @@ from apps.sitios.models import Plano, PuntoControl, Sitio
 
 logger = logging.getLogger(__name__)
 
+# Cada empresa demo con sus usuarios: (empresa, administrador, empleado).
+EMPRESAS_DEMO = (
+    (EMPRESA_DEMO, "demo-admin", "demo-empleado"),
+    (EMPRESA_DEMO_B, "demo-admin-b", "demo-empleado-b"),
+)
+
 # Los sitios se corren unos cientos de metros dentro de su localidad.
 PASO_SITIO = Decimal("0.004")
 PASO_PUNTO = Decimal("0.0003")
@@ -52,12 +60,14 @@ class Command(BaseCommand):
         "Carga datos de demostración (4 clientes, 6 sitios con sus puntos, un plano, "
         "servicios y vencimientos por punto, turnos pendientes, abiertos y realizados "
         "con unos 90 días de revisiones, fotos y productos). "
+        "Lo hace en dos empresas, con datos propios cada una. "
         "Borra y recrea solo los datos marcados como demo (notas que empiezan con "
         "'[demo]', productos con sufijo ' (demo)' y el formato viejo 'Cliente Demo "
         "N'); no toca nada sin marca. Regenera los QR de los puntos demo. Solo corre "
         "con DEBUG, DJANGO_ENV=development y SQLite (sin DATABASE_URL). Crea "
-        "demo-admin (administrador) y demo-empleado (empleado) con la contraseña "
-        f"{CLAVE_DEMO}: existen solo en desarrollo."
+        "demo-admin y demo-empleado (primera empresa), demo-admin-b y "
+        "demo-empleado-b (segunda) y demo-plataforma (plataforma, superusuario, sin "
+        f"empresa) con la contraseña {CLAVE_DEMO}: existen solo en desarrollo."
     )
 
     def handle(self, *args, **opciones):
@@ -66,12 +76,18 @@ class Command(BaseCommand):
         self._archivos = []
         try:
             with transaction.atomic():
-                administrador, empleado = self._usuarios()
-                borrados = limpiar_datos_demo()
-                if not TipoServicio.objects.exists():
-                    call_command("loaddata", "tipos_servicio", verbosity=0)
-                sitios = self._crear_sitios()
-                self._crear_historia(sitios, administrador, empleado)
+                borrados = 0
+                for nombre, admin, empleado in EMPRESAS_DEMO:
+                    self.empresa = self._empresa(nombre)
+                    administrador, empleado = self._usuarios(admin, empleado)
+                    borrados += limpiar_datos_demo(self.empresa)
+                    sitios = self._crear_sitios()
+                    self._crear_historia(sitios, administrador, empleado)
+                self._crear_usuario(
+                    "demo-plataforma",
+                    User.Rol.PLATAFORMA,
+                    {"is_staff": True, "is_superuser": True},
+                )
         except Exception:
             self._borrar_archivos()
             raise
@@ -85,36 +101,52 @@ class Command(BaseCommand):
             except Exception:  # noqa: BLE001
                 logger.exception("No se pudo borrar un archivo de la demo.")
 
-    def _usuarios(self):
-        """Crea los usuarios demo y devuelve (administrador, empleado).
+    def _empresa(self, nombre):
+        """La empresa demo más antigua con ese nombre, o una nueva si no hay."""
+        existente = Empresa.objects.filter(nombre=nombre).order_by("pk").first()
+        return existente or Empresa.objects.create(nombre=nombre)
+
+    def _crear_usuario(self, nombre, rol, extra):
+        """Crea el usuario demo, o devuelve el que ya existía.
 
         Uno que ya existía con otro rol u otra contraseña no se modifica: se avisa
-        por stderr y la contraseña solo se informa de los recién creados.
+        por stderr y la contraseña solo se informa de los recién creados. Uno del
+        rol correcto sin empresa (demo anterior a la multiempresa) pasa a la empresa
+        demo; uno de otra empresa se deja como está.
         """
-        usuarios = []
-        for nombre, rol in (
-            ("demo-admin", User.Rol.ADMINISTRADOR),
-            ("demo-empleado", User.Rol.EMPLEADO),
-        ):
-            usuario, creado = User.objects.get_or_create(
-                username=nombre, defaults={"rol": rol}
+        usuario, creado = User.objects.get_or_create(
+            username=nombre, defaults={"rol": rol, **extra}
+        )
+        if creado:
+            usuario.set_password(CLAVE_DEMO)
+            usuario.save()
+            self.stdout.write(f"Usuario creado: {nombre}, contraseña {CLAVE_DEMO}.")
+        elif usuario.rol != rol or not usuario.check_password(CLAVE_DEMO):
+            self.stderr.write(
+                f"El usuario {nombre} ya existía con otro rol u otra "
+                "contraseña: no se modificó."
             )
-            if creado:
-                usuario.set_password(CLAVE_DEMO)
+        if not creado and usuario.rol == rol and usuario.empresa_id is None:
+            if "empresa" in extra:
+                usuario.empresa = extra["empresa"]
                 usuario.save()
-                self.stdout.write(f"Usuario creado: {nombre}, contraseña {CLAVE_DEMO}.")
-            elif usuario.rol != rol or not usuario.check_password(CLAVE_DEMO):
-                self.stderr.write(
-                    f"El usuario {nombre} ya existía con otro rol u otra "
-                    "contraseña: no se modificó."
-                )
-            usuarios.append(usuario)
-        return tuple(usuarios)
+                self.stdout.write(f"Usuario {nombre} asignado a {usuario.empresa}.")
+        return usuario
+
+    def _usuarios(self, admin, empleado):
+        """Crea los usuarios de la empresa en curso: (administrador, empleado)."""
+        extra = {"empresa": self.empresa}
+        return (
+            self._crear_usuario(admin, User.Rol.ADMINISTRADOR, extra),
+            self._crear_usuario(empleado, User.Rol.EMPLEADO, extra),
+        )
 
     def _crear_sitios(self):
         """Clientes de la Carta, sus sitios y puntos; el primer sitio lleva plano."""
         clientes = {
-            razon: Cliente.objects.create(razon_social=razon, notas=MARCA_DEMO)
+            razon: Cliente.objects.create(
+                empresa=self.empresa, razon_social=razon, notas=MARCA_DEMO
+            )
             for razon in CLIENTES
         }
         sitios = []
@@ -171,6 +203,7 @@ class Command(BaseCommand):
             nombre, principio, presentacion, unidad_dosis, registro = datos[:5]
             base, contenido, modo, envases = datos[5:]
             producto = Producto.objects.create(
+                empresa=self.empresa,
                 nombre_comercial=f"{nombre}{SUFIJO_PRODUCTO}",
                 principio_activo=principio,
                 presentacion=presentacion,
@@ -185,11 +218,11 @@ class Command(BaseCommand):
         return productos
 
     def _tipos(self):
-        """Tipos de servicio reales por slug; los que faltan se crean sin pisar."""
+        """Tipos de servicio de la demo por slug; los que faltan se crean sin pisar."""
         return [
-            TipoServicio.objects.get_or_create(slug=slug, defaults={"nombre": nombre})[
-                0
-            ]
+            TipoServicio.objects.de_empresa(self.empresa).get_or_create(
+                empresa=self.empresa, slug=slug, defaults={"nombre": nombre}
+            )[0]
             for slug, nombre in TIPOS.items()
         ]
 
@@ -206,7 +239,7 @@ class Command(BaseCommand):
             servicio = tipos[1 if segundo else 0]
             dias = VENCIMIENTOS[(numero + indice) % len(VENCIMIENTOS)]
             programado = dias is not None
-            PuntoControl.objects.filter(pk=punto.pk).update(
+            PuntoControl.objects.de_empresa(self.empresa).filter(pk=punto.pk).update(
                 servicio=servicio,
                 frecuencia_dias=FRECUENCIAS[indice % 3] if programado else None,
                 proximo_vencimiento=hoy + timedelta(days=dias) if programado else None,
@@ -237,5 +270,9 @@ class Command(BaseCommand):
                 generador.pendiente(sitio, items, hoy + timedelta(days=3))
             if numero == SITIO_CON_ABIERTO:
                 generador.abierto(sitio, items, hoy)
-        Cliente.objects.filter(notas=MARCA_DEMO).update(creado=antiguo)
-        Sitio.objects.filter(notas=MARCA_DEMO).update(creado=antiguo)
+        Cliente.objects.de_empresa(self.empresa).filter(notas=MARCA_DEMO).update(
+            creado=antiguo
+        )
+        Sitio.objects.de_empresa(self.empresa).filter(notas=MARCA_DEMO).update(
+            creado=antiguo
+        )

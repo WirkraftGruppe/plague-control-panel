@@ -3,6 +3,7 @@ import datetime
 from django.test import TestCase
 
 from apps.clientes.models import Cliente
+from apps.empresas.tests.ayudas import una_empresa
 from apps.sitios.estado import (
     EstadoVencimiento,
     estado_por_vencimiento,
@@ -20,7 +21,9 @@ def _en(dias):
 
 class EstadoVencimientoTests(TestCase):
     def setUp(self):
-        self.cliente = Cliente.objects.create(razon_social="ACME")
+        self.cliente = Cliente.objects.create(
+            razon_social="ACME", empresa=una_empresa()
+        )
 
     def _sitio(self, nombre, *vencimientos):
         """Sitio cuyo punto General queda sin programar y suma un punto por fecha."""
@@ -58,20 +61,23 @@ class EstadoVencimientoTests(TestCase):
         inactivo = PuntoControl.objects.create(
             sitio=sitio, nombre="Baja", orden=9, proximo_vencimiento=_en(-100)
         )
-        PuntoControl.objects.filter(pk=inactivo.pk).update(activo=False)
-        resumen = resumen_de_sitios([sitio], HOY)[sitio.pk]
+        PuntoControl.objects.de_empresa(una_empresa()).filter(pk=inactivo.pk).update(
+            activo=False
+        )
+        resumen = resumen_de_sitios([sitio], HOY, una_empresa())[sitio.pk]
         self.assertEqual(resumen.estado, EstadoVencimiento.VENCIDA)
         self.assertEqual(resumen.vencimiento, _en(-2))
         # Sin programar (General) pesa más que al día, pero menos que próxima.
         otro = self._sitio("Otro", _en(30))
         self.assertEqual(
-            resumen_de_sitios([otro], HOY)[otro.pk].estado,
+            resumen_de_sitios([otro], HOY, una_empresa())[otro.pk].estado,
             EstadoVencimiento.SIN_PROGRAMAR,
         )
 
     def test_consultas_fijas_con_uno_o_cinco_sitios(self):
         sitios = [self._sitio(f"S{i}", _en(i), None) for i in range(5)]
+        empresa = una_empresa()
         with self.assertNumQueries(1):
-            resumen_de_sitios(sitios[:1], HOY)
+            resumen_de_sitios(sitios[:1], HOY, empresa)
         with self.assertNumQueries(1):
-            resumen_de_sitios(sitios, HOY)
+            resumen_de_sitios(sitios, HOY, empresa)

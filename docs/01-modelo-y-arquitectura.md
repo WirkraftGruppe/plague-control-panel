@@ -1,10 +1,10 @@
 # Detach — Modelo de datos y arquitectura
 
-Versión 0.4 · 20/10/2026 · sin agrupador de trabajos: servicio, frecuencia y vencimiento por punto, turnos con ítems (`docs/planes/2026-10-20-flujo-sitio.md`) · Base para `CLAUDE.md` y las migraciones iniciales.
+Versión 0.5 · 11/11/2026 · multiempresa: `Empresa`, rol `plataforma` y guardia de consultas (`docs/planes/2026-10-26-multiempresa.md`) · Base para `CLAUDE.md` y las migraciones iniciales.
 
 ## 1. Alcance
 
-Una sola aplicación Django con dos superficies sobre una misma base de datos. El sitio público de cada empresa vive en otro repositorio y no forma parte de esta aplicación; `/` solo redirige al login del panel.
+Una sola aplicación Django con dos superficies sobre una misma base de datos, compartida por varias empresas de control de plagas: cada dato pertenece a una `Empresa` (3.0) y ninguna empresa ve los de otra. El sitio público de cada empresa vive en otro repositorio y no forma parte de esta aplicación; `/` solo redirige al login del panel.
 
 | Superficie | Quién la usa | Tecnología |
 |---|---|---|
@@ -15,16 +15,20 @@ Una sola aplicación Django con dos superficies sobre una misma base de datos. E
 
 ## 2. Roles
 
-Dos roles, sobre `AUTH_USER_MODEL` propio (`accounts.User`) con campo `rol`:
+Tres roles, sobre `AUTH_USER_MODEL` propio (`accounts.User`) con campo `rol`. Un usuario pertenece a una sola empresa (salvo `plataforma`) y los nombres de usuario son únicos en toda la base:
 
-- **Administrador** — accede al panel. Crea clientes y sitios (con su responsable y la programación de cada punto); arma turnos para los empleados; carga visitas manuales; genera QR, informes y certificados; crea cuentas (no hay autorregistro).
+- **Plataforma** — el operador de Detach. No pertenece a ninguna empresa (`empresa` nula) y es superusuario. Es el único rol con acceso a `/admin/` y a sus acciones de supresión de datos (Ley 25.326) y regeneración de QR; no entra al panel. Obtiene un token de la API, pero con él solo alcanza `GET /api/v1/`, el esquema, `/api/v1/docs/` y la renovación del token; todo lo demás le da 403. Da de alta las empresas.
+- **Administrador** — accede al panel de su empresa. Crea clientes y sitios (con su responsable y la programación de cada punto); arma turnos para los empleados; carga visitas manuales; genera QR, informes y certificados; crea las cuentas de su empresa (no hay autorregistro); edita el nombre, el logo y el correo de su empresa.
 - **Empleado** — accede solo a la API desde la app. Ve sus visitas asignadas, escanea QR, completa la planilla, consulta su historial y lo descarga.
 
-El superusuario de Django es un administrador con acceso al `/admin/` técnico; el panel de gestión es una interfaz propia, no el admin.
+La regla rol ⇔ empresa la hace cumplir un `CheckConstraint` en `User`: `plataforma` sin empresa; administrador y empleado, con empresa. El `/admin/` técnico exige `plataforma` y superusuario; el panel de gestión es una interfaz propia, no el admin. Un usuario de una empresa inactiva no inicia sesión en el panel ni obtiene tokens, y sus tokens vigentes dan 401.
 
 ## 3. Entidades
 
+Todo modelo de dominio (3.1 a 3.10) lleva `empresa` (FK a `Empresa`, no nula, `PROTECT`) y hereda de `ModeloDeEmpresa`. Las raíces (`Cliente`, `TipoServicio`, `Producto`) reciben la empresa en el alta; los hijos la copian de su padre y un hijo con otra empresa que su padre se rechaza. `User` lleva la suya (3.11).
+
 ```
+Empresa 1──n (todo lo que sigue)
 Cliente 1──n Sitio 1──n PuntoControl (qr_codigo, servicio, frecuencia_dias, proximo_vencimiento)
               │  │            │
               │  └──n Plano 1──n PuntoControl (x, y)
@@ -37,6 +41,11 @@ Cliente 1──n Sitio 1──n PuntoControl (qr_codigo, servicio, frecuencia_di
                             └── n Foto, n ProductoAplicado
 PuntoControl n──1 TipoServicio 1──n CampoPlanilla (ámbito punto | visita)
 ```
+
+### 3.0 `empresas.Empresa`
+`nombre`, `logo` (opcional: JPEG o PNG de hasta 2 MB y 16 MP, guardado como PNG con 1000 px de lado mayor como máximo y un nombre aleatorio), `correo_contacto` (opcional), `activo`, `creado`, `modificado`. Es el nombre, el logo y el correo que ven los usuarios de esa empresa; ningún dato de empresa se escribe en plantillas ni en el código. Una empresa nueva arranca con el catálogo (servicios y productos) vacío. Con `activo = false` sus usuarios pierden el acceso al panel y a la API. El operador (`plataforma`) las da de alta en `/admin/`; el administrador de cada una edita su nombre, logo y correo en `/panel/empresa/`.
+
+**La empresa de un registro es inmutable después del alta.** El modelo lanza `ValueError` si se intenta cambiarla, `clean()` da error de validación y el admin la muestra de solo lectura al editar: un registro cargado en la empresa equivocada se da de baja y se carga de nuevo. Esa regla vive en `save()` y `clean()`: `QuerySet.update()`, `bulk_update()` y `bulk_create()` la saltean, y también la coherencia con el padre. No se usan para cambiar `empresa`, el padre ni ninguna FK de `referencias_de_empresa`, ni para crear hijos, fuera de `services.py` revisados.
 
 ### 3.1 `clientes.Cliente`
 `razon_social`, `cuit` (opcional), `contacto_nombre`, `contacto_telefono`, `contacto_email`, `notas`, `activo`, `creado`, `actualizado`.
@@ -64,7 +73,7 @@ Regla: el QR identifica un punto; abre el turno del empleado en el sitio de ese 
 `sitio` (FK), `nombre`, `imagen`, `ancho_px`, `alto_px` (calculados), `orden`, `activo`. Se sube JPG, PNG o PDF (máx. 20 MB y 40 millones de píxeles) y se guarda siempre como PNG, sin metadatos, con el lado mayor de 4000 px como máximo y un nombre aleatorio. Del PDF se usa la primera página; se rasteriza en un subproceso (`rasterizar_pdf.py`) con tiempo máximo de 15 s (`TIEMPO_MAXIMO_PDF`): si se pasa, se rechaza pidiendo exportarlo como PNG o JPG. Un PDF cifrado, corrupto o sin páginas también se rechaza. Al borrar el plano se borra el archivo y sus puntos quedan sin ubicar (`plano = null`).
 
 ### 3.3 `servicios.TipoServicio` — catálogo
-`nombre`, `slug`, `activo`. Sirve al panel (planillas) y a la API. Carga inicial: los 12 servicios de la Carta de Servicios más mantenimiento edilicio. El administrador da de alta y edita servicios desde el panel: el `slug` se genera a partir del nombre al crear y no se puede editar. Un servicio no se borra: se desactiva (`activo = false`) y deja de ofrecerse para puntos y turnos nuevos, sin tocar los existentes.
+`nombre`, `slug`, `activo`. Sirve al panel (planillas) y a la API. Cada empresa crea sus servicios: arranca con el catálogo vacío y no hay carga inicial. El administrador da de alta y edita servicios desde el panel: el `slug` se genera a partir del nombre al crear, no se puede editar y es único por empresa (`UniqueConstraint(empresa, slug)`). Un servicio no se borra: se desactiva (`activo = false`) y deja de ofrecerse para puntos y turnos nuevos, sin tocar los existentes.
 
 ### 3.4 `servicios.CampoPlanilla` — la planilla de cada revisión y de la visita
 Cada tipo de servicio define sus campos; la app los renderiza dinámicamente y el panel los muestra en el historial. La planilla de `punto` se completa tras escanear cada QR, con los campos del servicio de esa revisión; la de `visita`, al cerrar, una por cada servicio presente en el turno. `TipoServicio.esquema_planilla(ambito)` devuelve los campos activos de un ámbito, y `Revision` y `Visita` guardan una copia del esquema usado (`esquema_planilla`).
@@ -102,7 +111,7 @@ Coherencia: una `realizada` lleva `cerrada_en`; una `cancelada` no; una `abierta
 - `visita` (FK), `punto` (FK a `PuntoControl`), `orden`
 - `servicio` (FK a `TipoServicio`, obligatorio) y `fuera_de_turno` (booleano): el servicio lo decide el servidor, nunca el cliente. Es el del `ItemTurno` de la visita para ese punto; si la visita no tiene ítem para él, es el `servicio` del punto y la revisión queda `fuera_de_turno = true`. Si el punto tampoco tiene servicio, la revisión se rechaza con 400 ("El punto no tiene servicio asignado.", bajo `qr_codigo`)
 - `realizada_en` (hora del teléfono) y `recibida_en` (hora del servidor)
-- `cliente_uuid` (UUID único, opcional): lo genera la app para reintentar sin duplicar; un reintento recibe 409
+- `cliente_uuid` (UUID, opcional, único por empresa: `UniqueConstraint(empresa, cliente_uuid)`): lo genera la app para reintentar sin duplicar; un reintento recibe 409. El mismo UUID en otra empresa no choca ni revela nada
 - `latitud`, `longitud`, `precision_m` — ubicación del teléfono al escanear
 - `datos` (JSON, planilla de ámbito `punto` del servicio de la revisión) y `esquema_planilla`
 - `observaciones`, `incidencia` (booleano) + `incidencia_detalle`
@@ -126,12 +135,12 @@ Reglas: la visita debe estar abierta y ser del empleado; el QR debe ser de un pu
 Reemplaza el certificado que hoy se hace a mano. Se crea desde la ficha del sitio o del cliente eligiendo un rango de fechas; toma:
 - del cliente: `razon_social`, `cuit`, domicilio del sitio
 - de las visitas del rango: fechas, tipo de servicio, productos aplicados con registro ANMAT/SENASA, lote y dosis, empleado que aplicó
-- de la empresa: el nombre sale de `NOMBRE_EMPRESA`; los datos legales, las habilitaciones y el director técnico no tienen modelo todavía y se definen cuando la empresa entregue su certificado actual
+- de la empresa: el nombre sale de `Empresa.nombre`; los datos legales, las habilitaciones y el director técnico no tienen modelo todavía y se definen cuando la empresa entregue su certificado actual
 
 Campos: `sitio` (FK) o `cliente` (FK), `desde`, `hasta`, `numero` (correlativo anual, ej. `2026-0041`), `generado_por`, `generado_el`, `pdf` (archivo), `visitas` (M2M con las incluidas). Una vez emitido no se edita; si hay que corregir, se emite uno nuevo que referencia al anterior. El diseño del PDF se ajusta cuando la empresa envíe un ejemplo del certificado actual; la estructura de datos no cambia.
 
 ### 3.11 `accounts.User`
-Extiende `AbstractUser`: `rol` (administrador/empleado), `telefono`, `activo`. Los empleados no tienen `is_staff`.
+Extiende `AbstractUser`: `rol` (plataforma/administrador/empleado), `empresa` (FK a `Empresa`; nula solo en `plataforma`), `telefono`, `activo`. Solo `plataforma` es `is_staff` e `is_superuser` (`createsuperuser` crea `plataforma`). `User` queda fuera de la guardia de consultas (ver 6): simplejwt lo carga antes de conocer la empresa, y las vistas filtran por empresa a mano.
 
 ## 4. Flujos
 
@@ -144,7 +153,17 @@ Extiende `AbstractUser`: `rol` (administrador/empleado), `telefono`, `activo`. L
 6. Planos: `GET /api/v1/planos/{id}/imagen/` sirve el PNG del plano. Exige una visita propia abierta o pendiente en ese sitio, con el sitio y el cliente activos; si no, 404 (el mismo que un plano inexistente o inactivo). Los administradores acceden siempre. La respuesta no se cachea (`private, no-store`).
 7. `GET /api/v1/me/historial/` para consultar su propio historial de visitas realizadas (`GET /api/v1/me/historial.pdf` para descargarlo está previsto en `informes` y aún no existe); `GET /api/v1/fotos/{codigo}/` descarga una foto propia.
 
-### 4.2 Administrador (panel)
+### 4.2 Administrador (panel) y alta de empresas
+
+**Alta de la primera empresa y de sus usuarios** (sin autorregistro, nada en la base la crea sola):
+1. `manage.py createsuperuser` crea el usuario `plataforma` (sin empresa).
+2. Con ese usuario, en `/admin/` se da de alta la `Empresa` (nombre; logo y correo, opcionales).
+3. El primer administrador de la empresa se crea con `manage.py crear_usuario <usuario> --rol administrador --empresa <id>` o desde `/admin/`.
+4. Desde ahí, ese administrador carga en `/panel/` sus empleados y administradores; el operador también puede crearlos desde `/admin/`.
+5. Cada empresa carga después sus servicios y productos: arranca con el catálogo vacío.
+
+El panel descrito abajo es el de una empresa: todo lo que lista, cuenta o pinta en el mapa es de la empresa del administrador. Un identificador de otra empresa da 404, igual que uno inexistente.
+
 - **Inicio** (`/panel/`): redirige al listado de sitios. No hay tablero.
 - **Menú**: Sitios, Mapa, Turnos (con el contador de incidencias sin revisar), Clientes, Catálogo (Servicios y Productos) y Usuarios.
 - **Mapa** (`/panel/mapa/`): todos los sitios activos con coordenadas, color por el peor estado de sus puntos activos (3.2.1) y su vencimiento más cercano; el popup enlaza a la ficha y a "nuevo turno". Calcula el estado de todos los sitios con un número fijo de consultas.
@@ -153,7 +172,8 @@ Extiende `AbstractUser`: `rol` (administrador/empleado), `telefono`, `activo`. L
 - **Turnos** (`/panel/visitas/`): listado filtrable por empleado, sitio, estado e incidencia; la ficha de cada turno muestra sus ítems, revisiones, fotos y planillas por servicio.
 - **Sitios**: alta con geocodificación asistida (mapa clicable para fijar el punto). La ficha lista los turnos pendientes y realizados del sitio, con el botón "Nuevo turno", y tiene pestañas `puntos` (por defecto, con servicio, frecuencia y vencimiento editables en línea), `planos` (plano coloreado por estado) y `mapa`: alta, edición y baja de puntos de control, subida de planos, ubicación de cada punto sobre el plano (con modos explícitos para crear y para ubicar puntos existentes). La pestaña `mapa` muestra solo la ubicación del sitio, de solo lectura. Cada punto tiene su botón "descargar QR" (PNG con sitio, punto y sector, listo para plastificar).
 - **Estado en vivo**: la ficha del sitio sondea `/panel/sitios/<id>/estado/` cada 5 s con HTMX (`hx-trigger="every 5s"`) y recolorea los puntos. El sondeo se pausa mientras la pestaña está oculta (`sondeo.js`). Esa vista (`apps/panel/estado.py`) es el único punto de transporte del estado: si más adelante se pasa a SSE, solo cambia ella.
-- **Usuarios**: alta manual de administradores y empleados.
+- **Empresa** (`/panel/empresa/`): el administrador edita el nombre, el correo de contacto y el logo de su empresa; el logo se ve en la barra lateral.
+- **Usuarios**: alta manual de administradores y empleados de la propia empresa.
 - **Productos**: catálogo con alta/baja y registro ANMAT/SENASA; lo que el empleado ve en la app.
 - **Certificados** (diseño; `apps/informes` aún sin código): desde la ficha del sitio o del cliente, rango de fechas → PDF numerado con cliente, CUIT, fechas, productos con registro, lote y dosis. Se guarda y se puede volver a descargar.
 - **Informes**: por cliente y rango de fechas → PDF con visitas, planillas, fotos y productos (más detallado que el certificado, uso interno o para el cliente).
@@ -176,6 +196,7 @@ detach/
 │   │                        #   panel_views · panel_urls.py · panel_forms
 │   │                        #   templates/<app>/{panel,pdf}/… · tests/
 │   ├── accounts/            # User, roles, permisos
+│   ├── empresas/            # Empresa, guardia de consultas, middleware y JWT con empresa, logo, pantalla "Empresa"
 │   ├── clientes/
 │   ├── sitios/              # Sitio, PuntoControl, Plano, estado por vencimiento, QR, geocodificación, página pública /q/<uuid>/
 │   ├── servicios/           # TipoServicio, CampoPlanilla
@@ -203,6 +224,12 @@ detach/
 - **PDF**: WeasyPrint desde templates HTML (`templates/pdf/`), mismo sistema visual que el panel.
 - **QR**: `segno`, uno por punto de control, contenido `{SITE_URL}/q/{uuid}` (`SITE_URL` es obligatoria en producción; el UUID es el `qr_codigo` del punto). Abierto en un navegador común muestra solo "use la app" (`apps.sitios`, con `X-Robots-Tag`); la app intercepta la URL.
 - **Auditoría**: `django-simple-history` en Sitio, PuntoControl, Plano, Visita, Revision y ProductoAplicado para saber quién cambió qué.
+- **Empresa del pedido** (`request.empresa`). En el panel, `EmpresaMiddleware` (después de `AuthenticationMiddleware`) la fija con la empresa del usuario de la sesión, o `None`. En la API la fija `JWTAutenticacionEmpresa`, que además da 401 si la empresa está inactiva; las vistas de la API leen la empresa con `empresa_de(request)` (la de `request.user`), no con `request.empresa`, porque los tests con `force_authenticate` reemplazan al autenticador. Toda consulta del panel y de la API se acota con `Modelo.objects.de_empresa(empresa)`; `todos` y `sin_filtro_empresa()` están prohibidos ahí. `todos` se admite en el admin, en los comandos y en métodos de modelo, filtrando por la propia pk, por la empresa propia o por la pk de un padre o una referencia ya validados por `ModeloDeEmpresa.clean()`; `sin_filtro_empresa()` solo en el admin, en los comandos de `management/` y en la validación de unicidad del modelo base (`apps/empresas/models.py`).
+- **Guardia de consultas por empresa** (`apps/empresas/consultas.py`): los modelos de empresa tienen `objects` como manager por defecto (`EmpresaQuerySet`) y `todos` sin guardia. Evaluar un queryset de `objects` sin `de_empresa(empresa)` lanza `ConsultaSinEmpresa`, siempre (no hay modo de advertencia): cubre la lista, `iterator`/`aiterator`, `count`, `exists`, `aggregate`, `update`, `delete`, `explain`, `bulk_update()`, `defer()` y `only()`, y vale también al combinar con `|`, `^`, `union`, `intersection` y `difference` (basta una parte sin acotar para que el resultado lance, también con slice a la izquierda). Quedan fuera `.none()`, los managers relacionados y `prefetch_related` (traen la instancia en los hints) y el contexto `sin_filtro_empresa()` (admin, validaciones de unicidad, comandos). `User` no pasa por la guardia: sus vistas filtran por empresa a mano.
+  - **Qué no cubre la guardia.** `bulk_create()` no se verifica. `raw()`, el manager `.history` de `simple_history` y `_base_manager` no pasan por ella. Dos partes acotadas a empresas distintas y combinadas con `|` pasan: cada una está marcada, y el resultado trae filas de ambas. Un queryset pasado a `Prefetch(queryset=...)` recibe el hint `instance` y queda exento si después se reutiliza solo; `db_manager(hints={"instance": x})` o `_add_hints(instance=x)` con una instancia cargada eximen todo el modelo (fuera de los tests y de `consultas.py` nadie los usa); una consulta sin acotar usada como subconsulta (`pk__in=...`, `Subquery`, `Exists`) se compila como SQL y no pasa por la guardia.
+  - **La garantía principal no es la guardia sino el test de aislamiento generado** (`apps/panel/tests/test_aislamiento.py` y `apps/api/tests/test_aislamiento.py`): recorre todas las rutas con identificador con un usuario de otra empresa y exige 404, y falla si aparece una ruta con parámetro sin objeto de prueba.
+- **Inmutabilidad de la empresa** (3.0): es una regla del modelo, distinta de la guardia. Cambiar la empresa de un registro guardado lanza `ValueError` en `save()` y error de validación en `clean()`. `update()`, `bulk_update()` y `bulk_create()` la saltean, y también la coherencia con el padre: no se usan para cambiar `empresa`, el padre ni ninguna FK de `referencias_de_empresa`, ni para crear hijos, fuera de `services.py` revisados.
+- **Respaldo y herramientas que recorren todo.** `dumpdata` usa `_default_manager` y la guardia lo corta: se corre con `--all`, con `--natural-foreign` y excluyendo `sessions`, `token_blacklist`, `contenttypes` y `auth.permission` (comando completo en `docs/despliegue.md`). Los comandos de `simple_history` que recorren todos los registros (`clean_duplicate_history --auto`, `populate_history`) fallan con `ConsultaSinEmpresa` y necesitan `sin_filtro_empresa()`. El volcado de `dumpdata` contiene datos personales y hashes de contraseñas: va cifrado, no se deja en el contenedor y se borra al bajarlo; el respaldo recomendado es el de Postgres. Ni `sin_filtro_empresa()` ni `Modelo.todos` se usan en `manage.py shell` de producción para consultas ad hoc. Ver `docs/despliegue.md`.
 - **Tests**: runner de Django (`manage.py test --keepdb`), un `tests/` por app; los flujos 4.1 y 4.2 tienen tests de integración desde el inicio.
 - **Calidad**: `ruff` para lint y formato.
 

@@ -8,6 +8,7 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.clientes.models import Cliente
+from apps.empresas.tests.ayudas import una_empresa
 from apps.servicios.models import TipoServicio
 from apps.sitios.models import Sitio
 from apps.visitas.models import ItemTurno, Visita
@@ -16,15 +17,21 @@ from apps.visitas.models import ItemTurno, Visita
 class FichaSitioTurnosTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.cliente = Cliente.objects.create(razon_social="ACME")
+        cls.cliente = Cliente.objects.create(razon_social="ACME", empresa=una_empresa())
         cls.sitio = Sitio.objects.create(cliente=cls.cliente, nombre="Planta 1")
-        cls.servicio = TipoServicio.objects.create(nombre="Roedores", slug="roedores-f")
+        cls.servicio = TipoServicio.objects.create(
+            nombre="Roedores", slug="roedores-f", empresa=una_empresa()
+        )
         cls.punto = cls.sitio.puntos.get(orden=0)
         cls.empleado = User.objects.create_user(
-            "emp-ficha", password="x", rol=User.Rol.EMPLEADO, first_name="Ana"
+            "emp-ficha",
+            password="x",
+            rol=User.Rol.EMPLEADO,
+            first_name="Ana",
+            empresa=una_empresa(),
         )
         cls.admin = User.objects.create_user(
-            "adm-ficha", password="x", rol=User.Rol.ADMINISTRADOR
+            "adm-ficha", password="x", rol=User.Rol.ADMINISTRADOR, empresa=una_empresa()
         )
 
     def setUp(self):

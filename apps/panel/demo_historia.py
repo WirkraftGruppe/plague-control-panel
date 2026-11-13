@@ -175,7 +175,7 @@ class GeneradorHistoria:
         visita.distancia_m = max(distancias)
         if lejanos:
             visita.observaciones = "Revisión fuera de la ubicación del punto."
-        Visita.objects.filter(pk=visita.pk).update(
+        Visita.objects.de_empresa(visita.empresa_id).filter(pk=visita.pk).update(
             distancia_m=visita.distancia_m,
             observaciones=visita.observaciones,
             creado=visita.abierta_en,

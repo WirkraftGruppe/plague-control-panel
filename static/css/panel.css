@@ -29,6 +29,9 @@ a:hover { color: var(--accion-hover); }
 }
 .panel-logo { display: block; padding: 0 8px 20px; }
 .panel-logo img { height: 36px; width: auto; display: block; }
+.panel-logo-nombre { display: block; font-size: 20px; font-weight: 700; color: var(--text); line-height: 1.2; overflow-wrap: anywhere; }
+.empresa-logo-actual { margin-bottom: 16px; }
+.empresa-logo-actual img { display: block; max-height: 80px; max-width: 240px; width: auto; background: var(--surface-2); border-radius: var(--radio-control); padding: 8px; }
 .barra-lateral nav { display: flex; flex: 1; flex-direction: column; gap: 2px; overflow-y: auto; }
 .menu-grupo {
   padding: 14px 12px 4px;

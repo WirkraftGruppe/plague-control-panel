@@ -24,11 +24,10 @@ Guía para alojar una instancia de Detach. Nada de esto se ejecuta solo: lo hace
 | `ALLOWED_HOSTS` | el dominio público, p. ej. `demo.up.railway.app` (si queda vacío, el arranque aborta) |
 | `CSRF_TRUSTED_ORIGINS` | el mismo dominio con esquema, p. ej. `https://demo.up.railway.app` (varios, separados por comas) |
 | `SITE_URL` | `https://demo.up.railway.app` (base del contenido de los QR). **Obligatoria**: sin ella el arranque aborta |
-| `NOMBRE_EMPRESA` | nombre de la empresa que aparece en el panel y en la página `/q/<uuid>/`. **Obligatoria**: sin ella el arranque aborta |
-| `CORREO_CONTACTO` | correo de contacto de la empresa (opcional; vacío usa el valor por defecto de `base.py`) |
+| `CORREO_PLATAFORMA` | contacto del operador de Detach, que va en el User-Agent de Nominatim. Opcional, pero **conviene definirla en producción**: sin ella se usa `plataforma@example.com`, un correo inexistente, contra la política de Nominatim |
 | `MEDIA_ROOT` | `/data/media` (ruta del volumen, punto 4) |
 
-`SITE_URL` y `NOMBRE_EMPRESA` también deben estar definidas **antes del build**: `prod.py` aborta con `ImproperlyConfigured` al importar los settings con `DJANGO_ENV=production`, y el build de Railway corre `collectstatic` (y el despliegue, `migrate`) con esas variables; sin ellas fallan el build y el despliegue, no solo el arranque.
+`SITE_URL` también debe estar definida **antes del build**: `prod.py` aborta con `ImproperlyConfigured` al importar los settings con `DJANGO_ENV=production`, y el build de Railway corre `collectstatic` (y el despliegue, `migrate`) con esas variables; sin ella fallan el build y el despliegue, no solo el arranque.
 
 El dominio público se genera en `Settings` -> `Networking` -> `Generate Domain`. Las variables no se versionan: `.env.example` solo lista los nombres.
 
@@ -40,9 +39,22 @@ Fotos y planos se guardan en disco (`MEDIA_ROOT`). El disco del contenedor se pi
 Sin volumen, las imágenes subidas desaparecen en el siguiente despliegue (P-demo-cliente-1). Los respaldos del volumen y de Postgres son responsabilidad del usuario.
 
 ## 5. Primer ingreso
-Con la base vacía no hay usuarios. Crear el primer administrador desde la consola del servicio (`railway ssh` o la pestaña de comandos):
-`python manage.py createsuperuser`.
-Después, desde el panel, crear las cuentas que hagan falta.
+Con la base vacía no hay usuarios ni empresas. Desde la consola del servicio (`railway ssh` o la pestaña de comandos):
+1. `python manage.py createsuperuser` crea el usuario `plataforma` (sin empresa, único con acceso a `/admin/`).
+2. Entrar a `/admin/` con ese usuario y dar de alta la primera `Empresa` (nombre; logo y correo, opcionales). Cada empresa nueva arranca con el catálogo de servicios y productos vacío.
+3. `python manage.py crear_usuario <usuario> --rol administrador --empresa <id de la empresa>` crea su primer administrador.
+4. Ese administrador carga desde `/panel/` a los demás usuarios de su empresa (también se pueden crear en `/admin/`).
+
+## 5 bis. Respaldo y comandos que recorren toda la base
+Los modelos de empresa tienen una guardia que lanza `ConsultaSinEmpresa` al listar sin acotar por empresa, y fallan cerrado:
+- `dumpdata` va siempre con `--all` (usa el manager sin guardia); sin `--all` falla. El comando completo, que escribe con `-o` fuera del volumen de media:
+
+  ```bash
+  python manage.py dumpdata --all --natural-foreign --exclude sessions --exclude token_blacklist --exclude contenttypes --exclude auth.permission -o /tmp/respaldo.json
+  ```
+- **Advertencia:** el archivo tiene datos personales y hashes de contraseñas. Va cifrado, no se deja en el contenedor y se borra al bajarlo. El respaldo recomendado sigue siendo el de Postgres.
+- Ni `sin_filtro_empresa()` ni `Modelo.todos` se usan en `manage.py shell` de producción para consultas ad hoc.
+- Los comandos de `django-simple-history` que recorren todos los registros (`clean_duplicate_history --auto`, `populate_history`) fallan con la guardia. Si hace falta correrlos, hay que envolverlos en `with sin_filtro_empresa():` (`apps.empresas.consultas`), por ejemplo desde un comando propio.
 
 ## 6. Por qué `cargar_demo` no corre sobre Postgres
 `cargar_demo` solo corre con `DEBUG`, `DJANGO_ENV=development` y SQLite (decisión 2026-10-06 en `docs/decisiones.md`): con una `DATABASE_URL` de producción sembraría un administrador con clave pública, y una base "local" por HOST no se puede asegurar. En Railway, `DJANGO_ENV=production` y `DEBUG=False`, por lo que el comando se niega. Una instancia alojada queda sin datos de demo; mostrarlos ahí requiere una decisión nueva del usuario (P-demo-cliente-3).

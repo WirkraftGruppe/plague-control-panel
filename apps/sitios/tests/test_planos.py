@@ -12,6 +12,7 @@ from django.test import TestCase, override_settings
 from PIL import Image
 
 from apps.clientes.models import Cliente
+from apps.empresas.tests.ayudas import una_empresa
 from apps.sitios import planos
 from apps.sitios.models import Plano, Sitio
 
@@ -40,7 +41,7 @@ def _subida(contenido, nombre="plano.bin"):
 @override_settings(MEDIA_ROOT=MEDIA_TEMPORAL)
 class PlanoTests(TestCase):
     def setUp(self):
-        cliente = Cliente.objects.create(razon_social="ACME")
+        cliente = Cliente.objects.create(razon_social="ACME", empresa=una_empresa())
         self.sitio = Sitio.objects.create(cliente=cliente, nombre="Planta 1")
 
     def test_pdf_se_convierte_a_imagen_y_otros_formatos_se_rechazan(self):

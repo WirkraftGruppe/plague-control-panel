@@ -31,6 +31,7 @@ from django.views.generic import CreateView, DetailView, UpdateView
 from django.views.generic.detail import SingleObjectMixin
 
 from apps.accounts.mixins import AdministradorRequeridoMixin
+from apps.clientes.empresa import VistaDeEmpresaMixin
 from apps.clientes.models import Cliente
 from apps.panel.listados import ListadoPanelMixin
 from apps.panel.mapa import ORIGEN_TESELAS
@@ -115,13 +116,16 @@ class SitioListado(AdministradorRequeridoMixin, ListadoPanelMixin):
             proximo_turno_pk=Subquery(pendientes.values("pk")[:1]),
         )
 
+    def _sitios(self):
+        return Sitio.objects.de_empresa(self.request.empresa).select_related("cliente")
+
     def _parametro_estado(self):
         estado = self.request.GET.get("estado", "")
         return estado if estado in EstadoSitio.values else ""
 
     def _base(self):
         """Sitios del alcance pedido (búsqueda, cliente, activo), sin el estado."""
-        self.queryset = self._con_vencimiento(Sitio.objects.select_related("cliente"))
+        self.queryset = self._con_vencimiento(self._sitios())
         queryset = super().get_queryset()
         cliente = self.request.GET.get("cliente", "")
         # Solo un id válido de BigAutoField; otro valor se ignora, sin dar 500.
@@ -150,7 +154,8 @@ class SitioListado(AdministradorRequeridoMixin, ListadoPanelMixin):
     def _turnos_de_hoy(self):
         hoy = self.hoy
         visitas = (
-            Visita.objects.filter(
+            Visita.objects.de_empresa(self.request.empresa)
+            .filter(
                 Q(estado=Visita.Estado.PENDIENTE, programada_para__lte=hoy)
                 | Q(estado=Visita.Estado.ABIERTA)
                 | Q(estado=Visita.Estado.REALIZADA, cerrada_en__date=hoy)
@@ -175,7 +180,7 @@ class SitioListado(AdministradorRequeridoMixin, ListadoPanelMixin):
 
     def _requieren_atencion(self):
         vencidos = (
-            self._con_vencimiento(Sitio.objects.select_related("cliente"))
+            self._con_vencimiento(self._sitios())
             .filter(activo=True)
             .filter(condicion_de_estado(EstadoSitio.VENCIDOS, self.hoy))
             .exclude(
@@ -191,7 +196,8 @@ class SitioListado(AdministradorRequeridoMixin, ListadoPanelMixin):
 
     def _incidencias(self):
         return list(
-            Visita.objects.filter(incidencia=True, incidencia_revisada_en__isnull=True)
+            Visita.objects.de_empresa(self.request.empresa)
+            .filter(incidencia=True, incidencia_revisada_en__isnull=True)
             .select_related("sitio", "empleado")
             .order_by("-cerrada_en", "-pk")[:ATENCION_MAXIMO]
         )
@@ -211,7 +217,9 @@ class SitioListado(AdministradorRequeridoMixin, ListadoPanelMixin):
             conteos=self.conteos,
             estado=estado,
             filtros=[(e.value, e.label, self.conteos[e]) for e in EstadoSitio],
-            clientes=Cliente.objects.order_by("razon_social"),
+            clientes=Cliente.objects.de_empresa(self.request.empresa).order_by(
+                "razon_social"
+            ),
             cliente=cliente,
             activo=activo,
             conservar=conservar,
@@ -229,7 +237,7 @@ class SitioListado(AdministradorRequeridoMixin, ListadoPanelMixin):
 
 
 @method_decorator(csp_update({"img-src": ORIGEN_TESELAS}), name="dispatch")
-class SitioAlta(AdministradorRequeridoMixin, CreateView):
+class SitioAlta(VistaDeEmpresaMixin, AdministradorRequeridoMixin, CreateView):
     model = Sitio
     form_class = SitioForm
     template_name = "sitios/panel/formulario.html"
@@ -240,7 +248,7 @@ class SitioAlta(AdministradorRequeridoMixin, CreateView):
 
 
 @method_decorator(csp_update({"img-src": ORIGEN_TESELAS}), name="dispatch")
-class SitioEdicion(AdministradorRequeridoMixin, UpdateView):
+class SitioEdicion(VistaDeEmpresaMixin, AdministradorRequeridoMixin, UpdateView):
     model = Sitio
     form_class = SitioForm
     template_name = "sitios/panel/formulario.html"
@@ -260,14 +268,14 @@ def _numero(valor):
 
 
 @method_decorator(csp_update({"img-src": ORIGEN_TESELAS}), name="dispatch")
-class SitioFicha(AdministradorRequeridoMixin, DetailView):
+class SitioFicha(VistaDeEmpresaMixin, AdministradorRequeridoMixin, DetailView):
     """Ficha con pestañas ``?pestana=turnos|planos|datos`` (por defecto, turnos)."""
 
     model = Sitio
     template_name = "sitios/panel/ficha.html"
 
     def get_queryset(self):
-        return Sitio.objects.select_related("cliente", "responsable")
+        return super().get_queryset().select_related("cliente", "responsable")
 
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
@@ -307,8 +315,10 @@ class SitioFicha(AdministradorRequeridoMixin, DetailView):
         )
         if pestana == "datos":
             contexto["datos_mapa"] = self._datos_mapa(sitio)
-            contexto["servicios"] = TipoServicio.objects.filter(activo=True).order_by(
-                "nombre"
+            contexto["servicios"] = (
+                TipoServicio.objects.de_empresa(self.request.empresa)
+                .filter(activo=True)
+                .order_by("nombre")
             )
         if pestana == "planos" and plano:
             contexto["datos_plano"] = self._datos_plano(plano, activos)
@@ -409,7 +419,9 @@ class _PuntoMixin(AdministradorRequeridoMixin):
     model = PuntoControl
 
     def get_queryset(self):
-        return PuntoControl.objects.select_related("sitio", "plano")
+        return PuntoControl.objects.de_empresa(self.request.empresa).select_related(
+            "sitio", "plano"
+        )
 
 
 class PuntoAlta(AdministradorRequeridoMixin, CreateView):
@@ -421,7 +433,9 @@ class PuntoAlta(AdministradorRequeridoMixin, CreateView):
     @cached_property
     def sitio(self):
         """Se busca recién tras la autorización: el anónimo no distingue ids."""
-        return get_object_or_404(Sitio, pk=self.kwargs["pk"])
+        return get_object_or_404(
+            Sitio.objects.de_empresa(self.request.empresa), pk=self.kwargs["pk"]
+        )
 
     def get_form_kwargs(self):
         return {**super().get_form_kwargs(), "sitio": self.sitio}
@@ -535,7 +549,9 @@ class PuntoProgramacion(_PuntoMixin, SingleObjectMixin, View):
         contexto = {
             "punto": punto,
             "form": form,
-            "servicios": TipoServicio.objects.filter(activo=True).order_by("nombre"),
+            "servicios": TipoServicio.objects.de_empresa(request.empresa)
+            .filter(activo=True)
+            .order_by("nombre"),
         }
         return render(request, self.template_name, contexto, status=estado)
 
@@ -544,7 +560,7 @@ class PuntoProgramacion(_PuntoMixin, SingleObjectMixin, View):
 
     def post(self, request, pk):
         punto = self.get_object()
-        form = ProgramacionForm(request.POST)
+        form = ProgramacionForm(request.POST, empresa=request.empresa)
         if not form.is_valid():
             return self._fila(request, punto, form, estado=422)
         datos = form.cleaned_data
@@ -566,7 +582,7 @@ class PuntoPosicion(_AccionPunto):
 
     def post(self, request, pk):
         punto = self.get_object()
-        form = PosicionForm(request.POST)
+        form = PosicionForm(request.POST, empresa=request.empresa)
         if not form.is_valid():
             error = (
                 "Plano inválido." if "plano" in form.errors else "Posición inválida."
@@ -597,11 +613,12 @@ class PlanoAlta(AdministradorRequeridoMixin, CreateView):
     @cached_property
     def sitio(self):
         """Se busca recién tras la autorización: el anónimo no distingue ids."""
-        return get_object_or_404(Sitio, pk=self.kwargs["pk"])
+        return get_object_or_404(
+            Sitio.objects.de_empresa(self.request.empresa), pk=self.kwargs["pk"]
+        )
 
-    def form_valid(self, form):
-        form.instance.sitio = self.sitio
-        return super().form_valid(form)
+    def get_form_kwargs(self):
+        return {**super().get_form_kwargs(), "sitio": self.sitio}
 
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
@@ -616,7 +633,7 @@ class PlanoImagen(AdministradorRequeridoMixin, View):
     """Imagen del plano para el editor: autenticada, nunca desde MEDIA público."""
 
     def get(self, request, pk):
-        plano = get_object_or_404(Plano, pk=pk)
+        plano = get_object_or_404(Plano.objects.de_empresa(request.empresa), pk=pk)
         try:
             archivo = plano.imagen.open("rb")
         except FileNotFoundError:

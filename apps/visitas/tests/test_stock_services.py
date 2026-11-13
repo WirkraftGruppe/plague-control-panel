@@ -11,6 +11,7 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from apps.accounts.models import User
+from apps.empresas.tests.ayudas import una_empresa
 from apps.productos.models import MovimientoStock, Producto
 from apps.productos.services import registrar_ingreso, stock
 from apps.sitios.models import Sitio
@@ -34,12 +35,20 @@ class ConsumoTests(SinArchivosMixin, TestCase):
         self.tipo = self.pendiente.tipo
         self.punto = punto_de(self.pendiente)
         self.admin = User.objects.create_user(
-            username="admin-stock", password="x", rol=User.Rol.ADMINISTRADOR
+            username="admin-stock",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         self.gel = Producto.objects.create(
-            nombre_comercial="Gel", unidad_base="g", modo_unidad="equivalentes"
+            nombre_comercial="Gel",
+            unidad_base="g",
+            modo_unidad="equivalentes",
+            empresa=una_empresa(),
         )
-        self.cebo = Producto.objects.create(nombre_comercial="Cebo")
+        self.cebo = Producto.objects.create(
+            nombre_comercial="Cebo", empresa=una_empresa()
+        )
         for producto in (self.gel, self.cebo):
             registrar_ingreso(producto, Decimal("1000"), False, self.admin)
         self.items = [
@@ -47,7 +56,7 @@ class ConsumoTests(SinArchivosMixin, TestCase):
             self._item(self.cebo, cantidad="3", unidad="unidad"),
         ]
         # Las cargas manuales son anteriores a hoy: el sitio ya existía.
-        Sitio.objects.filter(pk=self.sitio.pk).update(
+        Sitio.objects.de_empresa(una_empresa()).filter(pk=self.sitio.pk).update(
             creado=timezone.now() - timedelta(days=60)
         )
         self.sitio.refresh_from_db()
@@ -63,7 +72,9 @@ class ConsumoTests(SinArchivosMixin, TestCase):
         return item
 
     def _consumos(self):
-        return MovimientoStock.objects.filter(tipo=MovimientoStock.Tipo.CONSUMO)
+        return MovimientoStock.objects.de_empresa(una_empresa()).filter(
+            tipo=MovimientoStock.Tipo.CONSUMO
+        )
 
     def _cargar(self, **extra):
         argumentos = {
@@ -96,7 +107,7 @@ class ConsumoTests(SinArchivosMixin, TestCase):
             fotos=[jpeg_chico()],
         )
         self.assertEqual(self._consumos().count(), 2)
-        for aplicado in ProductoAplicado.objects.all():
+        for aplicado in ProductoAplicado.objects.de_empresa(una_empresa()).all():
             movimiento = aplicado.movimiento
             self.assertEqual(movimiento.tipo, MovimientoStock.Tipo.CONSUMO)
             self.assertEqual(movimiento.usuario, self.empleado)
@@ -110,15 +121,21 @@ class ConsumoTests(SinArchivosMixin, TestCase):
         consumos = self._consumos()
         self.assertEqual(consumos.count(), 2)
         self.assertEqual({m.usuario for m in consumos}, {self.admin})
-        self.assertFalse(ProductoAplicado.objects.filter(movimiento=None).exists())
-        self.assertEqual(Visita.objects.filter(origen="manual").count(), 1)
+        self.assertFalse(
+            ProductoAplicado.objects.de_empresa(una_empresa())
+            .filter(movimiento=None)
+            .exists()
+        )
+        self.assertEqual(
+            Visita.objects.de_empresa(una_empresa()).filter(origen="manual").count(), 1
+        )
 
     def test_carga_manual_fallida_no_deja_movimiento(self):
         falsa = SimpleUploadedFile("x.jpg", b"no es imagen", "image/jpeg")
         with self.assertRaises(ValidationError):
             self._cargar(fotos=[falsa])
         self.assertFalse(self._consumos().exists())
-        self.assertFalse(ProductoAplicado.objects.exists())
+        self.assertFalse(ProductoAplicado.objects.de_empresa(una_empresa()).exists())
         # Una falla posterior a guardar los aplicados también revierte los consumos.
         with mock.patch(
             "apps.visitas.services.cerrar_visita", side_effect=ValidationError("x")

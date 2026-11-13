@@ -5,19 +5,27 @@ from django.urls import reverse
 
 from apps.accounts.models import User
 from apps.clientes.models import Cliente
+from apps.empresas.tests.ayudas import una_empresa
 from apps.sitios.models import Sitio
 
 
 class ClientePanelTests(TestCase):
     def setUp(self):
         self.admin = User.objects.create_user(
-            "adm", password="clave-segura-123", rol=User.Rol.ADMINISTRADOR
+            "adm",
+            password="clave-segura-123",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         self.client.force_login(self.admin)
 
     def test_listado_busca_y_filtra_activo(self):
-        Cliente.objects.create(razon_social="Molinos del Sur", cuit="20123456786")
-        Cliente.objects.create(razon_social="Frigorífico Norte", activo=False)
+        Cliente.objects.create(
+            razon_social="Molinos del Sur", cuit="20123456786", empresa=una_empresa()
+        )
+        Cliente.objects.create(
+            razon_social="Frigorífico Norte", activo=False, empresa=una_empresa()
+        )
         url = reverse("panel:clientes:listado")
 
         respuesta = self.client.get(url, {"q": "molinos"})
@@ -36,7 +44,9 @@ class ClientePanelTests(TestCase):
         self.assertNotContains(respuesta, "Frigorífico Norte")
 
     def test_baja_logica_no_borra(self):
-        cliente = Cliente.objects.create(razon_social="Molinos del Sur")
+        cliente = Cliente.objects.create(
+            razon_social="Molinos del Sur", empresa=una_empresa()
+        )
         url = reverse("panel:clientes:baja", args=[cliente.pk])
 
         self.assertContains(self.client.get(url), "Dar de baja")
@@ -51,11 +61,13 @@ class ClientePanelTests(TestCase):
         )
         cliente.refresh_from_db()
         self.assertFalse(cliente.activo)
-        self.assertEqual(Cliente.objects.count(), 1)
+        self.assertEqual(Cliente.objects.de_empresa(una_empresa()).count(), 1)
 
     def test_ficha_lista_sus_sitios(self):
-        cliente = Cliente.objects.create(razon_social="Molinos del Sur")
-        otro = Cliente.objects.create(razon_social="Otro")
+        cliente = Cliente.objects.create(
+            razon_social="Molinos del Sur", empresa=una_empresa()
+        )
+        otro = Cliente.objects.create(razon_social="Otro", empresa=una_empresa())
         Sitio.objects.create(cliente=cliente, nombre="Planta Chascomús")
         Sitio.objects.create(cliente=otro, nombre="Depósito Ajeno")
 
@@ -68,7 +80,7 @@ class ClientePanelTests(TestCase):
             reverse("panel:clientes:alta"),
             {"razon_social": "Nuevo SA", "activo": "on"},
         )
-        cliente = Cliente.objects.get(razon_social="Nuevo SA")
+        cliente = Cliente.objects.de_empresa(una_empresa()).get(razon_social="Nuevo SA")
         self.assertRedirects(
             respuesta,
             reverse("panel:clientes:ficha", args=[cliente.pk]),
@@ -82,7 +94,9 @@ class ClientePanelTests(TestCase):
         self.assertEqual(cliente.razon_social, "Nuevo SRL")
 
     def test_empleado_recibe_403(self):
-        empleado = User.objects.create_user("emp", password="clave-segura-123")
+        empleado = User.objects.create_user(
+            "emp", password="clave-segura-123", empresa=una_empresa()
+        )
         self.client.force_login(empleado)
         respuesta = self.client.get(reverse("panel:clientes:listado"))
         self.assertEqual(respuesta.status_code, 403)

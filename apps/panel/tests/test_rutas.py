@@ -1,11 +1,11 @@
 import uuid
 from urllib.parse import urlparse
 
-from django.conf import settings
 from django.test import TestCase
 from django.urls import NoReverseMatch, resolve, reverse
 
 from apps.clientes.models import Cliente
+from apps.empresas.tests.ayudas import una_empresa
 from apps.sitios.models import Sitio
 from apps.sitios.qr import contenido_qr
 
@@ -21,15 +21,17 @@ class RutasTests(TestCase):
         self.assertEqual(respuesta.status_code, 302)
 
     def test_q_uuid_lo_sirve_sitios(self):
+        empresa = una_empresa()
         codigo = uuid.uuid4()
         self.assertEqual(resolve(f"/q/{codigo}/").view_name, "publico:qr")
         respuesta = self.client.get(f"/q/{codigo}/")
         self.assertEqual(respuesta.status_code, 200)
-        self.assertContains(respuesta, settings.NOMBRE_EMPRESA)
+        self.assertContains(respuesta, "Detach")
+        self.assertNotContains(respuesta, empresa.nombre)
         self.assertNotContains(respuesta, str(codigo))
 
     def test_contenido_del_qr_abre_la_pagina_de_sitios(self):
-        cliente = Cliente.objects.create(razon_social="Cliente")
+        cliente = Cliente.objects.create(razon_social="Cliente", empresa=una_empresa())
         punto = Sitio.objects.create(cliente=cliente, nombre="Sitio").puntos.get()
         ruta = urlparse(contenido_qr(punto)).path
         self.assertEqual(resolve(ruta).view_name, "publico:qr")

@@ -44,7 +44,7 @@ class TextoInvalido(ValueError):
 
 def user_agent():
     """User-Agent que exige Nominatim, calculado con los settings vigentes."""
-    return f"Detach/1.0 (+{settings.SITE_URL}; {settings.CORREO_CONTACTO})"
+    return f"Detach/1.0 (+{settings.SITE_URL}; {settings.CORREO_PLATAFORMA})"
 
 
 def _conexion(host, puerto):

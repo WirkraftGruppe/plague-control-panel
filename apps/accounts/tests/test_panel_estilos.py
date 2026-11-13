@@ -6,15 +6,23 @@ from django.test import TestCase
 from django.urls import reverse
 
 from apps.accounts.models import User
+from apps.empresas.tests.ayudas import una_empresa
 
 
 class EstilosPanelTests(TestCase):
     def test_listado_de_usuarios_sin_style_en_linea(self):
         admin = User.objects.create_user(
-            username="admin-est", password="x", rol=User.Rol.ADMINISTRADOR
+            username="admin-est",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         User.objects.create_user(
-            username="emp-est", password="x", rol=User.Rol.EMPLEADO, is_active=False
+            username="emp-est",
+            password="x",
+            rol=User.Rol.EMPLEADO,
+            is_active=False,
+            empresa=una_empresa(),
         )
         self.client.force_login(admin)
         respuesta = self.client.get(reverse("panel:usuarios:listado"))
@@ -25,7 +33,10 @@ class EstilosPanelTests(TestCase):
 class FiltrosUsuariosTests(TestCase):
     def test_filtros_usan_clase_del_sistema(self):
         admin = User.objects.create_user(
-            username="admin-filt", password="x", rol=User.Rol.ADMINISTRADOR
+            username="admin-filt",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         self.client.force_login(admin)
         html = self.client.get(reverse("panel:usuarios:listado")).content.decode()

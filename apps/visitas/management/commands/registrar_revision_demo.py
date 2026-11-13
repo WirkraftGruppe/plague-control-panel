@@ -10,6 +10,7 @@ from django.utils import timezone
 from PIL import Image
 
 from apps.accounts.models import User
+from apps.empresas.models import Empresa
 from apps.panel.demo import exigir_entorno_demo
 from apps.sitios.models import PuntoControl
 from apps.visitas import services
@@ -27,13 +28,17 @@ def _foto():
 class Command(BaseCommand):
     help = (
         "Registra una revisión de demostración con foto en el punto indicado, dentro "
-        "de la visita del empleado en el sitio del punto. Con --lejos usa "
-        "coordenadas a ~1 km del punto. Solo corre con DEBUG, "
+        "de la visita del empleado en el sitio del punto. El punto y el empleado se "
+        "buscan en una sola empresa (--empresa; si hay una sola, esa). Con --lejos "
+        "usa coordenadas a ~1 km del punto. Solo corre con DEBUG, "
         "DJANGO_ENV=development y SQLite."
     )
 
     def add_arguments(self, parser):
         parser.add_argument("punto", help="Nombre del punto de control.")
+        parser.add_argument(
+            "--empresa", help="Nombre de la empresa (por defecto la única que exista)."
+        )
         parser.add_argument(
             "--empleado", help="Usuario del empleado (por defecto el primero activo)."
         )
@@ -43,8 +48,9 @@ class Command(BaseCommand):
 
     def handle(self, *args, **opciones):
         exigir_entorno_demo("registrar_revision_demo")
-        punto = self._punto(opciones["punto"])
-        empleado = self._empleado(opciones["empleado"])
+        empresa = self._empresa(opciones["empresa"])
+        punto = self._punto(empresa, opciones["punto"])
+        empleado = self._empleado(empresa, opciones["empleado"])
         latitud = punto.latitud if punto.latitud is not None else punto.sitio.latitud
         longitud = (
             punto.longitud if punto.longitud is not None else punto.sitio.longitud
@@ -73,16 +79,32 @@ class Command(BaseCommand):
             f"(visita {visita.pk}, distancia {revision.distancia_m} m)."
         )
 
-    def _punto(self, nombre):
-        puntos = list(PuntoControl.objects.filter(nombre=nombre, activo=True))
+    def _empresa(self, nombre):
+        empresas = Empresa.objects.all()
+        if nombre:
+            empresas = empresas.filter(nombre=nombre)
+        empresas = list(empresas)
+        if len(empresas) != 1:
+            raise CommandError(
+                f"Hay {len(empresas)} empresas que coinciden: indique una con "
+                "--empresa."
+            )
+        return empresas[0]
+
+    def _punto(self, empresa, nombre):
+        puntos = list(
+            PuntoControl.objects.de_empresa(empresa).filter(nombre=nombre, activo=True)
+        )
         if len(puntos) != 1:
             raise CommandError(
                 f"Hay {len(puntos)} puntos activos llamados {nombre!r}: se esperaba 1."
             )
         return puntos[0]
 
-    def _empleado(self, username):
-        empleados = User.objects.filter(rol=User.Rol.EMPLEADO, is_active=True)
+    def _empleado(self, empresa, username):
+        empleados = User.objects.filter(
+            empresa=empresa, rol=User.Rol.EMPLEADO, is_active=True
+        )
         empleado = (
             empleados.filter(username=username).first()
             if username

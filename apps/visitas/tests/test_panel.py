@@ -19,6 +19,7 @@ from django.utils import timezone
 from PIL import Image
 
 from apps.accounts.models import User
+from apps.empresas.tests.ayudas import una_empresa
 from apps.productos.models import MovimientoStock, Producto
 from apps.servicios.models import CampoPlanilla
 from apps.sitios.models import PuntoControl, Sitio
@@ -52,7 +53,7 @@ class BaseTests(TestCase):
         cls.sitio = cls.visita.sitio
         cls.empleado = cls.visita.empleado
         cls.admin = User.objects.create_user(
-            "adm-pv", password="x", rol=User.Rol.ADMINISTRADOR
+            "adm-pv", password="x", rol=User.Rol.ADMINISTRADOR, empresa=una_empresa()
         )
 
     def setUp(self):
@@ -114,7 +115,9 @@ class ListadoVisitasTests(BaseTests):
     def test_filtro_ubicacion_excluye_administradores_y_abiertas(self):
         cuenta = self.otra_visita(incidencia_ubicacion=True)
         de_administrador = self.otra_visita(incidencia_ubicacion=True)
-        Visita.objects.filter(pk=de_administrador.pk).update(cuenta_como_servicio=False)
+        Visita.objects.de_empresa(una_empresa()).filter(pk=de_administrador.pk).update(
+            cuenta_como_servicio=False
+        )
         abierta = self.otra_visita(
             incidencia_ubicacion=True, estado=Visita.Estado.ABIERTA, cerrada_en=None
         )
@@ -262,7 +265,9 @@ class FichaVisitaTests(BaseTests):
         sala = PuntoControl.objects.create(
             sitio=self.sitio, nombre="Sala de máquinas", orden=1
         )
-        producto = Producto.objects.create(nombre_comercial="Cebo Z")
+        producto = Producto.objects.create(
+            nombre_comercial="Cebo Z", empresa=una_empresa()
+        )
         esquema = [{"clave": "cebos", "etiqueta": "Cebos repuestos", "tipo": "numero"}]
         self.revision.esquema_planilla = esquema
         self.revision.datos = {"cebos": 4}
@@ -367,7 +372,9 @@ class NuevoTurnoTests(BaseTests):
         self.assertRedirects(
             respuesta, reverse("panel:sitios:ficha", args=[self.sitio.pk])
         )
-        visita = Visita.objects.get(estado=Visita.Estado.PENDIENTE)
+        visita = Visita.objects.de_empresa(una_empresa()).get(
+            estado=Visita.Estado.PENDIENTE
+        )
         self.assertEqual(visita.sitio, self.sitio)
         self.assertEqual(visita.empleado, self.empleado)
         self.assertEqual(visita.programada_para, datos["programada_para"])
@@ -378,7 +385,11 @@ class NuevoTurnoTests(BaseTests):
     def test_rechaza_administrador_inactivo_y_fecha_pasada(self):
         ayer = timezone.localdate() - timedelta(days=1)
         inactivo = User.objects.create_user(
-            "emp-off", password="x", rol=User.Rol.EMPLEADO, is_active=False
+            "emp-off",
+            password="x",
+            rol=User.Rol.EMPLEADO,
+            is_active=False,
+            empresa=una_empresa(),
         )
         for cambios in (
             {"empleado": self.admin.pk},
@@ -387,7 +398,11 @@ class NuevoTurnoTests(BaseTests):
         ):
             respuesta = self.client.post(self._url(), self._datos(**cambios))
             self.assertEqual(respuesta.status_code, 200)
-        self.assertFalse(Visita.objects.filter(estado=Visita.Estado.PENDIENTE))
+        self.assertFalse(
+            Visita.objects.de_empresa(una_empresa()).filter(
+                estado=Visita.Estado.PENDIENTE
+            )
+        )
 
     def test_exige_puntos_y_servicio_por_punto(self):
         respuesta = self.client.post(self._url(), self._datos(puntos=[]))
@@ -396,7 +411,11 @@ class NuevoTurnoTests(BaseTests):
         sin_servicio[f"servicio_{self.punto.pk}"] = ""
         respuesta = self.client.post(self._url(), sin_servicio)
         self.assertIn(f"servicio_{self.punto.pk}", respuesta.context["form"].errors)
-        self.assertFalse(Visita.objects.filter(estado=Visita.Estado.PENDIENTE))
+        self.assertFalse(
+            Visita.objects.de_empresa(una_empresa()).filter(
+                estado=Visita.Estado.PENDIENTE
+            )
+        )
 
     def test_sitio_inexistente_da_404(self):
         self.assertEqual(self.client.get(self._url(999999)).status_code, 404)
@@ -407,12 +426,20 @@ class NuevoTurnoTests(BaseTests):
         for objeto in (sitio, sitio.cliente):
             with self.subTest(baja=objeto._meta.model_name):
                 # `update` evita la cascada de la baja del sitio sobre sus puntos.
-                type(objeto).objects.filter(pk=objeto.pk).update(activo=False)
+                type(objeto).objects.de_empresa(una_empresa()).filter(
+                    pk=objeto.pk
+                ).update(activo=False)
                 respuesta = self.client.post(self._url(), datos)
                 self.assertEqual(respuesta.status_code, 200)
                 self.assertTrue(respuesta.context["form"].non_field_errors())
-                self.assertFalse(Visita.objects.filter(estado=Visita.Estado.PENDIENTE))
-                type(objeto).objects.filter(pk=objeto.pk).update(activo=True)
+                self.assertFalse(
+                    Visita.objects.de_empresa(una_empresa()).filter(
+                        estado=Visita.Estado.PENDIENTE
+                    )
+                )
+                type(objeto).objects.de_empresa(una_empresa()).filter(
+                    pk=objeto.pk
+                ).update(activo=True)
         respuesta = self.client.post(self._url(), datos)
         self.assertEqual(respuesta.status_code, 302)
 
@@ -430,10 +457,12 @@ class CargarVisitaTests(BaseTests):
     def setUp(self):
         super().setUp()
         self.url = reverse("panel:visitas:cargar", args=[self.sitio.pk])
-        self.producto = Producto.objects.create(nombre_comercial="Cebo")
+        self.producto = Producto.objects.create(
+            nombre_comercial="Cebo", empresa=una_empresa()
+        )
         self.tipo = self.visita.tipo
         # Las cargas atrasadas son anteriores a hoy: el sitio ya existía.
-        Sitio.objects.filter(pk=self.sitio.pk).update(
+        Sitio.objects.de_empresa(una_empresa()).filter(pk=self.sitio.pk).update(
             creado=timezone.now() - timedelta(days=90)
         )
         self.sitio.refresh_from_db()
@@ -504,13 +533,13 @@ class CargarVisitaTests(BaseTests):
             respuesta.context["form"].errors["realizada_en"],
             ["La fecha y hora de la visita no puede ser posterior a la hora actual."],
         )
-        self.assertEqual(Visita.objects.count(), 1)
+        self.assertEqual(Visita.objects.de_empresa(una_empresa()).count(), 1)
 
     def test_exige_motivo_y_pasa_por_el_servicio(self):
         respuesta = self.client.post(self.url, self._datos(motivo=" "))
         self.assertEqual(respuesta.status_code, 200)
         self.assertIn("motivo", respuesta.context["form"].errors)
-        self.assertEqual(Visita.objects.count(), 1)
+        self.assertEqual(Visita.objects.de_empresa(una_empresa()).count(), 1)
         with mock.patch(
             "apps.visitas.panel_views.registrar_visita_manual",
             wraps=registrar_visita_manual,
@@ -519,7 +548,9 @@ class CargarVisitaTests(BaseTests):
                 self.url, self._datos(fotos=[self._foto(), self._foto()])
             )
         servicio.assert_called_once()
-        visita = Visita.objects.exclude(pk=self.visita.pk).get()
+        visita = (
+            Visita.objects.de_empresa(una_empresa()).exclude(pk=self.visita.pk).get()
+        )
         self.assertRedirects(
             respuesta, reverse("panel:visitas:ficha", args=[visita.pk])
         )
@@ -527,7 +558,12 @@ class CargarVisitaTests(BaseTests):
         self.assertEqual(visita.estado, Visita.Estado.REALIZADA)
         self.assertEqual(visita.asignada_por, self.admin)
         self.assertEqual(visita.motivo_manual, "La app no tenía señal")
-        self.assertEqual(Foto.objects.filter(revision__visita=visita).count(), 2)
+        self.assertEqual(
+            Foto.objects.de_empresa(una_empresa())
+            .filter(revision__visita=visita)
+            .count(),
+            2,
+        )
         self.assertEqual(
             visita.revisiones.get().productos.get().producto, self.producto
         )
@@ -545,13 +581,13 @@ class CargarVisitaTests(BaseTests):
 
     def test_exige_al_menos_un_punto_del_sitio(self):
         ajeno = punto_de(crear_visita())
-        antes = Visita.objects.count()
+        antes = Visita.objects.de_empresa(una_empresa()).count()
         respuesta = self.client.post(self.url, self._datos(puntos=[]))
         self.assertEqual(respuesta.status_code, 200)
         self.assertIn("puntos", respuesta.context["form"].errors)
         respuesta = self.client.post(self.url, self._datos(puntos=[ajeno.pk]))
         self.assertIn("puntos", respuesta.context["form"].errors)
-        self.assertEqual(Visita.objects.count(), antes)
+        self.assertEqual(Visita.objects.de_empresa(una_empresa()).count(), antes)
         with self.assertRaises(ValidationError) as ctx:
             self._llamar_servicio(items=[(ajeno, self.tipo)])
         self.assertIn("puntos", ctx.exception.message_dict)
@@ -559,7 +595,9 @@ class CargarVisitaTests(BaseTests):
     def test_una_revision_por_punto_elegido(self):
         sala = PuntoControl.objects.create(sitio=self.sitio, nombre="Sala", orden=1)
         self.client.post(self.url, self._datos(puntos=[self.punto.pk, sala.pk]))
-        visita = Visita.objects.exclude(pk=self.visita.pk).get()
+        visita = (
+            Visita.objects.de_empresa(una_empresa()).exclude(pk=self.visita.pk).get()
+        )
         self.assertEqual([r.punto for r in visita.revisiones.all()], [self.punto, sala])
         self.assertFalse(any(r.fuera_de_turno for r in visita.revisiones.all()))
 
@@ -569,7 +607,7 @@ class CargarVisitaTests(BaseTests):
         )
         fila = respuesta.context["productos"].forms[0]
         self.assertIn("unidad", fila.errors)
-        self.assertFalse(MovimientoStock.objects.exists())
+        self.assertFalse(MovimientoStock.objects.de_empresa(una_empresa()).exists())
 
     def test_manual_elige_puntos_revisados(self):
         sala = PuntoControl.objects.create(sitio=self.sitio, nombre="Sala", orden=1)
@@ -586,7 +624,10 @@ class CargarVisitaTests(BaseTests):
         self.assertContains(respuesta, f'name="servicio_{sala.pk}"')
         self.client.post(self.url, self._datos(puntos=[sala.pk]))
         visita = (
-            Visita.objects.filter(sitio=self.sitio).exclude(pk=self.visita.pk).get()
+            Visita.objects.de_empresa(una_empresa())
+            .filter(sitio=self.sitio)
+            .exclude(pk=self.visita.pk)
+            .get()
         )
         self.assertEqual([r.punto for r in visita.revisiones.all()], [sala])
 
@@ -620,11 +661,13 @@ class CargarVisitaTests(BaseTests):
         respuesta = self.client.post(self.url, self._datos(realizada_en=vieja))
         self.assertEqual(respuesta.status_code, 200)
         self.assertIn("confirmar_atraso", respuesta.context["form"].errors)
-        self.assertEqual(Visita.objects.count(), 1)
+        self.assertEqual(Visita.objects.de_empresa(una_empresa()).count(), 1)
         self.client.post(
             self.url, self._datos(realizada_en=vieja, confirmar_atraso="on")
         )
-        visita = Visita.objects.exclude(pk=self.visita.pk).get()
+        visita = (
+            Visita.objects.de_empresa(una_empresa()).exclude(pk=self.visita.pk).get()
+        )
         self.assertEqual(
             visita.history.first().history_change_reason,
             "Carga manual atrasada confirmada por adm-pv",
@@ -638,23 +681,27 @@ class CargarVisitaTests(BaseTests):
         )
         self.assertEqual(respuesta.status_code, 200)
         self.assertIn("realizada_en", respuesta.context["form"].errors)
-        self.assertEqual(Visita.objects.count(), 1)
+        self.assertEqual(Visita.objects.de_empresa(una_empresa()).count(), 1)
         sitio = self.sitio
         for objeto in (sitio, sitio.cliente):
             with self.subTest(baja=objeto._meta.model_name):
                 # `update` evita la cascada de la baja del sitio sobre sus puntos.
-                type(objeto).objects.filter(pk=objeto.pk).update(activo=False)
+                type(objeto).objects.de_empresa(una_empresa()).filter(
+                    pk=objeto.pk
+                ).update(activo=False)
                 respuesta = self.client.post(self.url, self._datos())
                 self.assertEqual(respuesta.status_code, 200)
                 self.assertTrue(respuesta.context["form"].non_field_errors())
-                self.assertEqual(Visita.objects.count(), 1)
-                type(objeto).objects.filter(pk=objeto.pk).update(activo=True)
+                self.assertEqual(Visita.objects.de_empresa(una_empresa()).count(), 1)
+                type(objeto).objects.de_empresa(una_empresa()).filter(
+                    pk=objeto.pk
+                ).update(activo=True)
         respuesta = self.client.post(self.url, self._datos())
         self.assertEqual(respuesta.status_code, 302)
 
     def test_reasignar_deja_motivo_en_historial(self):
         otro = User.objects.create_user(
-            "emp-reasig", password="x", rol=User.Rol.EMPLEADO
+            "emp-reasig", password="x", rol=User.Rol.EMPLEADO, empresa=una_empresa()
         )
         propia = self._pendiente()
         ajena = self._pendiente()
@@ -699,9 +746,11 @@ class CargarVisitaTests(BaseTests):
         self.assertContains(respuesta, 'class="error"')
         respuesta = self.client.post(self.url, self._datos())
         self.assertIn(campo, respuesta.context["form"].errors)
-        self.assertEqual(Visita.objects.count(), 1)
+        self.assertEqual(Visita.objects.de_empresa(una_empresa()).count(), 1)
         self.client.post(self.url, self._datos(**{campo: "4"}))
-        visita = Visita.objects.exclude(pk=self.visita.pk).get()
+        visita = (
+            Visita.objects.de_empresa(una_empresa()).exclude(pk=self.visita.pk).get()
+        )
         self.assertEqual(visita.revisiones.get().datos, {"cebos": 4})
 
     def test_planilla_de_ambito_visita_va_a_la_visita(self):
@@ -718,7 +767,9 @@ class CargarVisitaTests(BaseTests):
         respuesta = self.client.post(self.url, self._datos())
         self.assertIn(campo, respuesta.context["form"].errors)
         self.client.post(self.url, self._datos(**{campo: "Todo en orden"}))
-        visita = Visita.objects.exclude(pk=self.visita.pk).get()
+        visita = (
+            Visita.objects.de_empresa(una_empresa()).exclude(pk=self.visita.pk).get()
+        )
         self.assertEqual(visita.datos, {self.tipo.slug: {"resumen": "Todo en orden"}})
         self.assertEqual(visita.revisiones.get().datos, {})
 
@@ -728,5 +779,5 @@ class CargarVisitaTests(BaseTests):
         respuesta = self.client.post(self.url, self._datos(fotos=[self._foto(), falsa]))
         self.assertEqual(respuesta.status_code, 200)
         self.assertIn("fotos", respuesta.context["form"].errors)
-        self.assertEqual(Visita.objects.count(), 1)
+        self.assertEqual(Visita.objects.de_empresa(una_empresa()).count(), 1)
         self.assertEqual(self._archivos(), antes)

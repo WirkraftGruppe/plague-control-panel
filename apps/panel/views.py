@@ -33,7 +33,9 @@ class MapaView(AdministradorRequeridoMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
-        contexto["servicios"] = TipoServicio.objects.order_by("nombre")
+        contexto["servicios"] = TipoServicio.objects.de_empresa(
+            self.request.empresa
+        ).order_by("nombre")
         contexto["estados"] = EstadoVencimiento.choices
         return contexto
 
@@ -46,6 +48,7 @@ class MapaDatosView(AdministradorRequeridoMixin, View):
         if estado not in EstadoVencimiento.values:
             estado = None
         sitios = sitios_para_mapa(
+            request.empresa,
             cliente=_entero(request.GET.get("cliente")),
             servicio=_entero(request.GET.get("servicio")),
             estado=estado,

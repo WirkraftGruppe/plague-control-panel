@@ -4,15 +4,21 @@ from django.test import TestCase
 from django.urls import reverse
 
 from apps.accounts.models import User
+from apps.empresas.tests.ayudas import una_empresa
 from apps.servicios.models import TipoServicio
 
 
 class CatalogoServiciosTests(TestCase):
     def test_listado_muestra_pestanas_con_servicios_activa(self):
         admin = User.objects.create_user(
-            username="admin-cat-s", password="x", rol=User.Rol.ADMINISTRADOR
+            username="admin-cat-s",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
-        TipoServicio.objects.create(nombre="Roedores", slug="roedores-cat")
+        TipoServicio.objects.create(
+            nombre="Roedores", slug="roedores-cat", empresa=una_empresa()
+        )
         self.client.force_login(admin)
         respuesta = self.client.get(reverse("panel:servicios:listado"))
         self.assertContains(respuesta, '<nav class="pestanas" aria-label="Catálogo">')
@@ -30,9 +36,14 @@ class CatalogoServiciosTests(TestCase):
 class AccionesFilaTests(TestCase):
     def test_acciones_de_fila_agrupadas(self):
         admin = User.objects.create_user(
-            username="admin-acc-s", password="x", rol=User.Rol.ADMINISTRADOR
+            username="admin-acc-s",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
-        TipoServicio.objects.create(nombre="Insectos", slug="insectos-acc")
+        TipoServicio.objects.create(
+            nombre="Insectos", slug="insectos-acc", empresa=una_empresa()
+        )
         self.client.force_login(admin)
         html = self.client.get(reverse("panel:servicios:listado")).content.decode()
         self.assertRegex(

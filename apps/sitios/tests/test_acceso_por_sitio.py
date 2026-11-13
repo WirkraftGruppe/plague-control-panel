@@ -7,6 +7,7 @@ from rest_framework.test import APIClient
 
 from apps.accounts.models import User
 from apps.clientes.models import Cliente
+from apps.empresas.tests.ayudas import una_empresa
 from apps.sitios.models import PuntoControl, Sitio
 from apps.sitios.tests.test_api import MEDIA_TEMPORAL, crear_plano
 from apps.visitas.models import Visita
@@ -22,15 +23,15 @@ class AccesoPorSitioTests(TestCase):
         shutil.rmtree(MEDIA_TEMPORAL, ignore_errors=True)
 
     def setUp(self):
-        cliente = Cliente.objects.create(razon_social="ACME")
+        cliente = Cliente.objects.create(razon_social="ACME", empresa=una_empresa())
         self.sitio = Sitio.objects.create(cliente=cliente, nombre="Planta 1")
         self.otro_sitio = Sitio.objects.create(cliente=cliente, nombre="Planta 2")
         self.plano = crear_plano(self.sitio)
         self.empleado = User.objects.create_user(
-            "emp", password="x", rol=User.Rol.EMPLEADO
+            "emp", password="x", rol=User.Rol.EMPLEADO, empresa=una_empresa()
         )
         self.ajeno = User.objects.create_user(
-            "ajeno", password="x", rol=User.Rol.EMPLEADO
+            "ajeno", password="x", rol=User.Rol.EMPLEADO, empresa=una_empresa()
         )
         self.api = APIClient()
         self.api.force_authenticate(self.empleado)
@@ -52,7 +53,9 @@ class AccesoPorSitioTests(TestCase):
         # Una visita pendiente o abierta propia en el sitio da acceso.
         pendiente = self.visita(self.sitio)
         self.assertEqual(self.api.get(self.url_plano).status_code, 200)
-        Visita.objects.filter(pk=pendiente.pk).update(estado=Visita.Estado.ABIERTA)
+        Visita.objects.de_empresa(una_empresa()).filter(pk=pendiente.pk).update(
+            estado=Visita.Estado.ABIERTA
+        )
         self.assertEqual(self.api.get(self.url_plano).status_code, 200)
 
     def test_plano_con_visita_en_otro_sitio_da_404(self):

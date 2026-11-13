@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from rest_framework.test import APIClient
 
+from apps.empresas.tests.ayudas import una_empresa
 from apps.productos.models import Producto
 
 User = get_user_model()
@@ -16,7 +17,7 @@ class CatalogoTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.empleado = User.objects.create_user(
-            "emp", password="clave-segura-123", rol="empleado"
+            "emp", password="clave-segura-123", rol="empleado", empresa=una_empresa()
         )
         cls.activo = Producto.objects.create(
             nombre_comercial="Cebo X",
@@ -24,8 +25,11 @@ class CatalogoTests(TestCase):
             registro="ANMAT 123",
             presentacion="Bidón 5 l",
             unidad_dosis_por_defecto="ml/l",
+            empresa=una_empresa(),
         )
-        Producto.objects.create(nombre_comercial="Viejo", activo=False)
+        Producto.objects.create(
+            nombre_comercial="Viejo", activo=False, empresa=una_empresa()
+        )
 
     def setUp(self):
         self.cliente = APIClient()
@@ -64,7 +68,7 @@ class CatalogoTests(TestCase):
         self.assertEqual(igual.status_code, 304)
         self.assertEqual(igual["ETag"], etag)
 
-        Producto.objects.create(nombre_comercial="Nuevo")
+        Producto.objects.create(nombre_comercial="Nuevo", empresa=una_empresa())
         cambiado = self.cliente.get(URL, headers={"If-None-Match": etag})
         self.assertEqual(cambiado.status_code, 200)
         self.assertNotEqual(cambiado["ETag"], etag)
@@ -75,12 +79,20 @@ class CatalogoUnidadesTests(TestCase):
 
     def test_expone_unidad_base_modo_y_unidades_permitidas(self):
         empleado = User.objects.create_user(
-            "emp-uni", password="clave-segura-123", rol="empleado"
+            "emp-uni",
+            password="clave-segura-123",
+            rol="empleado",
+            empresa=una_empresa(),
         )
         Producto.objects.create(
-            nombre_comercial="Líquido", unidad_base="l", modo_unidad="equivalentes"
+            nombre_comercial="Líquido",
+            unidad_base="l",
+            modo_unidad="equivalentes",
+            empresa=una_empresa(),
         )
-        Producto.objects.create(nombre_comercial="Sólido", unidad_base="kg")
+        Producto.objects.create(
+            nombre_comercial="Sólido", unidad_base="kg", empresa=una_empresa()
+        )
         cliente = APIClient()
         cliente.force_authenticate(empleado)
         datos = {p["nombre_comercial"]: p for p in cliente.get(URL).json()}

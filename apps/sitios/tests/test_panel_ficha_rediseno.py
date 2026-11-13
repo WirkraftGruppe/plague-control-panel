@@ -16,6 +16,7 @@ from PIL import Image
 
 from apps.accounts.models import User
 from apps.clientes.models import Cliente
+from apps.empresas.tests.ayudas import una_empresa
 from apps.servicios.models import TipoServicio
 from apps.sitios.models import Plano, PuntoControl, Sitio
 from apps.visitas.models import ItemTurno, Visita
@@ -40,13 +41,22 @@ class FichaRedisenoTests(TestCase):
     def setUpTestData(cls):
         cls.hoy = timezone.localdate()
         cls.admin = User.objects.create_user(
-            "adm-rediseno", password="x", rol=User.Rol.ADMINISTRADOR
+            "adm-rediseno",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         cls.empleado = User.objects.create_user(
-            "emp-rediseno", password="x", rol=User.Rol.EMPLEADO, first_name="Ana"
+            "emp-rediseno",
+            password="x",
+            rol=User.Rol.EMPLEADO,
+            first_name="Ana",
+            empresa=una_empresa(),
         )
-        cls.cliente = Cliente.objects.create(razon_social="ACME")
-        cls.servicio = TipoServicio.objects.create(nombre="Roedores", slug="roedores-r")
+        cls.cliente = Cliente.objects.create(razon_social="ACME", empresa=una_empresa())
+        cls.servicio = TipoServicio.objects.create(
+            nombre="Roedores", slug="roedores-r", empresa=una_empresa()
+        )
         cls.sitio = Sitio.objects.create(
             cliente=cls.cliente,
             nombre="Planta Sur",
@@ -58,6 +68,7 @@ class FichaRedisenoTests(TestCase):
                 rol=User.Rol.ADMINISTRADOR,
                 first_name="Rosa",
                 last_name="Gómez",
+                empresa=una_empresa(),
             ),
             contacto_en_sitio="Luis Pérez",
             telefono_en_sitio="221-555-0101",
@@ -72,9 +83,9 @@ class FichaRedisenoTests(TestCase):
         self.url_turno = reverse("panel:visitas:nuevo_turno", args=[self.sitio.pk])
 
     def vencer(self, dias):
-        PuntoControl.objects.filter(pk=self.general.pk).update(
-            proximo_vencimiento=self.hoy + timedelta(days=dias)
-        )
+        PuntoControl.objects.de_empresa(una_empresa()).filter(
+            pk=self.general.pk
+        ).update(proximo_vencimiento=self.hoy + timedelta(days=dias))
 
     def test_cabecera_con_datos_y_acciones(self):
         self.vencer(-2)
@@ -114,9 +125,9 @@ class FichaRedisenoTests(TestCase):
             nombre="Planta baja",
             imagen=SimpleUploadedFile("p.png", _png()),
         )
-        PuntoControl.objects.filter(pk=self.general.pk).update(
-            plano=plano, x=Decimal("0.2"), y=Decimal("0.3"), orden=0
-        )
+        PuntoControl.objects.de_empresa(una_empresa()).filter(
+            pk=self.general.pk
+        ).update(plano=plano, x=Decimal("0.2"), y=Decimal("0.3"), orden=0)
         segundo = PuntoControl.objects.create(
             sitio=self.sitio,
             nombre="Cocina",
@@ -209,9 +220,9 @@ class FichaPlanoTests(FichaRedisenoTests):
             nombre="Planta baja",
             imagen=SimpleUploadedFile("p.png", _png()),
         )
-        PuntoControl.objects.filter(pk=self.general.pk).update(
-            plano=plano, x=Decimal("0.2"), y=Decimal("0.3"), orden=0
-        )
+        PuntoControl.objects.de_empresa(una_empresa()).filter(
+            pk=self.general.pk
+        ).update(plano=plano, x=Decimal("0.2"), y=Decimal("0.3"), orden=0)
         html = self.client.get(self.url).content.decode()
         self.assertIn("sitios/ficha_plano.js", html)
         self.assertIn("sitios/ficha.css", html)

@@ -6,6 +6,7 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.clientes.models import Cliente
+from apps.empresas.tests.ayudas import una_empresa
 from apps.servicios.models import CampoPlanilla, TipoServicio
 from apps.sitios.models import Sitio
 from apps.visitas.models import Revision, Visita
@@ -15,12 +16,20 @@ class PlanillaPanelTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.admin = User.objects.create_user(
-            username="admin-plan", password="x", rol=User.Rol.ADMINISTRADOR
+            username="admin-plan",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         cls.empleado = User.objects.create_user(
-            username="emp-plan", password="x", rol=User.Rol.EMPLEADO
+            username="emp-plan",
+            password="x",
+            rol=User.Rol.EMPLEADO,
+            empresa=una_empresa(),
         )
-        cls.tipo = TipoServicio.objects.create(nombre="Roedores", slug="roedores-pl")
+        cls.tipo = TipoServicio.objects.create(
+            nombre="Roedores", slug="roedores-pl", empresa=una_empresa()
+        )
         cls.campo = CampoPlanilla.objects.create(
             tipo_servicio=cls.tipo,
             orden=1,
@@ -52,7 +61,7 @@ class PlanillaPanelTests(TestCase):
         self.assertRedirects(
             respuesta, reverse("panel:servicios:campos", args=[self.tipo.pk])
         )
-        nuevo = CampoPlanilla.objects.get(clave="estado")
+        nuevo = CampoPlanilla.objects.de_empresa(una_empresa()).get(clave="estado")
         self.assertEqual(nuevo.opciones, ["Bueno", "Malo"])
         self.assertTrue(nuevo.activo)
 
@@ -62,7 +71,9 @@ class PlanillaPanelTests(TestCase):
             {"orden": 2, "etiqueta": "E", "clave": "e", "tipo": "opcion"},
         )
         self.assertEqual(respuesta.status_code, 200)
-        self.assertFalse(CampoPlanilla.objects.filter(clave="e").exists())
+        self.assertFalse(
+            CampoPlanilla.objects.de_empresa(una_empresa()).filter(clave="e").exists()
+        )
 
     def test_desactivar_saca_el_campo_del_esquema(self):
         url = reverse("panel:servicios:campo_desactivar", args=[self.campo.pk])
@@ -72,7 +83,11 @@ class PlanillaPanelTests(TestCase):
         self.campo.refresh_from_db()
         self.assertFalse(self.campo.activo)
         self.assertEqual(self.tipo.esquema_planilla(), [])
-        self.assertTrue(CampoPlanilla.objects.filter(pk=self.campo.pk).exists())
+        self.assertTrue(
+            CampoPlanilla.objects.de_empresa(una_empresa())
+            .filter(pk=self.campo.pk)
+            .exists()
+        )
 
     def test_reactivar_campo_vuelve_al_esquema(self):
         self.campo.activo = False
@@ -101,7 +116,7 @@ class PlanillaPanelTests(TestCase):
         formulario = self.client.get(url).context["form"]
         self.assertFalse(formulario.fields["clave"].disabled)
 
-        cliente = Cliente.objects.create(razon_social="ACME")
+        cliente = Cliente.objects.create(razon_social="ACME", empresa=una_empresa())
         sitio = Sitio.objects.create(cliente=cliente, nombre="Planta")
         Visita.objects.create(
             sitio=sitio,
@@ -123,7 +138,8 @@ class PlanillaPanelTests(TestCase):
     def test_clave_fija_si_una_revision_la_uso(self):
         url = reverse("panel:servicios:campo_editar", args=[self.campo.pk])
         sitio = Sitio.objects.create(
-            cliente=Cliente.objects.create(razon_social="ACME"), nombre="P"
+            cliente=Cliente.objects.create(razon_social="ACME", empresa=una_empresa()),
+            nombre="P",
         )
         visita = Visita.objects.create(
             sitio=sitio, empleado=self.empleado, origen=Visita.Origen.APP
@@ -149,7 +165,7 @@ class PlanillaPanelTests(TestCase):
         self.assertIn("ambito", formulario.fields)
         self.assertFalse(formulario.fields["ambito"].disabled)
 
-        cliente = Cliente.objects.create(razon_social="ACME")
+        cliente = Cliente.objects.create(razon_social="ACME", empresa=una_empresa())
         sitio = Sitio.objects.create(cliente=cliente, nombre="Planta")
         Visita.objects.create(
             sitio=sitio,
@@ -177,4 +193,8 @@ class PlanillaPanelTests(TestCase):
         for nombre in ("campo_editar", "campo_desactivar"):
             url = reverse(f"panel:servicios:{nombre}", args=[self.campo.pk])
             self.client.delete(url)
-        self.assertTrue(CampoPlanilla.objects.filter(pk=self.campo.pk).exists())
+        self.assertTrue(
+            CampoPlanilla.objects.de_empresa(una_empresa())
+            .filter(pk=self.campo.pk)
+            .exists()
+        )

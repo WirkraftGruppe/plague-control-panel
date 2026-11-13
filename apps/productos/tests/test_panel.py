@@ -4,6 +4,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from apps.accounts.models import User
+from apps.empresas.tests.ayudas import una_empresa
 from apps.productos.models import Producto
 
 
@@ -11,10 +12,16 @@ class ProductoPanelTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.admin = User.objects.create_user(
-            username="admin-prod", password="x", rol=User.Rol.ADMINISTRADOR
+            username="admin-prod",
+            password="x",
+            rol=User.Rol.ADMINISTRADOR,
+            empresa=una_empresa(),
         )
         cls.empleado = User.objects.create_user(
-            username="emp-prod", password="x", rol=User.Rol.EMPLEADO
+            username="emp-prod",
+            password="x",
+            rol=User.Rol.EMPLEADO,
+            empresa=una_empresa(),
         )
 
     def test_empleado_no_accede(self):
@@ -36,7 +43,9 @@ class ProductoPanelTests(TestCase):
             },
         )
         self.assertRedirects(respuesta, reverse("panel:productos:listado"))
-        producto = Producto.objects.get(nombre_comercial="Raticida X")
+        producto = Producto.objects.de_empresa(una_empresa()).get(
+            nombre_comercial="Raticida X"
+        )
         self.assertTrue(producto.activo)
 
         self.client.post(
@@ -58,7 +67,7 @@ class ProductoPanelTests(TestCase):
         self.assertContains(respuesta, 'id="listado"')
 
     def test_listado_htmx_devuelve_solo_el_parcial(self):
-        Producto.objects.create(nombre_comercial="Gel")
+        Producto.objects.create(nombre_comercial="Gel", empresa=una_empresa())
         self.client.force_login(self.admin)
         respuesta = self.client.get(
             reverse("panel:productos:listado"), HTTP_HX_REQUEST="true"
