@@ -121,7 +121,7 @@ Ninguna subtarea crea migraciones; las olas separan archivos y dependencias de c
 
 - **Ola**: 1
 - **Depende de**: —
-- **Puede tocar**: `apps/sitios/panel_forms.py`, `apps/sitios/panel_views.py`, `apps/sitios/geocodificacion.py`, `apps/sitios/api_urls.py`, `apps/sitios/api_views.py`, `apps/sitios/services.py`, `apps/sitios/templates/sitios/panel/_fila_punto.html`, `apps/sitios/tests/test_robustez_sitios.py`, `apps/sitios/tests/test_geocodificacion.py`, `apps/sitios/tests/test_api.py`
+- **Puede tocar**: `apps/sitios/panel_forms.py`, `apps/sitios/panel_views.py`, `apps/sitios/geocodificacion.py`, `apps/sitios/api_urls.py`, `apps/sitios/api_views.py`, `apps/sitios/services.py`, `apps/sitios/templates/sitios/panel/_fila_punto.html`, `apps/sitios/tests/test_robustez_sitios.py`, `apps/sitios/tests/test_geocodificacion.py`, `apps/sitios/tests/test_api.py`, `apps/api/tests/test_aislamiento.py` (solo para tratar `<str:codigo>` del resolver como UUID)
 - **No puede tocar**: `docs/planes/`, `config/`, `apps/visitas/`, migraciones, archivos de otras apps
 - **Skill a leer antes**: `.agents/skills/django-rest-framework/SKILL.md` § Error Handling
 - **Worktree**: sí
