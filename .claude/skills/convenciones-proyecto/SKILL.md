@@ -6,7 +6,7 @@ description: Convenciones y referencia de Detach (stack, estructura de apps, com
 # Convenciones de Detach
 
 ## Qué es
-Detach: sistema de gestión para empresas de control de plagas, en una única aplicación Django. Una instalación sirve a varias empresas (`apps.empresas.Empresa`): el nombre, el logo y el correo salen de la empresa; el sitio público vive en otro repositorio.
+Detach: sistema de gestión para empresas de control de plagas, en una única aplicación Django. Una instalación sirve a varias empresas (`apps.empresas.Empresa`): el nombre, el logo y el correo salen de la empresa; el sitio público vive en otro repositorio y la app móvil irá en `mobile/`, también aparte.
 - **Raíz** `/` — redirige al login del panel; no hay sitio público en esta aplicación.
 - **Panel de gestión** `/panel/` — administradores de cada empresa: clientes, sitios con QR y la programación de cada punto, turnos, mapa, productos, certificados.
 - **API** `/api/v1/` — para la app móvil de los empleados (Expo, etapa final) y para el mapa del panel.
@@ -69,10 +69,11 @@ apps/<app>/
 | `apps/api/urls.py`, `apps/panel/urls.py` | principal | al integrar cada ola |
 | `apps/api/**` (salvo `urls.py`), `apps/panel/**` (salvo `urls.py`) | subtarea "transversal" del plan que lo necesite | una por plan |
 | `templates/base.html`, `templates/panel/base.html`, `static/src/**`, `static/css/**` | subtarea "diseño" | los implementadores de dominio la consumen, no la editan |
+| `.claude/hooks/**`, `.claude/agents/**`, `CLAUDE.md`, `docs/metodo/**`, `docs/estado.md` | principal | en el plan del método; `docs/estado.md` también al cierre de cada sesión |
 | `docs/bitacora.md`, `docs/decisiones.md` | principal de cada sesión | solo al cierre, con rebase |
 | `docs/planes/<plan>.md` | principal de ese plan | nunca otra sesión |
 
-Una subtarea cuyo `Puede tocar` incluya un archivo de otro dueño es hallazgo bloqueante del `juez-plan`.
+Una subtarea cuyo `Puede tocar` incluya un archivo de otro dueño es hallazgo bloqueante del `revisor` (modo plan).
 
 ### Olas por grafo de FK
 ```
@@ -93,7 +94,57 @@ bash .claude/hooks/worktree-integrar.sh <slug> T<n> <rama_destino> <ruta>...
 ```
 `T<n>` acepta sufijo de letra (`T5a`). Dentro de un worktree los comandos canónicos funcionan por la junction `venv`; nunca se toca ni se borra.
 
+- **Sin `cd` a los worktrees**: el principal usa `git -C worktrees/<slug>-T<n>` o rutas absolutas; el implementador recibe el worktree como ruta explícita y empieza cada comando Bash con `cd <worktree> && …`. Un shell con el cwd dentro del worktree impide que `worktree-integrar.sh` lo quite (exit 3).
+- **Dónde se corre `worktree-integrar.sh`**: desde el worktree de la rama destino (`worktrees/<slug>` para `plan/<slug>`), nunca desde el de la subtarea. El script borra la rama de la subtarea con `git branch -d` desde el worktree destino; si eso falla, solo avisa (P-metodo-v2-5) y la rama se borra a mano con `git -C <worktree destino> branch -d <slug>-T<n>`. La suite de Django corre solo si la subtarea toca `apps/`, `config/`, `templates/`, `manage.py` o `requirements.txt` (P-metodo-v2-23).
+- Una integración por vez y `verificar.py tarea` tras cada una; antes de integrar se revisa `bash .claude/hooks/cambios.sh . <rama_base>`, no los informes.
+- **Ramas y plan de la sesión**: un plan es la rama `plan/<slug>` y sus subtareas `<slug>-T<n>`; los hooks derivan el plan (`docs/planes/*-<slug>.md`) de `git branch --show-current`. `main` solo recibe planes con el cierre en PASA: el principal sube `plan/<slug>` y abre el PR; el merge es del usuario. Antes de cada push: `git diff --stat <base>..HEAD`, sin secretos ni archivos ajenos al plan.
+- **Una sola sesión por worktree**: la tabla Carriles de `docs/estado.md` dice quién escribe dónde; si está ocupado, se para.
+
 Si la prueba de humo de `worktree-crear.sh` falla, la junction queda viva en `worktrees/<slug>-T<n>/venv`. Limpieza: primero `cmd /c rmdir worktrees\<slug>-T<n>\venv` (quita solo la junction) y después `git worktree remove worktrees/<slug>-T<n>`. Nunca `Remove-Item -Recurse` de PowerShell 5.1: sigue la junction y vacía el venv real.
+
+## Método
+Detalle de lo que `CLAUDE.md` resume. Los scripts viven en `.claude/hooks/`; los de Python se llaman con `py -3`.
+
+### Rutas de trabajo
+| Ruta | Cuándo | Qué corre |
+|---|---|---|
+| **directo** | hasta 4 archivos, sin decisión abierta, migración ni datos personales; sin plan | commit y `verificar.py cierre`; el recibo va en la respuesta |
+| **ligero** (`ruta: ligero`) | hasta 10 archivos, sin `seguridad: sí`, migraciones, carpetas ni comodines en `Puede tocar` | plan, `revisar_plan.py`, `revisor` modo plan, `verificar.py tarea` por T y `verificar.py cierre` al final |
+| **completo** (`ruta: completo`) | todo lo demás | plantilla, `revisar_plan.py`, `revisor` modo plan, aprobación, `docs(plan)`, `verificar.py tarea` por T, `verificar.py todo`, `revisor` modo cierre, `auditor-seguridad` con `seguridad: sí`, `medir_metodo.py --registrar`, commit `cierre: <slug>` |
+
+El **freno de sesión larga** (~20 llamados, 5 lecturas exploratorias o 2 ediciones no mecánicas sin delegar) obliga a delegar el resto. La **regla de incidente**: tras un `cwd` equivocado, un accidente de git o de worktree o un workaround de entorno, `git status` en la raíz y en los worktrees activos, y una línea en `docs/metodo/incidentes.md` (`- AAAA-MM-DD — <plan|directo> — <qué pasó> — <costo>`). Las reglas del método no se cambian en el momento: se revisan una vez al mes con esos incidentes y `py -3 .claude/hooks/medir_metodo.py`.
+
+### Criterios
+- Solo siete tipos: `[cmd]` (exit 0), `[cmd-falla]` (exit distinto de 0), `[existe]`, `[no-existe]`, `[grep-1]` (al menos una coincidencia), `[grep-0]` (ninguna) y `[test]`.
+- `[test]` es un comando completo, nombrado y **nuevo** respecto de `commit_base`: `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test <ruta.punteada.Clase.test_nombre> --keepdb` o `py -3 -m pytest .claude/hooks/<archivo>.py::<función> -q`. Todo comando con `manage.py` lleva `./venv/Scripts/python.exe`.
+- Comportamiento nuevo lleva un `[test]`; una corrección, un `[test]` que reproduce el defecto y fallaba antes.
+- No son criterios: "funciona", "quedó implementado", "tests pasando" sin nombre, "revisado", "sin regresiones", "el usuario lo prueba".
+- El cierre global no va en el plan: sale de `.claude/hooks/cierre_global.json` (los planes v1 anteriores conservan su `## Criterios de cierre global`).
+- **Presupuesto**: `bash .claude/hooks/presupuesto.sh . '<commit_base>' <N> --subtarea T<n>` mide las líneas agregadas por los commits `T<n>:` de `commit_base..HEAD`, sin merges. Se fija antes de empezar (400 por defecto) y nunca se sube; recortar comentarios, docs, tests o líneas en blanco para entrar está prohibido. Si el trabajo no entra, va en una `T<m>` nueva, con su presupuesto y criterios, como contrato modificado. `'<commit_base>'` va literal y entre comillas simples. Una integración que solo hace merges y commits `registro:` no lleva `--subtarea` (mediría 0).
+
+### Del plan al cierre (ruta completa)
+1. El plan se escribe en `docs/planes/AAAA-MM-DD-<slug>.md` con `docs/plantilla-plan.md`. `py -3 .claude/hooks/revisar_plan.py <plan>` (estático: no ejecuta `cmd` ni `test`; exit 1 con errores) y el `revisor` en modo plan; los bloqueantes se corrigen y el usuario aprueba. Cada veredicto del `revisor` se anota en `### Revisiones` con su hora.
+2. Commit solo del plan, `docs(plan): <slug>`; su hash es `commit_base` y se anota debajo del corte, en `## Registro de verificación`. Todo lo anterior queda congelado: `bash .claude/hooks/congelado.sh <plan> <slug>` (exit 1 = CONTRATO MODIFICADO, exit 2 = CONTRATO NO CONGELADO).
+3. Por cada `T<n>`: el principal delega el contrato (objetivo, `Puede tocar`, `No puede tocar` —siempre `docs/planes/`—, skill y `Criterios` literal) al `implementador`, que devuelve el informe con la salida y el código de cada criterio. El principal commitea `T<n>: …` y corre `py -3 .claude/hooks/verificar.py tarea <plan> T<n>`. Un `FALLA` vuelve al implementador con la salida pegada, como máximo 2 veces; después se escala al usuario. Una subtarea con un `FALLA` abierto no se marca como hecha ni se informa como hecha.
+4. Cierre: `verificar.py todo <plan>`; `revisor` en modo cierre; `auditor-seguridad` si el plan lleva `seguridad: sí` (autenticación, roles, fotos, QR, geolocalización, certificados, settings de producción, datos personales). Los bloqueantes se corrigen en **una** ronda y se repite `todo`.
+5. `py -3 .claude/hooks/medir_metodo.py --registrar docs/metodo/metricas.md` y un solo commit `cierre: <slug>` con plan, recibo, estado, métricas, decisiones y pendientes; el hook `commit-msg` lo rechaza si el HEAD no tiene recibo en PASA. Las decisiones se copian a `docs/decisiones.md` antes del PR a `main`.
+6. Al usuario: el recibo sin editar, cada hallazgo con su disposición y lo que queda en sus manos.
+
+La ruta **ligera** corre los pasos 1 y 3, sin revisión de cierre ni auditoría, y termina con `verificar.py cierre`.
+
+### Recibos y hooks
+- `py -3 .claude/hooks/verificar.py [--raiz R] [--recibo RUTA] (tarea <plan> T<n>[,T<m>] | todo <plan> | cierre)`: exit 0 PASA, 1 FALLA, 2 uso inválido. Ejecuta los criterios del texto **congelado** (el commit `docs(plan)`), no del disco. `tarea` suma commits dentro de `Puede tocar`, versionados limpios y `[test]` nuevos; `todo` corre todas las `T<n>` y el cierre global; `cierre` solo el cierre global. El recibo por defecto es `docs/planes/<slug>.recibo.md` (en `cierre`, solo stdout) y abre con `HEAD verificado`: un veredicto vale solo para ese HEAD. Nunca escribe en el plan.
+- `.claude/.recibos.json` guarda los HEAD con recibo PASA y `.claude/.verificando` marca una verificación en curso; ambos están en `.gitignore`.
+- `recibo_pendiente.py` (hook `Stop`): si la sesión hizo commits y el HEAD no tiene recibo, pide `verificar.py todo` (plan completo) o `verificar.py cierre`; avisa una vez por sesión y HEAD.
+- `commit-msg`: rechaza `cierre: <slug>` sin recibo en PASA. Se instala a mano en `.git/hooks/` (`docs/metodo/parche-settings.md`).
+- **Contrato modificado**: un commit `docs(plan): <slug> — modificado: <motivo>` lo decide el usuario y se acepta con una línea `(usuario)` en `docs/decisiones.md` que lleva el hash corto de ese commit (es lo único que comprueba `verificar.py`); sin la línea, `verificar.py` da FALLA en el contrato. Quien puede fallar un criterio no lo reescribe.
+- `py -3 .claude/hooks/pendientes.py [--json]` lista los pendientes abiertos: `P-<slug>-<n> [bloqueante|importante|menor|observación] texto` en `## Pendientes que deja este plan`; se cierran con `- cierra: P-<slug>-<n> — cómo` en `### Cierra` del plan que los resuelve.
+
+### Estado, decisiones y métricas
+- `docs/estado.md` (25 líneas y 3000 bytes como máximo) reemplaza a la bitácora en el contexto de inicio: `Actualizado:`, `Plan activo:`, `Mergeado:`, tabla Carriles, `## Pendiente inmediato` y `## Esperan tu decisión`. `contexto.sh` inyecta git, worktrees, ese archivo, el plan de la rama, las últimas 5 decisiones y los pendientes, en 6000 bytes como máximo; `docs/bitacora.md` queda como registro de sesiones.
+- Decisión: `- AAAA-MM-DD — decisión — motivo — (usuario|agente) — reemplaza a: (nada|fecha)`. Las disyuntivas autónomas del plan van en `### Decisiones del plan` (`docs/protocolo-decisiones.md`).
+- Hallazgos: **bloqueante** (se corrige en el mismo plan, una ronda), **necesita decisión** (producto o seguridad: "Esperan tu decisión") y **menor** (pendiente `P-<slug>-<n>`; no se abre un plan para menores).
+- `docs/metodo/metricas.md` (una fila por plan cerrado, con `medir_metodo.py --registrar`) e `docs/metodo/incidentes.md`. Meta: `CLAUDE.md` en 8000 bytes o menos, inyección en 6000.
 
 ## Comandos canónicos (Windows, desde la raíz)
 ```bash

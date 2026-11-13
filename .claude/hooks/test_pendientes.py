@@ -172,3 +172,33 @@ def test_etiqueta_con_forma_invalida_o_destino_repetido_avisa(tmp_path):
     assert len(forma) == 2 and all("2026-01-01-uno.md:" in a for a in forma)
     assert any("repetid" in a and "P-uno-1" in a and "despliegue" in a for a in datos["avisos"])
     assert datos["abiertos"][0]["etiquetas"] == ["despliegue"]
+
+
+def test_resumen_cuenta_todo_y_lista_solo_bloqueantes_e_importantes(tmp_path):
+    largo = "x" * 400
+    plan(
+        tmp_path,
+        "2026-01-01-demo",
+        problemas=(
+            "- P-demo-1 [menor] MENOR-DE-JUGUETE\n"
+            f"- P-demo-2 [importante] IMPORTANTE {largo}\n"
+            "- P-demo-3 [bloqueante] BLOQUEANTE-DE-JUGUETE\n"
+            "- P-demo-4 [observación] OBSERVACION-DE-JUGUETE\n"
+        ),
+    )
+    salida = correr(tmp_path, "--resumen").stdout.decode("utf-8")
+    lineas = salida.splitlines()
+    assert lineas[0] == "Pendientes abiertos: 4 (1 bloqueante, 1 importante, 1 menor, 1 observación)"
+    assert lineas[1].startswith("- P-demo-3 [bloqueante] BLOQUEANTE-DE-JUGUETE")
+    assert lineas[2].startswith("- P-demo-2 [importante] IMPORTANTE")
+    assert lineas[2].endswith("…") and len(lineas[2]) < 200
+    assert "MENOR-DE-JUGUETE" not in salida and "OBSERVACION-DE-JUGUETE" not in salida
+    assert "Lista completa: py -3 .claude/hooks/pendientes.py" in salida
+
+
+def test_resumen_corta_la_lista_larga(tmp_path):
+    problemas = "".join(f"- P-demo-{n} [importante] texto {n}\n" for n in range(1, 31))
+    plan(tmp_path, "2026-01-01-demo", problemas=problemas)
+    salida = correr(tmp_path, "--resumen").stdout.decode("utf-8")
+    assert salida.count("[importante]") == 10
+    assert "… y 20 más entre bloqueantes e importantes" in salida

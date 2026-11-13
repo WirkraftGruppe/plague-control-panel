@@ -35,12 +35,46 @@ def test_frontmatter_de_agentes_es_yaml_valido(ruta):
     )
 
 
-def test_juez_plan_cubre_recuentos_absolutos():
-    """El juez de plan marca como bloqueante el recuento absoluto que el plan altera."""
-    texto = (DIR_AGENTES / "juez-plan.md").read_text(encoding="utf-8")
-    assert "recuento absoluto" in texto, "juez-plan.md no menciona el recuento absoluto"
-    inicio = texto.index("recuento absoluto")
-    contexto = texto[inicio : inicio + 800]
-    assert "bloqueante" in contexto, "el recuento absoluto no se marca como bloqueante"
-    assert "cierra exactamente" in contexto, "falta la forma relativa (cierra exactamente N)"
-    assert "plan sin código" in contexto, "falta la excepción del plan sin código"
+def frontmatter(nombre):
+    """Frontmatter YAML ya parseado del agente `nombre`."""
+    return yaml.safe_load(leer_frontmatter(DIR_AGENTES / f"{nombre}.md"))
+
+
+def herramientas(datos, clave):
+    """Lista de nombres de una clave tipo `Read, Grep` del frontmatter."""
+    return [p.strip() for p in str(datos.get(clave, "")).split(",") if p.strip()]
+
+
+def test_hay_exactamente_tres_agentes():
+    nombres = sorted(r.stem for r in ARCHIVOS)
+    assert nombres == ["auditor-seguridad", "implementador", "revisor"]
+
+
+@pytest.mark.parametrize("ruta", ARCHIVOS, ids=lambda r: r.name)
+def test_cada_agente_fija_model_effort_y_max_turns(ruta):
+    datos = yaml.safe_load(leer_frontmatter(ruta))
+    for campo in ("model", "effort", "maxTurns"):
+        assert datos.get(campo), f"{ruta.name}: falta {campo}"
+    assert isinstance(datos["maxTurns"], int), f"{ruta.name}: maxTurns debe ser entero"
+
+
+@pytest.mark.parametrize("nombre", ["revisor", "auditor-seguridad"])
+def test_revisor_y_auditor_no_editan(nombre):
+    datos = frontmatter(nombre)
+    declaradas = herramientas(datos, "tools")
+    assert declaradas, f"{nombre}: sin tools"
+    assert "Edit" not in declaradas and "Write" not in declaradas
+    if nombre == "auditor-seguridad":
+        assert herramientas(datos, "disallowedTools") == ["Edit", "Write"]
+
+
+def test_revisor_cita_revisar_plan_py():
+    texto = (DIR_AGENTES / "revisor.md").read_text(encoding="utf-8")
+    assert "py -3 .claude/hooks/revisar_plan.py" in texto
+    assert "verificar.py revisar-plan" not in texto
+
+
+def test_implementador_nombra_verificar_py_tarea():
+    texto = (DIR_AGENTES / "implementador.md").read_text(encoding="utf-8")
+    assert "verificar.py tarea" in texto
+    assert "Trabajo en un worktree" in texto

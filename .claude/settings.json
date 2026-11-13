@@ -1,4 +1,95 @@
 {
+  "env": {
+    "PYTHONIOENCODING": "utf-8"
+  },
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Bash"
+    ],
+    "ask": [],
+    "deny": [
+      "Read(**/.env)",
+      "Read(**/.env.local)",
+      "Read(**/.env.dev*)",
+      "Read(**/.env.prod*)",
+      "Read(**/.env.staging)",
+      "Read(**/.env.test)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)",
+      "Read(**/credenciales*)",
+      "Bash(railway ssh*)",
+      "Bash(railway connect*)",
+      "Bash(railway variables*)",
+      "Bash(railway run*)",
+      "Bash(railway up*)",
+      "Bash(railway redeploy*)",
+      "Bash(*railway.exe ssh*)",
+      "Bash(*railway.exe connect*)",
+      "Bash(*railway.exe variables*)",
+      "Bash(*railway.exe run*)",
+      "Bash(*railway.exe up*)",
+      "Bash(*railway.exe redeploy*)",
+      "Bash(gh pr merge*)",
+      "Bash(gh pr review * --approve*)",
+      "Bash(gh pr review --approve*)",
+      "Bash(gh repo delete*)",
+      "Bash(gh repo edit*)",
+      "Bash(gh repo archive*)",
+      "Bash(gh repo rename*)",
+      "Bash(gh secret set*)",
+      "Bash(gh secret delete*)",
+      "Bash(gh release create*)",
+      "Bash(gh release delete*)",
+      "Bash(gh workflow run*)",
+      "Bash(gh auth token*)",
+      "Bash(gh auth login*)",
+      "Bash(gh auth logout*)",
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git push * --force*)",
+      "Bash(git -C * push --force*)",
+      "Bash(git push *+*)",
+      "Bash(git push *--no-verify*)",
+      "Bash(git stash*)",
+      "Bash(git -C * stash*)",
+      "Bash(git add -A*)",
+      "Bash(git add .)",
+      "Bash(git -C * add -A*)",
+      "Bash(git -C * add .)",
+      "Bash(git reset --hard*)",
+      "Bash(git -C * reset --hard*)",
+      "Bash(git clean*)",
+      "Bash(git -C * clean*)",
+      "Bash(git -c *)",
+      "Bash(git config core.hooksPath*)",
+      "Bash(git commit --amend*)",
+      "Bash(git commit * --amend*)",
+      "Bash(git commit -a*)",
+      "Bash(git commit --all*)",
+      "Bash(git branch -D*)",
+      "Bash(git branch * -D*)",
+      "Bash(git switch --discard-changes*)",
+      "Bash(git switch * --discard-changes*)",
+      "Bash(git switch -f*)",
+      "Bash(git remote add*)",
+      "Bash(git remote set-url*)",
+      "Edit(**/.git/hooks/**)",
+      "Edit(.claude/settings.json)",
+      "Edit(.claude/settings.local.json)",
+      "Edit(.claude/hooks/permisos.py)",
+      "Edit(.claude/hooks/guardia_bash.py)",
+      "Edit(.claude/hooks/pre-push)",
+      "Edit(.claude/.recibos.json)",
+      "Edit(.claude/hooks/recibo.py)",
+      "Edit(.claude/hooks/commit-msg)",
+      "Edit(.claude/hooks/commit_msg.py)",
+      "Bash(git commit *--no-v*)",
+      "Bash(git push *--no-v*)",
+      "Bash(git commit *--am*)",
+      "Bash(git push *--forc*)"
+    ]
+  },
   "hooks": {
     "SessionStart": [
       {
@@ -10,13 +101,25 @@
         ]
       }
     ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py -3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guardia_bash.py",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "py -3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/verificar_plan.py",
-            "timeout": 900
+            "command": "py -3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/recibo_pendiente.py",
+            "timeout": 30
           }
         ]
       }

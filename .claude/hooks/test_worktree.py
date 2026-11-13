@@ -210,15 +210,33 @@ def test_integrar_deshace_merge_si_fallan_tests(repo):
     git(repo, "add", "-A")
     git(repo, "commit", "-q", "-m", "manage.py que falla en test")
     wt = crear(repo)
-    commitear_archivo(wt, "app.txt")
+    (wt / "apps").mkdir()
+    commitear_archivo(wt, "apps/app.txt")  # toca apps/: la suite corre (P-metodo-v2-23)
     antes = git(repo, "rev-parse", "main").strip()
-    proceso = correr(INTEGRAR, repo, "demo", "T1", "main", "app.txt")
+    proceso = correr(INTEGRAR, repo, "demo", "T1", "main", "apps")
     assert proceso.returncode == 1
     assert git(repo, "rev-parse", "main").strip() == antes
     assert "se deshizo el merge" in texto(proceso.stderr)
-    assert not (repo / "app.txt").exists()
+    assert not (repo / "apps" / "app.txt").exists()
     assert wt.exists()
     assert git(repo, "branch", "--list", "demo-T1").strip().endswith("demo-T1")
+
+
+def test_integrar_omite_suite_si_no_toca_django(repo):
+    """P-metodo-v2-23: sin cambios en apps/, config/, templates/, manage.py ni requirements.txt no corre `test`."""
+    # manage.py de juguete que falla con `test`: si la suite corriera, la integración fallaría.
+    (repo / "manage.py").write_text(
+        MANAGE_JUGUETE + "if 'test' in sys.argv[1:]:\n    sys.exit(1)\n"
+    )
+    git(repo, "add", "-A")
+    git(repo, "commit", "-q", "-m", "manage.py que falla en test")
+    wt = crear(repo)
+    commitear_archivo(wt, "docs.txt")
+    proceso = correr(INTEGRAR, repo, "demo", "T1", "main", "docs.txt")
+    assert proceso.returncode == 0, texto(proceso.stdout) + texto(proceso.stderr)
+    assert "se omite la suite de Django" in texto(proceso.stdout)
+    assert (repo / "humo.txt").read_text().endswith("makemigrations --check --dry-run")
+    assert (repo / "docs.txt").exists()
 
 
 def test_integrar_rechaza_ruta_que_no_es_worktree(repo):

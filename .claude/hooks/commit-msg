@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Hook commit-msg: un commit `cierre: <slug>` exige recibo en PASA (ver commit_msg.py).
+# Si no hay commit_msg.py (rama vieja) solo se rechazan los mensajes `cierre:`: no se puede
+# comprobar el recibo y el cierre no puede pasar sin comprobarlo. El resto de los commits pasan.
+raiz="$(git rev-parse --show-toplevel)"
+if [ ! -f "$raiz/.claude/hooks/commit_msg.py" ]; then
+  # Primera línea no vacía: `--cleanup=verbatim` conserva las líneas en blanco iniciales (P-metodo-v2-26).
+  primera="$(grep -m 1 -v '^[[:space:]]*$' "$1" 2>/dev/null)"
+  primera="${primera#"${primera%%[![:space:]]*}"}"
+  case "$primera" in
+    cierre:*)
+      echo "commit-msg: falta .claude/hooks/commit_msg.py: no se puede comprobar el recibo y «cierre:» se rechaza." >&2
+      exit 1
+      ;;
+  esac
+  exit 0
+fi
+# -I: sin la carpeta del script al frente de sys.path ni PYTHON* del entorno (P-metodo-v2-25).
+exec py -3 -I "$raiz/.claude/hooks/commit_msg.py" "$1"

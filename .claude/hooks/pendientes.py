@@ -9,6 +9,9 @@ Etiquetas: la subsección `### Etiquetas` admite líneas `- etiqueta: <id> → <
 ` — nota` opcional (`<destino>` en `[a-z0-9-]+`). Un id puede tener varias etiquetas (no el
 mismo destino dos veces) y valen desde cualquier plan, como `cierra:`. Cada abierto lleva
 `etiquetas` (lista ordenada) y `--etiqueta <nombre>` deja solo los abiertos que la tienen.
+
+`--resumen` es la salida corta que inyecta el hook de inicio (`contexto.sh`): el recuento por
+severidad y solo los `bloqueante` e `importante`, una línea recortada por cada uno.
 """
 import argparse
 import json
@@ -19,6 +22,9 @@ from pathlib import Path
 ENCABEZADO_CORTE = "## Registro de verificación"
 ENCABEZADO_SECCION = "## Pendientes que deja este plan"
 SEVERIDADES = ["bloqueante", "importante", "menor", "observación"]
+SEVERIDADES_DEL_RESUMEN = ("bloqueante", "importante")
+MAX_LINEAS_RESUMEN = 10
+MAX_TEXTO_RESUMEN = 120
 
 RE_PLAN = re.compile(r"^\d{4}-\d{2}-\d{2}-(.+)\.md$")
 RE_ID = r"P-([a-z0-9][a-z0-9-]*)-\d+"
@@ -161,11 +167,31 @@ def imprimir_texto(abiertos, avisos):
             print(f"- {aviso}")
 
 
+def imprimir_resumen(abiertos, avisos):
+    """Salida corta: recuento por severidad y los bloqueantes e importantes, recortados."""
+    recuento = ", ".join(
+        f"{sum(1 for p in abiertos if p['severidad'] == s)} {s}" for s in SEVERIDADES
+    )
+    print(f"Pendientes abiertos: {len(abiertos)} ({recuento})")
+    graves = [p for s in SEVERIDADES_DEL_RESUMEN for p in abiertos if p["severidad"] == s]
+    for p in graves[:MAX_LINEAS_RESUMEN]:
+        texto = " ".join(p["texto"].split())
+        if len(texto) > MAX_TEXTO_RESUMEN:
+            texto = texto[: MAX_TEXTO_RESUMEN - 1].rstrip() + "…"
+        print(f"- {p['id']} [{p['severidad']}] {texto}")
+    if len(graves) > MAX_LINEAS_RESUMEN:
+        print(f"- … y {len(graves) - MAX_LINEAS_RESUMEN} más entre bloqueantes e importantes")
+    if avisos:
+        print(f"Avisos de formato: {len(avisos)}")
+    print("Lista completa: py -3 .claude/hooks/pendientes.py")
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--raiz", default=".", help="raíz del proyecto (por defecto, el directorio actual)")
     parser.add_argument("--json", action="store_true", help="imprime JSON en vez de texto")
     parser.add_argument("--etiqueta", help="deja solo los abiertos con esta etiqueta")
+    parser.add_argument("--resumen", action="store_true", help="recuento y solo bloqueantes e importantes")
     args = parser.parse_args(argv)
     sys.stdout.reconfigure(encoding="utf-8")
     abiertos, avisos = consolidar(args.raiz)
@@ -173,6 +199,8 @@ def main(argv=None):
         abiertos = [p for p in abiertos if args.etiqueta in p["etiquetas"]]
     if args.json:
         print(json.dumps({"abiertos": abiertos, "avisos": avisos}, ensure_ascii=False, indent=2))
+    elif args.resumen:
+        imprimir_resumen(abiertos, avisos)
     else:
         imprimir_texto(abiertos, avisos)
     return 0

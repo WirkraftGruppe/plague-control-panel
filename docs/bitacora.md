@@ -1,19 +1,19 @@
 # Bitácora de MAControl
 
 ## Estado actual
-Plan activo: docs/planes/2026-10-26-multiempresa.md
+Plan activo: (ninguno)
 
-Planes activos (los hooks derivan el plan de la rama; la línea `Plan activo:` de arriba es el respaldo para la raíz):
-
-| plan | rama | ola actual | pendiente inmediato | sesión |
-|---|---|---|---|---|
-| `multiempresa` | plan/multiempresa | 4 (T1–T14 hechas; verificación TODO 180/181 en 5c7b016, solo CONTRATO MODIFICADO) | prueba manual del usuario y decidir pendientes sin dueño y el merge a `main` | sesión 2026-11-11 |
-
-Siguiente (orden decidido el 2026-10-20; reconfirmado el 2026-10-21): `multiempresa` → despliegue. El despliegue en Railway espera a que esos planes estén en `main`, para no tener que migrar datos reales. Problemas abiertos: ver `pendientes.py`. Decisiones y cuándo preguntar: `docs/protocolo-decisiones.md` (CLAUDE.md § Reglas globales, regla 1).
-
-Problemas abiertos: ver `py -3 .claude/hooks/pendientes.py` (cada plan los declara en `## Pendientes que deja este plan`; los anteriores están en `docs/planes/2026-10-03-pendientes-heredados.md`).
+El estado vivo está en `docs/estado.md` (método v2). Problemas abiertos: `py -3 .claude/hooks/pendientes.py`.
 
 ## Entradas (la más reciente arriba)
+
+### 2026-11-13 — Plan `metodo-v2` (método v2 de TerritoryOS) ejecutado, sin fusionar
+Hecho:
+- Rama `plan/metodo-v2` desde `metodo/autonomia-github` (79535db), worktree `worktrees/metodo-v2`; contrato congelado en d8e3ac5. Ejecutado con el método v1 (juez-plan, verificador), por decisión del usuario.
+- Ola 1 (T1 `recibo.py`, T3 `revisar_plan.py`, T6 `contexto.sh` sobre `docs/estado.md`, T7 `medir_metodo.py` y `docs/metodo/`, T8 tres agentes, T9 stdin de los tests de `pre-push`) y ola 2 (T2 `verificar.py`, T4 `recibo_pendiente.py`, T5 `commit-msg`, T11 CLAUDE.md de 7911 B, plantilla v2 y parche de settings), cada T verificada en PASA e integrada.
+- `verificar.py tarea` sobre `multiempresa` T1 (contra la raíz, recibo a un temporal): todos sus criterios en PASA; veredicto FALLA solo por el contrato modificado sin línea `(usuario)`.
+- Incidente: `worktree-integrar.sh` borra la rama desde la raíz (en `plan/multiempresa`) y sale con 1 tras cada merge correcto (P-metodo-v2-5); las ramas se borraron desde el worktree del plan.
+Pendiente: cierre (auditor-seguridad, verificación TODO); el usuario aplica `docs/metodo/parche-settings.md` y decide el merge.
 
 ### 2026-10-26 — Plan `multiempresa` juzgado, listo para aprobar (sin commitear)
 Hecho:
