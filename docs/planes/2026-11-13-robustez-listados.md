@@ -315,8 +315,8 @@ commit_base: ccb6738
 | T8 | hecha | 3364aab | PASA 2026-11-13 |
 | T9 | hecha | — | sin commits propios; prueba en navegador pendiente del usuario |
 | T10 | hecha | 43e91eb | PASA 2026-11-13 |
-| T11 | en curso | | |
-| T12 | pendiente | | |
+| T11 | hecha | 0b3c364 | PASA 2026-11-13 |
+| T12 | hecha | — | PASA 2026-11-13 (todo sobre 21f539b) |
 
 ### Revisiones
 
