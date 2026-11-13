@@ -305,17 +305,17 @@ commit_base: ccb6738
 
 | Tarea | Estado | Commit | Recibo |
 |---|---|---|---|
-| T1 | pendiente | | |
-| T2 | pendiente | | |
-| T3 | pendiente | | |
-| T4 | pendiente | | |
-| T5 | pendiente | | |
-| T6 | pendiente | | |
-| T7 | pendiente | | |
-| T8 | pendiente | | |
-| T9 | pendiente | | |
-| T10 | pendiente | | |
-| T11 | pendiente | | |
+| T1 | hecha | b1f560b | PASA 2026-11-13 |
+| T2 | hecha | b79b01b | PASA 2026-11-13 |
+| T3 | hecha | 7ee5383 | PASA 2026-11-13 |
+| T4 | hecha | 506b64b | PASA 2026-11-13 |
+| T5 | hecha | 898c4c7 | PASA 2026-11-13 |
+| T6 | hecha | 96facef | PASA 2026-11-13 |
+| T7 | hecha | 5ecc174 | PASA 2026-11-13 |
+| T8 | hecha | 3364aab | PASA 2026-11-13 |
+| T9 | hecha | — | sin commits propios; prueba en navegador pendiente del usuario |
+| T10 | hecha | 43e91eb | PASA 2026-11-13 |
+| T11 | en curso | | |
 | T12 | pendiente | | |
 
 ### Revisiones
@@ -330,9 +330,24 @@ Hallazgos: —
 
 ### Decisiones del plan
 
+- T3 — dónde vive el formulario base del admin — `apps/clientes/empresa.py` o `apps/empresas/admin.py` — `apps/empresas/admin.py` (lo importan `clientes` y `accounts`) — `accounts` no depende de `clientes` — autónoma — mover el mixin — decidida por Claude, revisable
+- T6 — el test de T2 del postproceso daba por hecho el esquema sin el hook — cambiar el contrato o corregir el test dentro de `Puede tocar` de T2 — commit `T2:` que arma el esquema sin hooks (`mock.patch.object(spectacular_settings, ...)`) y nueva verificación de T2 — el archivo es de T2 y el cambio no altera lo que prueba — autónoma — revertir b79b01b — decidida por Claude, revisable
+- T7 — `parse_float=Decimal` en todo `CampoJSON` o solo en `productos_aplicados` — solo en `productos_aplicados` (P-catalogo-stock-2 habla de `cantidad` y `dosis`); `NaN` e `Infinity` se rechazan en ambos — con `Decimal` en `datos`, `validar_datos` rechazaba `3.5` — autónoma — `decimales_exactos=True` en `datos`, con adaptación — decidida por Claude, revisable (P-robustez-listados-6)
+- T7 — el 400 por atraso de `POST visitas/` de P-contrato-app-9 — esa ruta ya no existe (`test_post_visitas_ya_no_existe`); el atraso está documentado en `POST revisiones/` — nada que agregar — autónoma — no aplica — decidida por Claude, revisable
+- T9 — prueba manual en navegador — esta sesión no tuvo navegador (ni la extensión de Chrome ni el navegador integrado) — la hace el usuario: `manage.py cargar_demo` y `runserver`, ingresar como `demo-admin` / `demo1234`, nuevo turno desde el panel lateral de un sitio con plano, primer clic sobre un marcador — sin acceso a navegador — autónoma — no aplica — decidida por Claude, revisable (P-robustez-listados-7)
+- T11 — líneas con forma inválida de planes ajenos — editar o resolver desde este plan — resolver desde este plan (decisión del usuario); las decisiones de `demo-portatil` no se re-registran porque la demo portátil se borró; la línea sin id de `multiempresa.md:623` quedó sin objeto al fusionar `multiempresa` — usuario — editar las líneas — decidida por el usuario
+
 ## Pendientes que deja este plan
 
 ### Problemas
+
+- P-robustez-listados-1 [menor] `apps/api/views.py` (`segundos_de_espera`) importa `_baldes` y `_fallos_vigentes`, privadas de `apps/accounts/limites.py`; conviene una función pública que devuelva la espera (implementador T2).
+- P-robustez-listados-2 [observación] `apps/api/esquema.py` usa `generator._get_paths_and_endpoints()`, privado de drf-spectacular, para saber qué vista tiene throttle; puede romperse al actualizar la librería (implementador T2).
+- P-robustez-listados-3 [menor] `apps/visitas/templates/visitas/panel/_listado.html` dibuja los filtros y el buscador solo si el pedido no es htmx (`request.headers.hx_request`), porque `listado.html` no estaba en el alcance de T8; moverlos a `listado.html` lo haría explícito.
+- P-robustez-listados-4 [menor] En `/panel/visitas/` el `orden` oculto del formulario de filtros y el del buscador pueden quedar desfasados si se cambia el orden desde la cabecera de la tabla (pasa igual en Usuarios).
+- P-robustez-listados-5 [observación] `manage.py spectacular` avisa "multiple names for the same choice set (UnidadEnum)"; se resuelve con `ENUM_NAME_OVERRIDES` en `config/settings/base.py`.
+- P-robustez-listados-6 [menor] Los `datos` de la planilla siguen parseándose con `float` (solo `productos_aplicados` usa `Decimal`): con `Decimal` en `datos`, `validar_datos` rechazaba `3.5`; unificarlo exige adaptar la validación y el guardado en JSON (implementador T7).
+- P-robustez-listados-7 [menor] Falta la prueba en navegador de P-diseno-panel-1 a -3 (primer clic en un marcador del panel lateral, columnas y selects, filtros de turnos): esta sesión no tuvo navegador; la hace el usuario con `cargar_demo` y `runserver`. Si el primer clic sigue perdiéndose, falta `preventScroll` o quitar el foco del contenedor en `nuevo_turno.js`.
 
 ### Decisiones
 
@@ -342,4 +357,208 @@ Hallazgos: —
 
 - 2026-11-13 — las líneas con forma inválida de planes ajenos (`demo-cliente`, `demo-portatil`, `separacion-web`, `multiempresa`) no se editan: lo vigente se re-registra o se cierra desde `robustez-listados` y los 10 avisos de forma se aceptan — los planes de otro dueño no se tocan (convenciones-proyecto § Tabla de propiedad) — (usuario) — reemplaza a: (nada)
 
+- 2026-10-12 — alojamiento preparado para Railway (`railway.json`) sin Procfile — el proyecto ya tiene el plugin de Railway; re-registrada desde `demo-cliente`, cuya línea tiene forma inválida — (agente) — reemplaza a: (nada)
+
 ### Cierra
+
+- cierra: P-robustez-panel-9 — T1: get_orden quita un solo guion; `?orden=--creado` da 200 en los 6 listados
+- cierra: P-robustez-panel-10 — T1: get_busqueda descarta el NUL de `q`
+- cierra: P-diseno-panel-1 — T8: `keyboard: false` en el mapa del panel lateral (prueba en navegador en T9)
+- cierra: P-diseno-panel-2 — T8: columna Punto sin cortes, insignia separada y selects de servicio a ancho completo
+- cierra: P-diseno-panel-3 — T8: filtros de turnos en la fila `.filtros`, con el buscador aparte
+- cierra: P-diseno-panel-4 — T8: "Sitio:" dentro de la tarjeta del formulario
+- cierra: P-flujo-sitio-2 — T5: la fila ofrece y conserva el servicio desactivado ya asignado
+- cierra: P-flujo-sitio-5 — T7: incidencia_asignacion solo si la pendiente ajena incluye el punto
+- cierra: P-flujo-sitio-6 — T5 y T10: el resolver y el contrato explican el punto sin servicio
+- cierra: P-flujo-sitio-12 — T8: `sitio` de solo lectura en una pendiente con ítems
+- cierra: P-flujo-sitio-14 — T5 y T7: un punto inactivo no se programa y una revisión con servicio dado de baja da 400
+- cierra: P-catalogo-stock-2 — T7: `productos_aplicados` con parse_float=Decimal y rechazo de NaN e Infinity
+- cierra: P-catalogo-stock-3 — T4: modo_unidad bloqueado con movimientos en el panel y unidades de solo lectura en el admin
+- cierra: P-catalogo-stock-4 — T4: TipoServicio.save reintenta ante el choque de slug
+- cierra: P-catalogo-stock-6 — T7 y T10: `productos_aplicados` como arreglo de objetos con encoding application/json
+- cierra: P-multiempresa-6 — T2 y T6: el esquema y la documentación exigen sesión de empresa activa
+- cierra: P-multiempresa-20 — T3: el formulario del admin lleva a errores generales los de campos ausentes
+- cierra: P-multiempresa-28 — T3: el admin valida la restricción (empresa, slug) con empresa de solo lectura
+- cierra: P-multiempresa-30 — T3: EmpresaAdmin procesa el logo con procesar_logo
+- cierra: P-multiempresa-38 — T3: el mensaje indica cambiar el rol y el error ya no da 500
+- cierra: P-multiempresa-63 — resuelto antes de este plan: una referencia a plataforma cuenta como de otra empresa (apps/empresas/models.py)
+- cierra: P-multiempresa-68 — T3: error general en lugar de 500 con una referencia de solo lectura
+- cierra: P-multiempresa-72 — resuelto antes de este plan: docs/contrato-api.md documenta el 401 sin `code`
+- cierra: P-multiempresa-73 — resuelto antes de este plan: docs/contrato-api.md dice que una visita inexistente da 404
+- cierra: P-multiempresa-74 — T2: plataforma no obtiene token (401)
+- cierra: P-multiempresa-75 — aceptado sin cambios por el usuario (decisión de este plan)
+- cierra: P-multiempresa-81 — T2: plataforma no renueva token (401)
+- cierra: P-multiempresa-85 — T5: la clave de caché de geocodificación lleva la empresa
+- cierra: P-multiempresa-86 — aceptado sin cambios por el usuario (decisión de este plan)
+- cierra: P-api-movil-1 — T2: non_field_errors anidados se aplanan con su ruta
+- cierra: P-api-movil-2 — T2 y T6: `__all__` va a detalle, el anidado conserva su ruta y una ruta inexistente bajo /api/ da 404 JSON
+- cierra: P-api-movil-6 — T2: el 429 del balde lleva Retry-After
+- cierra: P-api-movil-11 — T5: un código QR mal formado da el 404 JSON de la API
+- cierra: P-contrato-app-9 — T2, T7 y T10: 400 de auth/token/ y de revisiones documentados; 415 y 200 ya estaban; POST visitas/ ya no existe
+- cierra: P-cierre-puntos-15 — T2, T5 y T10: 401 y 429 documentados por el hook y POST sitios/ sin el 404 imposible
+- cierra: P-puntos-control-19 — T5 y T10: el contrato explica el punto con plano sin coordenadas
+- cierra: P-saneamiento-5 — T5: la descripción del resolver menciona el cliente inactivo
+- cierra: P-ajustes-flujo-2 — T7: _pendiente_para sin el parámetro bloquear
+- cierra: P-ajustes-flujo-3 — T7: tests de visita_destino con visitas de otro empleado y de otro sitio
+- cierra: P-ajustes-flujo-4 — T7: servicio_para_punto precarga los campos del servicio
+- cierra: P-metodo-v2-25 — resuelto antes de este plan: commit-msg corre con `py -3 -I` y commit_msg.py usa sys.path.append
+- cierra: P-metodo-v2-26 — resuelto antes de este plan: commit_msg.py toma la primera línea no vacía
+- cierra: P-multiempresa-1 — ya resuelto: apps/empresas/consultas.py:109-119 quita la marca si una parte no es segura
+- cierra: P-multiempresa-2 — ya resuelto: apps/empresas/consultas.py:154-158 aiterator sobrescrito y verifica
+- cierra: P-multiempresa-3 — ya resuelto: apps/empresas/consultas.py:79 exige not instancia._state.adding
+- cierra: P-multiempresa-4 — ya resuelto: .env.example:22-23 documenta CORREO_PLATAFORMA; EMPRESA_GUARDIA ya no está en settings
+- cierra: P-multiempresa-5 — ya resuelto: apps/empresas/logos.py:12 MAX_PIXELES = 16_000_000
+- cierra: P-multiempresa-8 — ya resuelto: apps/empresas/consultas.py:90-108 re-envuelve si el resultado no es EmpresaQuerySet
+- cierra: P-multiempresa-9 — ya resuelto: apps/empresas/consultas.py:43-44 documenta la exención por Prefetch
+- cierra: P-multiempresa-11 — ya resuelto: apps/empresas/tests/test_consultas.py:153-184 cubren xor, intersection, difference, cadenas y slice
+- cierra: P-multiempresa-12 — ya resuelto: apps/empresas/consultas.py:88-89 chequeo de identidad antes del re-envoltorio
+- cierra: P-multiempresa-13 — ya resuelto: apps/empresas/consultas.py:104 copia _known_related_objects
+- cierra: P-multiempresa-15 — ya resuelto: apps/empresas/models.py:141-146 empresa efectiva = la del padre si falta
+- cierra: P-multiempresa-16 — ya resuelto: apps/empresas/models.py:103-111 save() lanza si cambia la empresa
+- cierra: P-multiempresa-17 — ya resuelto: apps/visitas/models.py:325 referencias_de_empresa incluye movimiento
+- cierra: P-multiempresa-18 — ya resuelto: empresa no nula (apps/empresas/models.py:50-56) y _duplicada filtra por empresa (apps/visitas/services.py:639-646)
+- cierra: P-multiempresa-21 — ya resuelto: apps/empresas/models.py:97-105 ignora _state.adding y compara solo si se escribe empresa
+- cierra: P-multiempresa-24 — ya resuelto: apps/sitios/models.py:308 usa todos.filter().first(); apps/empresas/models.py:122-127 captura ObjectDoesNotExist
+- cierra: P-multiempresa-26 — ya resuelto: apps/accounts/admin.py empresa de solo lectura si el usuario ya la tiene
+- cierra: P-multiempresa-29 — ya resuelto: apps/accounts/models.py CheckConstraint: plataforma sin empresa
+- cierra: P-multiempresa-32 — ya resuelto: apps/productos/api_views.py:20 EsEmpleado | EsAdministrador
+- cierra: P-multiempresa-35 — ya resuelto: apps/accounts/admin.py bloquea empresa de usuarios con empresa
+- cierra: P-multiempresa-36 — ya resuelto: apps/accounts/admin.py: el error va a rol si empresa no está en el formulario
+- cierra: P-multiempresa-37 — ya resuelto: CheckConstraint en apps/accounts/models.py y full_clean en crear_usuario
+- cierra: P-multiempresa-40 — ya resuelto: apps/sitios/estado.py:60-62 usa PuntoControl.objects.de_empresa(empresa)
+- cierra: P-multiempresa-41 — ya resuelto: ningún usuario sin empresa salvo plataforma (CheckConstraint) y permisos de rol en la API de productos
+- cierra: P-multiempresa-42 — ya resuelto: Visita.empresa no nula: el comando no puede recibir visitas sin empresa
+- cierra: P-multiempresa-44 — sin objeto: nota de proceso de multiempresa; PublicoSinEmpresaTests existe (apps/sitios/tests/test_publico.py:37)
+- cierra: P-multiempresa-47 — ya resuelto: registrar_revision_demo.py:104-106 filtra por empresa
+- cierra: P-multiempresa-50 — ya resuelto: apps/api/serializers.py rechaza plataforma en get_token (T2)
+- cierra: P-multiempresa-55 — ya resuelto: apps/visitas/tests/test_comandos.py:117-121 borra media_temporal, no MEDIA_ROOT
+- cierra: P-multiempresa-57 — ya resuelto: docs/despliegue.md:56-57 documenta --all y sin_filtro_empresa()
+- cierra: P-multiempresa-62 — ya resuelto: apps/empresas/models.py:118-120 _empresa_original solo se actualiza si se escribió empresa
+- cierra: P-multiempresa-69 — ya resuelto: docs/despliegue.md:50 excluye sessions, token_blacklist, contenttypes y auth.permission
+- cierra: P-multiempresa-77 — ya resuelto: docs/despliegue.md:50 comando completo con exclusiones y -o
+- cierra: P-multiempresa-78 — ya resuelto: CLAUDE.md:18 y convenciones-proyecto/SKILL.md:218 listan los usos permitidos de sin_filtro_empresa
+- cierra: P-multiempresa-80 — ya resuelto: docs/01-modelo-y-arquitectura.md:231 incluye padre y referencias_de_empresa
+- cierra: P-demo-cliente-10 — ya resuelto: .claude/hooks/worktree-integrar.sh:192 borra la rama desde el worktree destino, con aviso
+- cierra: P-nombre-empresa-prod-2 — sin objeto: las líneas con forma inválida de planes ajenos se aceptan sin editar (decisión del usuario de este plan)
+- cierra: P-protocolo-decisiones-1 — sin objeto: decisión del usuario: docs/ARRANQUE.md hace de kit (docs/decisiones.md)
+- cierra: P-metodo-v2-2 — ya resuelto: commit-msg y pre-push instalados (decisión del 2026-11-13 en docs/decisiones.md)
+- cierra: P-metodo-v2-3 — ya resuelto: línea (usuario) con hash para multiempresa en docs/decisiones.md
+- cierra: P-metodo-v2-4 — sin objeto: multiempresa cerrado en main; su criterio T1 ya no corre
+- cierra: P-metodo-v2-5 — ya resuelto: .claude/hooks/worktree-integrar.sh:192 branch -d desde el worktree destino, con aviso
+- cierra: P-metodo-v2-10 — ya resuelto: .claude/agents/implementador.md:62 el nombre sale de Empresa.nombre
+- cierra: P-metodo-v2-11 — ya resuelto: CLAUDE.md exige solo la línea (usuario) con hash, como verificar.py
+- cierra: P-metodo-v2-12 — ya resuelto: .claude/settings.json Stop usa recibo_pendiente.py; test_permisos.py lo verifica
+- cierra: P-metodo-v2-16 — sin objeto: CLAUDE.md: la regla de datos de empresa es la 5; la 7 ya no existe
+- cierra: P-metodo-v2-17 — ya resuelto: .claude/hooks/verificar.py:219-221 con contrato modificado sin aprobación no ejecuta criterios
+- cierra: P-metodo-v2-18 — ya resuelto: .claude/hooks/guardia_bash.py:113-118 es_prefijo cubre abreviaturas de --no-verify y --amend
+- cierra: P-metodo-v2-19 — ya resuelto: .claude/hooks/commit_msg.py:86-102 exige plan, recibo del HEAD y rutas del commit
+- cierra: P-metodo-v2-20 — ya resuelto: .claude/hooks/verificar.py:28 todo y cierre miran archivos sin seguimiento
+- cierra: P-metodo-v2-23 — ya resuelto: .claude/hooks/worktree-integrar.sh:168-169 suite de Django solo si la subtarea toca rutas de Django
+- cierra: P-metodo-v2-27 — sin objeto: aceptado por el usuario como límite del control local (docs/decisiones.md, 2026-11-13)
+- cierra: P-metodo-v2-28 — sin objeto: aceptado por el usuario como límite del control local (docs/decisiones.md, 2026-11-13)
+- cierra: P-metodo-v2-29 — sin objeto: aceptado por el usuario como límite del control local (docs/decisiones.md, 2026-11-13)
+- cierra: P-robustez-datos-6 — sin objeto: sin Proyecto en apps/ (grep vacío)
+- cierra: P-robustez-panel-3 — ya resuelto: .claude/hooks/worktree-integrar.sh:192 usa git -C "$ruta_dest" branch -d
+- cierra: P-robustez-panel-11 — ya resuelto: apps/visitas/panel_views.py:215-218 trae HISTORIAL_MAXIMO+1 y compara el último
+- cierra: P-robustez-panel-12 — ya resuelto: apps/visitas/templatetags/visitas_ui.py:23-26 y panel_views.py:121-124 sin filtro de estado
+- cierra: P-flujo-sitio-3 — ya resuelto: apps/panel/tests/test_inicio.py:17,69 arma el nombre sin la palabra prohibida
+- cierra: P-flujo-sitio-4 — sin objeto: paso de T5 de flujo-sitio ya ejecutado; migraciones rehechas en 0001_initial
+
+### Etiquetas
+
+- etiqueta: P-multiempresa-7 → despliegue
+- etiqueta: P-multiempresa-10 → despues
+- etiqueta: P-multiempresa-14 → despues
+- etiqueta: P-multiempresa-19 → despues
+- etiqueta: P-multiempresa-22 → despues
+- etiqueta: P-multiempresa-23 → despues
+- etiqueta: P-multiempresa-25 → despues
+- etiqueta: P-multiempresa-27 → despues
+- etiqueta: P-multiempresa-31 → despues
+- etiqueta: P-multiempresa-33 → despues
+- etiqueta: P-multiempresa-34 → despues
+- etiqueta: P-multiempresa-39 → despues
+- etiqueta: P-multiempresa-43 → despues
+- etiqueta: P-multiempresa-45 → despues
+- etiqueta: P-multiempresa-46 → despues
+- etiqueta: P-multiempresa-48 → despues
+- etiqueta: P-multiempresa-49 → despues
+- etiqueta: P-multiempresa-51 → expo
+- etiqueta: P-multiempresa-52 → despues
+- etiqueta: P-multiempresa-53 → despues
+- etiqueta: P-multiempresa-54 → despliegue
+- etiqueta: P-multiempresa-56 → despues
+- etiqueta: P-multiempresa-58 → despues
+- etiqueta: P-multiempresa-59 → despues
+- etiqueta: P-multiempresa-60 → despues
+- etiqueta: P-multiempresa-61 → despues
+- etiqueta: P-multiempresa-64 → despues
+- etiqueta: P-multiempresa-65 → despues
+- etiqueta: P-multiempresa-66 → despues
+- etiqueta: P-multiempresa-67 → despues
+- etiqueta: P-multiempresa-70 → despues
+- etiqueta: P-multiempresa-71 → despues
+- etiqueta: P-multiempresa-76 → despues
+- etiqueta: P-multiempresa-79 → despues
+- etiqueta: P-multiempresa-82 → despues
+- etiqueta: P-multiempresa-83 → expo
+- etiqueta: P-multiempresa-84 → despues
+- etiqueta: P-demo-cliente-1 → despliegue
+- etiqueta: P-demo-cliente-2 → despues
+- etiqueta: P-demo-cliente-3 → despliegue
+- etiqueta: P-demo-cliente-4 → despliegue
+- etiqueta: P-demo-cliente-5 → despliegue
+- etiqueta: P-demo-cliente-6 → despliegue
+- etiqueta: P-demo-cliente-7 → despliegue
+- etiqueta: P-demo-cliente-9 → despliegue
+- etiqueta: P-demo-cliente-11 → despues
+- etiqueta: P-demo-cliente-12 → despues
+- etiqueta: P-demo-cliente-13 → despliegue
+- etiqueta: P-nombre-empresa-prod-1 → despues
+- etiqueta: P-nombre-empresa-prod-4 → despues
+- etiqueta: P-separacion-web-1 → empresa
+- etiqueta: P-separacion-web-2 → despliegue
+- etiqueta: P-separacion-web-6 → despues
+- etiqueta: P-separacion-web-7 → despues
+- etiqueta: P-separacion-web-8 → despues
+- etiqueta: P-separacion-web-9 → despues
+- etiqueta: P-protocolo-decisiones-2 → despues
+- etiqueta: P-metodo-v2-1 → despues
+- etiqueta: P-metodo-v2-6 → despues
+- etiqueta: P-metodo-v2-7 → despues
+- etiqueta: P-metodo-v2-8 → despues
+- etiqueta: P-metodo-v2-9 → despues
+- etiqueta: P-metodo-v2-13 → despues
+- etiqueta: P-metodo-v2-14 → despues
+- etiqueta: P-metodo-v2-15 → despues
+- etiqueta: P-metodo-v2-21 → despues
+- etiqueta: P-metodo-v2-22 → despues
+- etiqueta: P-metodo-v2-24 → despues
+- etiqueta: P-robustez-datos-2 → despues
+- etiqueta: P-robustez-datos-5 → despues
+- etiqueta: P-robustez-datos-10 → despues
+- etiqueta: P-robustez-datos-12 → despues
+- etiqueta: P-robustez-panel-1 → despues
+- etiqueta: P-robustez-panel-2 → despues
+- etiqueta: P-robustez-panel-6 → despues
+- etiqueta: P-robustez-panel-14 → despues
+- etiqueta: P-catalogo-stock-5 → despues
+- etiqueta: P-catalogo-stock-7 → expo
+- etiqueta: P-catalogo-stock-9 → despues
+- etiqueta: P-ajustes-flujo-1 → despues
+- etiqueta: P-flujo-sitio-7 → despues
+- etiqueta: P-flujo-sitio-9 → despues
+- etiqueta: P-flujo-sitio-13 → despues
+- etiqueta: P-flujo-sitio-15 → despliegue
+- etiqueta: P-diseno-panel-5 → despues
+- etiqueta: P-diseno-panel-6 → despues
+- etiqueta: P-diseno-panel-7 → despues
+- etiqueta: P-diseno-panel-8 → despues
+- etiqueta: P-diseno-panel-9 → despues
+- etiqueta: P-robustez-listados-1 → despues
+- etiqueta: P-robustez-listados-2 → despues
+- etiqueta: P-robustez-listados-3 → despues
+- etiqueta: P-robustez-listados-4 → despues
+- etiqueta: P-robustez-listados-5 → expo
+- etiqueta: P-robustez-listados-6 → despues
+- etiqueta: P-robustez-listados-7 → despliegue
