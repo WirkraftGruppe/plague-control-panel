@@ -1,6 +1,6 @@
 """Modelos de Servicios: tipos de servicio y su planilla dinámica."""
 
-from django.db import models
+from django.db import IntegrityError, models, transaction
 from django.utils.text import slugify
 
 from apps.empresas.models import ModeloDeEmpresa
@@ -25,14 +25,28 @@ class TipoServicio(ModeloDeEmpresa):
     def __str__(self):
         return self.nombre
 
+    INTENTOS_SLUG = 5
+
     def save(self, *args, **kwargs):
-        """Genera el slug solo si viene vacío; nunca lo cambia después."""
-        if not self.slug:
+        """Genera el slug solo si viene vacío; nunca lo cambia después.
+
+        Si el slug se generó acá y el INSERT choca por una carrera con otro alta,
+        reintenta con el siguiente sufijo libre; un slug explícito repetido falla.
+        """
+        if self.slug:
+            return super().save(*args, **kwargs)
+        campos = kwargs.get("update_fields")
+        if campos is not None:
+            kwargs["update_fields"] = {*campos, "slug"}
+        for intento in range(self.INTENTOS_SLUG):
             self.slug = self._slug_libre()
-            campos = kwargs.get("update_fields")
-            if campos is not None:
-                kwargs["update_fields"] = {*campos, "slug"}
-        super().save(*args, **kwargs)
+            try:
+                with transaction.atomic():
+                    return super().save(*args, **kwargs)
+            except IntegrityError:
+                if intento == self.INTENTOS_SLUG - 1:
+                    raise
+                self.slug = ""
 
     def _slug_libre(self) -> str:
         """`slugify(nombre)` con sufijo `-2`, `-3`… si ya existe en la empresa."""

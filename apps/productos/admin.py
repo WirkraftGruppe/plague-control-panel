@@ -11,6 +11,12 @@ class ProductoAdmin(AdminRaizMixin, admin.ModelAdmin):
     search_fields = ("nombre_comercial", "principio_activo", "registro")
     list_filter = ("activo",)
 
+    def get_readonly_fields(self, request, obj=None):
+        campos = super().get_readonly_fields(request, obj)
+        if obj is not None and obj.movimientos.exists():
+            return (*campos, "unidad_base", "modo_unidad")
+        return campos
+
 
 @admin.register(MovimientoStock)
 class MovimientoStockAdmin(AdminHijoMixin, admin.ModelAdmin):

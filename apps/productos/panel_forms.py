@@ -39,6 +39,19 @@ class ProductoForm(FormularioDeEmpresa):
             )
         return unidad
 
+    def clean_modo_unidad(self):
+        modo = self.cleaned_data["modo_unidad"]
+        if (
+            self.instance.pk
+            and modo != self.instance.modo_unidad
+            and self.instance.movimientos.exists()
+        ):
+            raise ValidationError(
+                "No se puede cambiar el modo de unidad de un producto con "
+                "movimientos de stock."
+            )
+        return modo
+
 
 class MovimientoForm(forms.Form):
     """Alta de un ingreso (en envases o unidad base) o de un ajuste con signo."""
