@@ -742,8 +742,13 @@ class TestTimeoutSuite(ProyectoTemporal):
 
     def test_presupuesto_total_queda_bajo_el_timeout_del_stop(self):
         configuracion = json.loads((DIR_HOOKS.parent / "settings.json").read_text(encoding="utf-8"))
-        timeout_stop = configuracion["hooks"]["Stop"][0]["hooks"][0]["timeout"]
-        self.assertLess(verificar_plan.PRESUPUESTO_TOTAL, timeout_stop)
+        stop = configuracion["hooks"]["Stop"][0]["hooks"][0]
+        # Desde parche-settings §1 el Stop es `recibo_pendiente.py` (no ejecuta criterios): el
+        # presupuesto solo tiene que caber en el timeout si el Stop vuelve a correr verificar_plan.py.
+        if "verificar_plan.py" not in stop["command"]:
+            self.assertIn("recibo_pendiente.py", stop["command"])
+            return
+        self.assertLess(verificar_plan.PRESUPUESTO_TOTAL, stop["timeout"])
 
 
 class TestParseo(unittest.TestCase):
