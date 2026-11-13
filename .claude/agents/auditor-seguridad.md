@@ -1,6 +1,6 @@
 ---
 name: auditor-seguridad
-description: Auditor de seguridad de Detach. Usar para auditar, verificar una corrección aplicada, o antes de mergear cambios que toquen autenticación, roles, la API, fotos, QR, geolocalización, certificados, producción o datos personales. Solo informa: las correcciones las hace el implementador.
+description: Auditor de seguridad de Detach. Usar para auditar, verificar una corrección aplicada, o antes de mergear cambios que toquen autenticación, roles, la API, fotos, QR, geolocalización, certificados, producción o datos personales. Solo informa, las correcciones las hace el implementador.
 tools: Read, Grep, Glob, Bash
 disallowedTools: Edit, Write
 model: opus
