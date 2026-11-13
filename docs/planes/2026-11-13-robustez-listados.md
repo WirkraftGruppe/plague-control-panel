@@ -324,9 +324,10 @@ commit_base: ccb6738
 |---|---|---|---|---|
 | 2026-11-13 17:31 | plan | 4 | 0 | 6 |
 | 2026-11-13 18:30 | plan | 0 | 0 | 2 |
+| 2026-11-13 20:07 | cierre | 4 | 0 | 4 |
 
-Auditoría: pendiente
-Hallazgos: —
+Auditoría: auditor-seguridad 2026-11-13 — se puede cerrar; 0 bloqueantes, 0 decisiones, 2 observaciones (P-robustez-listados-12 y -13)
+Hallazgos: revisor de cierre — 4 bloqueantes de documentación corregidos en una ronda (docs/contrato-api.md: 404 del QR mal formado y alcance de `plataforma`; docs/01-modelo-y-arquitectura.md: `plataforma` sin API e `incidencia_asignacion` por punto); 4 menores → pendiente P-robustez-listados-8 a -11. Auditoría: 2 observaciones → pendiente P-robustez-listados-12 y -13
 
 ### Decisiones del plan
 
@@ -348,6 +349,13 @@ Hallazgos: —
 - P-robustez-listados-5 [observación] `manage.py spectacular` avisa "multiple names for the same choice set (UnidadEnum)"; se resuelve con `ENUM_NAME_OVERRIDES` en `config/settings/base.py`.
 - P-robustez-listados-6 [menor] Los `datos` de la planilla siguen parseándose con `float` (solo `productos_aplicados` usa `Decimal`): con `Decimal` en `datos`, `validar_datos` rechazaba `3.5`; unificarlo exige adaptar la validación y el guardado en JSON (implementador T7).
 - P-robustez-listados-7 [menor] Falta la prueba en navegador de P-diseno-panel-1 a -3 (primer clic en un marcador del panel lateral, columnas y selects, filtros de turnos): esta sesión no tuvo navegador; la hace el usuario con `cargar_demo` y `runserver`. Si el primer clic sigue perdiéndose, falta `preventScroll` o quitar el foco del contenedor en `nuevo_turno.js`.
+
+- P-robustez-listados-8 [menor] El OpenAPI documenta el 429 de `auth/token/` y `auth/token/refresh/` sin la cabecera `Retry-After` ni el esquema `Error` (`RESPUESTAS_DE_CONTRATO`, `apps/api/views.py:122`; `apps/api/tests/test_esquema_robustez.py:62` lo fija así), aunque la respuesta real la lleva y `docs/contrato-api.md` la promete (revisor, cierre).
+- P-robustez-listados-9 [menor] `test_orden_con_doble_guion_responde_200_en_todos` usa `--creado`, que solo está en la lista blanca de visitas y clientes: en los otros 4 listados el caso pasaba antes de la corrección; usar un campo permitido de cada listado (revisor, cierre).
+- P-robustez-listados-10 [menor] El rechazo de un servicio inactivo distinto del actual en `actualizar_programacion` (`apps/sitios/services.py:260-265`) no tiene test propio: `test_no_se_asigna_otro_servicio_inactivo` lo frena el queryset del formulario (revisor, cierre).
+- P-robustez-listados-11 [observación] `test_plataforma_no_renueva_token` no compara el `detalle` con el de una credencial inválida; el código ya lo cumple (revisor, cierre).
+- P-robustez-listados-12 [observación] `JWTAutenticacionEmpresa` (`apps/empresas/autenticacion.py:27-39`) acepta `empresa=None`: un JWT de `plataforma` emitido antes de este plan leería el esquema hasta vencer (15 min). Defensa en profundidad: rechazar también `empresa is None`, con test (auditor-seguridad).
+- P-robustez-listados-13 [observación] `Retry-After` del balde global por usuario revela la antigüedad del fallo más viejo vigente de ese usuario; valor despreciable, sin cambio propuesto (auditor-seguridad).
 
 ### Decisiones
 
@@ -562,3 +570,9 @@ Hallazgos: —
 - etiqueta: P-robustez-listados-5 → expo
 - etiqueta: P-robustez-listados-6 → despues
 - etiqueta: P-robustez-listados-7 → despliegue
+- etiqueta: P-robustez-listados-8 → expo
+- etiqueta: P-robustez-listados-9 → despues
+- etiqueta: P-robustez-listados-10 → despues
+- etiqueta: P-robustez-listados-11 → despues
+- etiqueta: P-robustez-listados-12 → despliegue
+- etiqueta: P-robustez-listados-13 → despues
