@@ -1,7 +1,10 @@
 """Sesión con empresa activa y postproceso del esquema OpenAPI."""
 
+from unittest import mock
+
 from django.test import RequestFactory, TestCase
 from drf_spectacular.generators import SchemaGenerator
+from drf_spectacular.settings import spectacular_settings
 from rest_framework.exceptions import AuthenticationFailed
 
 from apps.accounts.models import User
@@ -34,7 +37,11 @@ class EsquemaRobustezTests(TestCase):
 
     def test_postproceso_agrega_401_y_429(self):
         generador = SchemaGenerator()
-        esquema = generador.get_schema(request=None, public=True)
+        # Sin hooks: el de settings ya aplica este postproceso (cableado en T6).
+        with mock.patch.object(
+            spectacular_settings, "POSTPROCESSING_HOOKS", [], create=True
+        ):
+            esquema = generador.get_schema(request=None, public=True)
         alta = esquema["paths"]["/api/v1/sitios/"]["post"]["responses"]
         self.assertNotIn("429", alta)
         resultado = agregar_respuestas_comunes(esquema, generador, None, True)
