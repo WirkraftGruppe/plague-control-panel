@@ -78,13 +78,13 @@ class TestPermisos(unittest.TestCase):
 
 
 def entrada_de_git(lineas):
-    """Bytes que git manda por stdin al hook pre-push: las líneas tal cual, con `\n` y sin `\r`."""
+    """Bytes que git manda por stdin al pre-push: las líneas con `\n`, sin `\r`."""
     return "".join(lineas).encode("utf-8")
 
 
 def test_entrada_de_git_no_lleva_retorno_de_carro():
-    # Con `text=True` Windows convierte `\n` en `\r\n` y el `\r` queda pegado al último campo.
-    entrada = entrada_de_git(["refs/heads/a 1 refs/heads/a 0\n", "refs/heads/b 2 refs/heads/b 0\n"])
+    # Con `text=True` Windows convierte `\n` en `\r\n` y el `\r` queda en el último campo.
+    entrada = entrada_de_git(["a 1 b 0\n", "c 2 d 0\n"])
     assert isinstance(entrada, bytes)
     assert b"\r" not in entrada
     assert entrada.count(b"\n") == 2
