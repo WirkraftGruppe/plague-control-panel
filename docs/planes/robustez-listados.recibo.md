@@ -250,3 +250,20 @@
 - duración: 2.5 s
 - Veredicto: PASA
 
+## 2026-11-13 19:50 — tarea T11,T9,T12 de 2026-11-13-robustez-listados.md
+
+- HEAD verificado: 0b3c364
+- Contrato: modificado y aceptado (f2c0d5a, decisión del usuario)
+- Criterios:
+  - PASA (exit 0, nuevo: —) `T11 [cmd] PYTHONIOENCODING=utf-8 py -3 .claude/hooks/pendientes.py --json | PYTHONIOENCODING=utf-8 py -3 -c "import json, sys; d = json.load(sys.stdin); sin = [a['id'] for a in d['abiertos'] if not a['etiquetas']]; av = [x for x in d['avisos'] if 'robustez-listados' in x]; print(av, sin); sys.exit(1 if av or sin else 0)"`
+  - PASA (exit 0, nuevo: —) `T11 [cmd] PYTHONIOENCODING=utf-8 py -3 .claude/hooks/pendientes.py --json | PYTHONIOENCODING=utf-8 py -3 -c "import json, sys; d = json.load(sys.stdin); ok = {'despliegue', 'expo', 'empresa', 'despues'}; mal = [a['id'] for a in d['abiertos'] if a['severidad'] == 'bloqueante' or (a['severidad'] == 'importante' and not ok & set(a['etiquetas']))]; print(mal); sys.exit(1 if mal else 0)"`
+  - PASA (exit 0, nuevo: —) `T11 [cmd] PYTHONIOENCODING=utf-8 py -3 .claude/hooks/pendientes.py --json | PYTHONIOENCODING=utf-8 py -3 -c "import json, sys; d = json.load(sys.stdin); ids = {a['id'] for a in d['abiertos']}; plan = 'P-robustez-panel-9 P-robustez-panel-10 P-diseno-panel-1 P-diseno-panel-2 P-diseno-panel-3 P-diseno-panel-4 P-flujo-sitio-2 P-flujo-sitio-5 P-flujo-sitio-6 P-flujo-sitio-12 P-flujo-sitio-14 P-catalogo-stock-2 P-catalogo-stock-3 P-catalogo-stock-4 P-catalogo-stock-6 P-multiempresa-6 P-multiempresa-20 P-multiempresa-28 P-multiempresa-30 P-multiempresa-38 P-multiempresa-63 P-multiempresa-68 P-multiempresa-72 P-multiempresa-73 P-multiempresa-74 P-multiempresa-75 P-multiempresa-81 P-multiempresa-85 P-multiempresa-86 P-api-movil-1 P-api-movil-2 P-api-movil-6 P-api-movil-11 P-contrato-app-9 P-cierre-puntos-15 P-puntos-control-19 P-saneamiento-5 P-ajustes-flujo-2 P-ajustes-flujo-3 P-ajustes-flujo-4 P-metodo-v2-25 P-metodo-v2-26'.split(); quedan = [i for i in plan if i in ids]; print(quedan); sys.exit(1 if quedan else 0)"`
+  - PASA (exit 0, nuevo: —) `T11 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 450 --subtarea T11`
+  - PASA (exit 0, nuevo: —) `T9 [cmd] git log --oneline plan/robustez-listados | grep -q "T7: integra robustez-listados-T7"`
+  - PASA (exit 0, nuevo: —) `T9 [cmd] git log --oneline plan/robustez-listados | grep -q "T8: integra robustez-listados-T8"`
+  - PASA (exit 0, nuevo: —) `T12 [cmd] git log --oneline plan/robustez-listados | grep -q "T10: integra robustez-listados-T10"`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 1.4 s
+- Veredicto: PASA
+
