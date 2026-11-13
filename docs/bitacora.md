@@ -7,6 +7,14 @@ El estado vivo está en `docs/estado.md` (método v2). Problemas abiertos: `py -
 
 ## Entradas (la más reciente arriba)
 
+### 2026-11-13 — `multiempresa` y `metodo-v2` fusionados en `main`
+Hecho:
+- Respaldo de las dos ramas en `origin`. P-multiempresa-55: `RevisionDemoTests` borra su directorio temporal, nunca el `media/` real.
+- Merge de `plan/multiempresa` en `main` (9a8121d): check, makemigrations y ruff en verde; suite de Django 928 OK.
+- En `plan/metodo-v2`: P-metodo-v2-25 (`py -3 -I`), -26 (primera línea no vacía), -23 (suite solo si cambian rutas de Django), -5 (fallar `branch -d` es aviso) y -11 (texto del contrato modificado); merge de `main` con `CLAUDE.md` v2 y la regla de datos de empresa (7979 bytes); parche de settings §1, §4 y §5; `commit-msg` instalado; tests de hooks 259 OK.
+- Merge de `plan/metodo-v2` en `main`.
+Pendiente: `robustez-listados` → despliegue → app móvil (ver `docs/estado.md`).
+
 ### 2026-11-13 — Plan `metodo-v2` (método v2 de TerritoryOS) ejecutado, sin fusionar
 Hecho:
 - Rama `plan/metodo-v2` desde `metodo/autonomia-github` (79535db), worktree `worktrees/metodo-v2`; contrato congelado en d8e3ac5. Ejecutado con el método v1 (juez-plan, verificador), por decisión del usuario.
