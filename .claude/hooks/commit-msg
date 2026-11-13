@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Hook commit-msg: un commit `cierre: <slug>` exige recibo en PASA (ver commit_msg.py).
+# En una rama vieja que no trae commit_msg.py el hook no hace nada.
+raiz="$(git rev-parse --show-toplevel)"
+[ -f "$raiz/.claude/hooks/commit_msg.py" ] || exit 0
+exec py -3 "$raiz/.claude/hooks/commit_msg.py" "$1"

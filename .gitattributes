@@ -1,3 +1,4 @@
 # Los scripts de bash de los hooks necesitan LF también en Windows y en los worktrees.
 *.sh text eol=lf
 .claude/hooks/pre-push text eol=lf
+.claude/hooks/commit-msg text eol=lf
