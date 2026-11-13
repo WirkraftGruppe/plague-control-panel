@@ -13,8 +13,11 @@ Los criterios salen del texto del plan en el commit congelado (`congelado.sh`, d
 este script, corrido sobre el repo de `--raiz`), nunca del disco. Un contrato MODIFICADO cuenta como
 aceptado si cada commit `docs(plan): <slug> — modificado…` tiene en `docs/decisiones.md` una línea
 `(usuario)` con su hash corto y el plan del disco coincide con el último: los criterios salen de ese
-commit. Sin esa línea la línea de contrato queda en FALLA y el veredicto es FALLA, pero los criterios
-del último commit de congelado se ejecutan igual.
+commit. Sin esa línea el contrato queda en FALLA y no se ejecuta ningún criterio (el recibo se
+escribe igual, con veredicto FALLA). Las líneas `(usuario)` salen de `git show HEAD:docs/decisiones.md`
+y el cierre global de `git show HEAD:.claude/hooks/cierre_global.json`, nunca del disco: una decisión
+o un cierre sin commitear no valen. Si solo difiere el plan del disco (sin commits de modificación),
+el veredicto es FALLA pero se ejecutan los criterios del commit congelado.
 
 Compatibilidad v1: el cierre global sale del bloque `## Criterios de cierre global` del plan y el
 marcador `'<commit_base>'` se reemplaza con la línea `commit_base:` del Registro. Los planes v2 no
@@ -22,18 +25,24 @@ traen ese bloque: su cierre global es `cierre_global.json`. El plan nunca se esc
 
 Los tres modos agregan el criterio `versionados limpios`, acotado a lo que cada uno toca:
 - `tarea`: solo las rutas de `Puede tocar` de las tareas pedidas (comodines incluidos).
-- `todo`: solo `.claude/` y `CLAUDE.md`.
-- `cierre`: todo salvo `docs/planes/`, `docs/estado.md`, `docs/bitacora.md`, `docs/decisiones.md` y
-  `docs/metodo/`.
-El plan y su recibo quedan excluidos. Lo modificado fuera del alcance se informa en la línea
+- `todo` y `cierre`: cualquier ruta, modificada o sin seguimiento (respetando `.gitignore`), salvo
+  `docs/planes/`, `docs/estado.md`, `docs/bitacora.md`, `docs/decisiones.md`, `docs/metodo/` y los
+  archivos propios (`.claude/.recibos.json`, `.claude/.verificando`). Lo sin seguimiento se mira
+  antes de correr los criterios (los criterios pueden generar archivos) y lo modificado, también
+  al final. Con FALLA no se registra el HEAD.
+El plan y su recibo quedan excluidos. En `tarea`, lo modificado fuera del alcance se informa en la línea
 `- Fuera de alcance (informativo): …` y no cambia el veredicto.
 
-`tarea` agrega además `commits de la tarea dentro de Puede tocar`. Un `[test]` que ya existía en la
+`tarea` agrega además `commits de la tarea dentro de Puede tocar`: cuentan los commits `T<n>:` de las
+tareas pedidas y, si la rama actual es `<slug>-T<n>` de una de ellas, todos los commits sin merge de
+la rama (`<base>..HEAD`, sin los de `main` ni los de `plan/<slug>`). Un `[test]` que ya existía en la
 base es FALLA ("test preexistente"). `todo` es incremental: una tarea cuya última sección del recibo
 tiene el mismo HEAD, el mismo contrato y todos sus criterios en PASA no se repite (`PASA (recibo
-previo <fecha>)`). Con PASA, `todo` y `cierre` registran el HEAD en `.claude/.recibos.json`; `tarea`
-no. El recibo va a `docs/planes/<slug>.recibo.md` (o `--recibo`) y se imprime por stdout; el de
-`cierre` va solo a stdout. Mientras corre existe `.claude/.verificando` con el PID.
+previo <fecha>)`), pero solo con el árbol limpio. Con PASA, `todo` y `cierre` registran el HEAD
+completo y su alcance (`todo <plan>` | `cierre`) en `.claude/.recibos.json`; `tarea` no. El recibo va
+a `docs/planes/<slug>.recibo.md` (o `--recibo`: solo `docs/planes/*.recibo.md` dentro de `--raiz` o un
+archivo fuera del repo; otra ruta es uso inválido) y se imprime por stdout; el de `cierre` va solo a
+stdout. Mientras corre existe `.claude/.verificando` con el PID.
 
 Reutiliza `verificar_plan.py` y `recibo.py` sin modificarlos.
 """
@@ -56,13 +65,14 @@ import recibo  # noqa: E402
 import verificar_plan as vp  # noqa: E402
 
 TIMEOUT_CRITERIO = 900
-CIERRE_JSON = DIR_HOOKS / "cierre_global.json"
+CIERRE_JSON = DIR_HOOKS / "cierre_global.json"  # copia del disco: solo para los tests; el cierre real sale del HEAD
 # Archivos y carpetas que cambian durante el trabajo normal: nunca hacen fallar los versionados.
 SILENCIOSAS = ("docs/estado.md", "docs/bitacora.md", "docs/decisiones.md")
 PREFIJOS_SILENCIOSOS = ("docs/metodo/",)
 PREFIJO_PLANES = "docs/planes/"
-# En `todo`, solo falla lo modificado bajo `.claude/` o en `CLAUDE.md`.
-RAIZ_ESTRICTA = (".claude/", "CLAUDE.md")
+# Archivos que el propio verificador crea: nunca hacen fallar los versionados.
+PROPIOS = (".claude/.recibos.json", ".claude/.verificando")
+RUTA_CIERRE_JSON = ".claude/hooks/cierre_global.json"
 RE_CLAVE_TAREAS = re.compile(r"T\d+(,T\d+)*")
 RE_ETIQUETA_TAREA = re.compile(r"^T(\d+) \[")
 RE_ASUNTO_TAREA = re.compile(r"T(\d+):")
@@ -144,26 +154,39 @@ def recortar_registro(texto: str) -> str:
     return texto.replace("\r", "").split(f"\n{vp.CORTE}", 1)[0]
 
 
+def leer_de_head(raiz: Path, ruta: str) -> str | None:
+    """Contenido de `ruta` en el HEAD (`git show HEAD:./<ruta>`), nunca del disco; None si no existe ahí."""
+    proceso = recibo._git(raiz, "show", f"HEAD:./{ruta}")
+    return proceso.stdout if proceso is not None and proceso.returncode == 0 else None
+
+
+def modificaciones_aprobadas(raiz: Path, slug: str, commits: list[tuple[str, str]]) -> bool:
+    """True si todo commit de congelado salvo el original es una modificación aprobada por el usuario.
+
+    El original es el más viejo y se llama exactamente `docs(plan): <slug>`. Cada otro commit debe
+    llamarse `docs(plan): <slug> — modificado…` y tener, en `docs/decisiones.md` del HEAD, una línea
+    `(usuario)` que cita su hash corto (una línea `(agente)` no alcanza, ni una decisión sin commitear).
+    """
+    original = f"docs(plan): {slug}"
+    lineas = [linea for linea in (leer_de_head(raiz, "docs/decisiones.md") or "").splitlines() if "(usuario)" in linea]
+    for indice, (hash_, titulo) in enumerate(commits):
+        if indice == len(commits) - 1 and titulo == original:
+            continue
+        if not titulo.startswith(f"{original} — modificado") or not any(
+            re.search(rf"(?<![0-9a-f]){hash_[:7]}[0-9a-f]*", linea) for linea in lineas
+        ):
+            return False
+    return True
+
+
 def contrato_aceptado(raiz: Path, plan: Path, slug: str, commits: list[tuple[str, str]]) -> tuple[str, str] | None:
     """Contrato modificado y aceptado por el usuario: (texto del último commit, su hash), o None.
 
-    Se acepta si el último commit de congelado es una modificación, el plan del disco coincide con él
-    arriba del corte y todos los commits de modificación tienen en `docs/decisiones.md` una línea
-    `(usuario)` que cita su hash corto (una línea `(agente)` no alcanza).
+    Se acepta si hay commits de modificación, todos aprobados (`modificaciones_aprobadas`) y el plan
+    del disco coincide con el último arriba del corte.
     """
-    prefijo = f"docs(plan): {slug} — modificado"
-    if len(commits) < 2 or not commits[0][1].startswith(prefijo):
+    if len(commits) < 2 or not modificaciones_aprobadas(raiz, slug, commits):
         return None
-    try:
-        decisiones = (raiz / "docs" / "decisiones.md").read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        return None
-    lineas_usuario = [linea for linea in decisiones.splitlines() if "(usuario)" in linea]
-    for hash_, titulo in commits:
-        if titulo.startswith(prefijo) and not any(
-            re.search(rf"(?<![0-9a-f]){hash_[:7]}[0-9a-f]*", linea) for linea in lineas_usuario
-        ):
-            return None
     texto = vp.texto_congelado(raiz, plan, commits[0][0])
     try:
         disco = plan.read_text(encoding="utf-8", errors="replace")
@@ -177,8 +200,9 @@ def contrato_aceptado(raiz: Path, plan: Path, slug: str, commits: list[tuple[str
 def cargar_contrato(raiz: Path, plan: Path, bash: str) -> tuple[str | None, str, bool]:
     """Comprueba el congelado. Devuelve (texto del plan a ejecutar | None, línea de contrato, aceptado).
 
-    Con el contrato modificado y sin decisión del usuario, el texto es el del último commit de
-    congelado (sus criterios se ejecutan igual) y `aceptado` es False. Sin ningún commit de
+    Con commits de modificación sin decisión del usuario en el HEAD no hay texto: no se ejecuta ningún
+    criterio. Si las modificaciones están aprobadas pero el plan del disco difiere (o solo difiere el
+    disco), el texto es el del último commit de congelado y `aceptado` es False. Sin ningún commit de
     congelado no hay texto.
     """
     slug = vp.slug_de(plan)
@@ -192,6 +216,9 @@ def cargar_contrato(raiz: Path, plan: Path, bash: str) -> tuple[str | None, str,
     detalle = " ".join(error.split())[:300] if error.strip() else "sin detalle"
     if codigo == 1:
         commits = commits_de_congelado(raiz, slug)
+        if commits and not modificaciones_aprobadas(raiz, slug, commits):
+            return (None, f"FALLA: contrato MODIFICADO sin decisión del usuario; no se ejecuta ningún criterio "
+                          f"({detalle})", False)
         aceptado = contrato_aceptado(raiz, plan, slug, commits)
         if aceptado is not None:
             texto, ultimo = aceptado
@@ -199,7 +226,7 @@ def cargar_contrato(raiz: Path, plan: Path, bash: str) -> tuple[str | None, str,
         if commits:
             texto = vp.texto_congelado(raiz, plan, commits[0][0])
             if texto is not None:
-                return (texto, f"FALLA: contrato MODIFICADO sin decisión del usuario; se ejecutan los criterios "
+                return (texto, f"FALLA: contrato MODIFICADO en el disco; se ejecutan los criterios "
                                f"del último commit congelado {commits[0][0][:7]} ({detalle})", False)
     estado = "error" if codigo is None else codigo
     return None, f"FALLA: contrato MODIFICADO o no congelado: congelado.sh salió con {estado} ({detalle})", False
@@ -238,16 +265,38 @@ def ejecutar_criterio(criterio: vp.Criterio, raiz: Path, bash: str, plan: Path |
     return {"comando": etiqueta, "pasa": resultado.pasa, "exit": codigo, "nuevo": nuevo, "salida": resultado.salida}
 
 
-def criterios_de_cierre(ruta_json: Path) -> list[vp.Criterio]:
-    """Criterios de cierre global del repo, según `cierre_global.json` (lista de comandos `[cmd]`)."""
+def criterios_de_texto(texto: str, nombre: str) -> list[vp.Criterio]:
+    """Criterios de cierre global del texto de `cierre_global.json` (lista de comandos `[cmd]`)."""
     try:
-        datos = json.loads(ruta_json.read_text(encoding="utf-8"))
-    except (OSError, ValueError) as error:
-        raise UsoInvalido(f"no se pudo leer {ruta_json.name}: {error}") from error
+        datos = json.loads(texto)
+    except ValueError as error:
+        raise UsoInvalido(f"no se pudo leer {nombre}: {error}") from error
     comandos = datos.get("comandos") if isinstance(datos, dict) else datos
     if not isinstance(comandos, list) or not all(isinstance(c, str) for c in comandos):
-        raise UsoInvalido(f"{ruta_json.name} debe ser una lista de comandos o un objeto con 'comandos'")
+        raise UsoInvalido(f"{nombre} debe ser una lista de comandos o un objeto con 'comandos'")
     return [vp.Criterio("cierre global", "cmd", comando) for comando in comandos]
+
+
+def criterios_de_cierre(ruta_json: Path) -> list[vp.Criterio]:
+    """Criterios de cierre global según un `cierre_global.json` del disco (solo lo usan los tests)."""
+    try:
+        texto = ruta_json.read_text(encoding="utf-8")
+    except OSError as error:
+        raise UsoInvalido(f"no se pudo leer {ruta_json.name}: {error}") from error
+    return criterios_de_texto(texto, ruta_json.name)
+
+
+def criterios_de_cierre_head(raiz: Path) -> list[vp.Criterio]:
+    """Criterios de cierre global del `cierre_global.json` que está en el HEAD, nunca el del disco."""
+    texto = leer_de_head(raiz, RUTA_CIERRE_JSON)
+    if texto is None:
+        raise UsoInvalido(f"no hay {RUTA_CIERRE_JSON} en el HEAD de {raiz}")
+    return criterios_de_texto(texto, f"HEAD:{RUTA_CIERRE_JSON}")
+
+
+def comandos_de_cierre(raiz: Path, cierre_json: Path | None) -> list[vp.Criterio]:
+    """Cierre global: el JSON del HEAD, o `cierre_json` si el llamador (un test) pasa uno explícito."""
+    return criterios_de_cierre(cierre_json) if cierre_json is not None else criterios_de_cierre_head(raiz)
 
 
 # ---------------------------------------------------------------------------
@@ -256,23 +305,22 @@ def criterios_de_cierre(ruta_json: Path) -> list[vp.Criterio]:
 
 def destino(ruta: str, regla: str, excluidas: set[str], propias: list[str]) -> str:
     """Qué se hace con un versionado modificado: `falla`, `informa` o `ignora`."""
-    if ruta in excluidas:
+    if ruta in excluidas or ruta in PROPIOS:
         return "ignora"
     silenciosa = ruta in SILENCIOSAS or ruta.startswith(PREFIJOS_SILENCIOSOS)
-    if regla == "cierre":
+    if regla != "tarea":  # `todo` y `cierre`: cualquier ruta fuera de las de proceso falla
         return "ignora" if silenciosa or ruta.startswith(PREFIJO_PLANES) else "falla"
-    if regla == "todo":
-        cuenta = ruta.startswith(RAIZ_ESTRICTA[0]) or ruta == RAIZ_ESTRICTA[1]
-    else:
-        cuenta = any(coincide_ruta(ruta, patron) for patron in propias)
-    if cuenta:
+    if any(coincide_ruta(ruta, patron) for patron in propias):
         return "falla"
     return "ignora" if silenciosa else "informa"
 
 
-def versionados_modificados(raiz: Path) -> list[tuple[str, str]] | None:
-    """(estado, ruta) de cada archivo versionado modificado; None si git no responde."""
-    proceso = recibo._git(raiz, "status", "--porcelain", "--untracked-files=no", "-z")
+def versionados_modificados(raiz: Path, sin_seguimiento: bool = False) -> list[tuple[str, str]] | None:
+    """(estado, ruta) de cada archivo modificado (y, si se pide, sin seguimiento: `??`); None si git no responde.
+
+    Los archivos sin seguimiento se listan uno por uno y respetando `.gitignore`.
+    """
+    proceso = recibo._git(raiz, "status", "--porcelain", f"--untracked-files={'all' if sin_seguimiento else 'no'}", "-z")
     if proceso is None or proceso.returncode != 0:
         return None
     entradas = [e for e in proceso.stdout.split("\0") if e]
@@ -290,20 +338,25 @@ def versionados_modificados(raiz: Path) -> list[tuple[str, str]] | None:
     return modificados
 
 
-def versionados_limpios(raiz: Path, regla: str, excluidas: set[str] = frozenset(), propias: tuple[str, ...] = ()) -> dict:
+def versionados_limpios(raiz: Path, regla: str, excluidas: set[str] = frozenset(), propias: tuple[str, ...] = (),
+                        previos: list[tuple[str, str]] | None = ()) -> dict:
     """Criterio de versionados limpios, acotado según `regla` (`tarea`, `todo` o `cierre`).
 
-    Devuelve el dict de criterio con `fuera`: lo informado sin afectar el veredicto.
+    Devuelve el dict de criterio con `fuera`: lo informado sin afectar el veredicto. `previos` son
+    los archivos modificados o sin seguimiento vistos antes de correr los criterios (que pueden crear
+    archivos): se suman a lo modificado de ahora. `None` es que git no respondió entonces.
     """
     alcance = {
-        "cierre": "se excluyen docs/planes, estado, bitácora, decisiones y metodo",
+        "cierre": "modificados y sin seguimiento; se excluyen docs/planes, estado, bitácora, decisiones y metodo",
         "tarea": "solo las rutas de Puede tocar; plan y recibo excluidos",
-        "todo": "solo .claude/ y CLAUDE.md; plan y recibo excluidos",
+        "todo": "modificados y sin seguimiento; se excluyen docs/planes, estado, bitácora, decisiones y metodo",
     }[regla]
     etiqueta = f"versionados limpios (sin cambios versionados; {alcance})"
     modificados = versionados_modificados(raiz)
-    if modificados is None:
+    if modificados is None or previos is None:
         return {"comando": etiqueta, "pasa": False, "exit": 1, "nuevo": None, "salida": "no se pudo leer git status"}
+    vistos = {ruta for _, ruta in modificados}
+    modificados += [(estado, ruta) for estado, ruta in previos if ruta not in vistos]
     sucios: list[str] = []
     fuera: list[str] = []
     for estado, ruta in modificados:
@@ -316,16 +369,28 @@ def versionados_limpios(raiz: Path, regla: str, excluidas: set[str] = frozenset(
             "salida": "\n".join(sucios) if sucios else "limpia", "fuera": fuera}
 
 
-def commits_de_tareas(raiz: Path, base: str) -> list[tuple[int, str, list[str]]] | None:
+def commits_de_tareas(raiz: Path, base: str, slug: str = "",
+                      pedidas: list[int] | None = None) -> list[tuple[int, str, list[str]]] | None:
     """(tarea, asunto, archivos) de cada commit sin merge `T<n>:` en `<base>..HEAD`; None si git falla.
 
-    Fuera de `main`, y si `main` existe, se excluyen los commits alcanzables desde `main`.
+    Fuera de `main`, y si `main` existe, se excluyen los commits alcanzables desde `main`. Si la rama
+    actual es `<slug>-T<n>` y la T<n> está en `pedidas`, entran todos los commits de la rama.
     """
+    pedidas = pedidas or []
     argumentos = ["log", "--no-merges", "--name-only", "--format=%x01%s", f"{base}..HEAD"]
     actual = recibo._git(raiz, "rev-parse", "--abbrev-ref", "HEAD")
+    rama = actual.stdout.strip() if actual is not None else ""
     principal = recibo._git(raiz, "rev-parse", "--verify", "--quiet", "refs/heads/main")
-    if actual is not None and actual.stdout.strip() != "main" and principal is not None and principal.returncode == 0:
+    if actual is not None and rama != "main" and principal is not None and principal.returncode == 0:
         argumentos.append("^main")
+    # En la rama de la subtarea (`<slug>-T<n>`) cuentan todos sus commits, lleven o no el prefijo `T<n>:`;
+    # los que ya están en `plan/<slug>` (la base de la rama) no son de la subtarea.
+    de_rama = re.fullmatch(rf"{re.escape(slug)}-T(\d+)", rama) if slug else None
+    numero_rama = int(de_rama.group(1)) if de_rama and int(de_rama.group(1)) in pedidas else None
+    if numero_rama is not None:
+        del_plan = recibo._git(raiz, "rev-parse", "--verify", "--quiet", f"refs/heads/plan/{slug}")
+        if del_plan is not None and del_plan.returncode == 0:
+            argumentos.append(f"^plan/{slug}")
     proceso = recibo._git(raiz, *argumentos)
     if proceso is None or proceso.returncode != 0:
         return None
@@ -333,20 +398,23 @@ def commits_de_tareas(raiz: Path, base: str) -> list[tuple[int, str, list[str]]]
     for bloque in proceso.stdout.split("\x01")[1:]:
         asunto, _, resto = bloque.partition("\n")
         coincidencia = RE_ASUNTO_TAREA.match(asunto)
-        if coincidencia:
-            commits.append((int(coincidencia.group(1)), asunto, [a for a in resto.splitlines() if a.strip()]))
+        numero = numero_rama if numero_rama is not None else int(coincidencia.group(1)) if coincidencia else None
+        if numero is not None:
+            commits.append((numero, asunto, [a for a in resto.splitlines() if a.strip()]))
     return commits
 
 
-def commits_fuera_de_alcance(raiz: Path, rutas: dict[int, list[str]], pedidas: list[int], base: str | None) -> dict:
-    """Criterio: los commits `T<n>:` de las tareas pedidas solo tocan archivos de su `Puede tocar`.
+def commits_fuera_de_alcance(raiz: Path, rutas: dict[int, list[str]], pedidas: list[int], base: str | None,
+                             slug: str = "") -> dict:
+    """Criterio: los commits de las tareas pedidas solo tocan archivos de su `Puede tocar`.
 
-    Se compara el número entero del asunto: `T1:` nunca captura `T11:`.
+    Se compara el número entero del asunto (`T1:` nunca captura `T11:`); en la rama `<slug>-T<n>`
+    de una tarea pedida cuentan todos los commits sin merge de la rama.
     """
     etiqueta = "commits de la tarea dentro de Puede tocar"
     if base is None:
         return {"comando": etiqueta, "pasa": False, "exit": 1, "nuevo": None, "salida": "no se pudo resolver la base del plan"}
-    commits = commits_de_tareas(raiz, base)
+    commits = commits_de_tareas(raiz, base, slug, pedidas)
     if commits is None:
         return {"comando": etiqueta, "pasa": False, "exit": 1, "nuevo": None,
                 "salida": f"no se pudo leer git log desde {base[:7]}"}
@@ -464,7 +532,7 @@ def relativa(raiz: Path, ruta: Path) -> str | None:
 
 
 def correr_plan(modo: str, raiz: Path, valor_plan: str, pedidas: list[int], ruta_recibo: Path | None,
-                cierre_json: Path, timeout: float) -> int:
+                cierre_json: Path | None, timeout: float) -> int:
     """`tarea` y `todo`: ejecuta los criterios del plan congelado y escribe el recibo."""
     inicio = time.monotonic()
     plan = abrir_plan(raiz, valor_plan)
@@ -490,10 +558,16 @@ def correr_plan(modo: str, raiz: Path, valor_plan: str, pedidas: list[int], ruta
 
     seleccion = [c for n in pedidas for c in datos.criterios[n]]
     if modo == "todo":
-        seleccion += datos.cierre_global or criterios_de_cierre(cierre_json)
+        seleccion += datos.cierre_global or comandos_de_cierre(raiz, cierre_json)
     head = recibo.head(raiz) or ""
+    excluidas = {r for r in (relativa(raiz, plan), relativa(raiz, ruta_recibo)) if r}
+    # Estado del árbol antes de los criterios (que pueden crear archivos): solo con el árbol limpio
+    # se reutiliza el recibo previo.
+    antes = versionados_modificados(raiz, True) if modo == "todo" else []
+    limpio = antes is not None and all(destino(r, "todo", excluidas, []) != "falla" for _, r in antes)
+    head_completo = recibo.head_completo(raiz)
     previas: dict[int, dict[str, str]] = {}
-    if modo == "todo":
+    if modo == "todo" and limpio:
         secciones = recibo.leer_recibo(ruta_recibo)
         for numero in pedidas:
             fechas = fechas_previas(numero, datos.criterios[numero], secciones, head, contrato)
@@ -506,33 +580,60 @@ def correr_plan(modo: str, raiz: Path, valor_plan: str, pedidas: list[int], ruta
         resultados.append(resultado_previo(criterio, fecha) if fecha else
                           ejecutar_criterio(criterio, raiz, bash, plan, base_registro, motivo_base, base, timeout))
 
-    excluidas = {r for r in (relativa(raiz, plan), relativa(raiz, ruta_recibo)) if r}
     if modo == "tarea":
         propias = tuple(r for n in pedidas for r in rutas.get(n, []))
         resultados.append(versionados_limpios(raiz, "tarea", excluidas, propias))
-        resultados.append(commits_fuera_de_alcance(raiz, rutas, pedidas, base))
+        resultados.append(commits_fuera_de_alcance(raiz, rutas, pedidas, base, slug))
         alcance = f"tarea {','.join(f'T{n}' for n in pedidas)} de {plan.name}"
     else:
-        resultados.append(versionados_limpios(raiz, "todo", excluidas))
+        resultados.append(versionados_limpios(raiz, "todo", excluidas, (), antes))
         alcance = f"todo {plan.name}"
     seccion = armar_seccion(alcance, raiz, contrato, aceptado, resultados, inicio)
     emitir_recibo(ruta_recibo, seccion)
-    if modo == "todo" and seccion["veredicto"] == "PASA" and seccion["head"]:
-        recibo.registrar_head(raiz, seccion["head"])
+    registrar_si_pasa(raiz, seccion, head_completo, alcance if modo == "todo" else None)
     return 0 if seccion["veredicto"] == "PASA" else 1
 
 
-def correr_cierre(raiz: Path, cierre_json: Path, timeout: float) -> int:
+def registrar_si_pasa(raiz: Path, seccion: dict, head_inicial: str | None, alcance: str | None) -> None:
+    """Registra el HEAD completo con su `alcance` si el veredicto es PASA y el HEAD no se movió durante la corrida."""
+    if alcance is not None and seccion["veredicto"] == "PASA" and head_inicial and recibo.head_completo(raiz) == head_inicial:
+        recibo.registrar_head(raiz, head_inicial, alcance)
+
+
+def correr_cierre(raiz: Path, cierre_json: Path | None, timeout: float) -> int:
     """`cierre`: cierre global del repo, sin plan; el recibo va solo a stdout."""
     inicio = time.monotonic()
     bash = vp.buscar_bash()
-    resultados = [ejecutar_criterio(c, raiz, bash, None, None, None, None, timeout) for c in criterios_de_cierre(cierre_json)]
-    resultados.append(versionados_limpios(raiz, "cierre"))
+    criterios = comandos_de_cierre(raiz, cierre_json)
+    antes = versionados_modificados(raiz, True)
+    head_inicial = recibo.head_completo(raiz)
+    resultados = [ejecutar_criterio(c, raiz, bash, None, None, None, None, timeout) for c in criterios]
+    resultados.append(versionados_limpios(raiz, "cierre", frozenset(), (), antes))
     seccion = armar_seccion("cierre global", raiz, "intacto (sin plan)", True, resultados, inicio)
     emitir_recibo(None, seccion)
-    if seccion["veredicto"] == "PASA" and seccion["head"]:
-        recibo.registrar_head(raiz, seccion["head"])
+    registrar_si_pasa(raiz, seccion, head_inicial, "cierre")
     return 0 if seccion["veredicto"] == "PASA" else 1
+
+
+def validar_recibo(raiz: Path, ruta: Path) -> Path:
+    """`--recibo` solo acepta `docs/planes/*.recibo.md` dentro de la raíz o un archivo fuera del repo.
+
+    El recibo se abre en modo append: sin esta regla se podría agregar texto a cualquier archivo
+    del repo (por ejemplo `.claude/settings.json`). Otra ruta dentro del repo es uso inválido.
+    """
+    destino = ruta.resolve()
+    proceso = recibo._git(raiz, "rev-parse", "--show-toplevel")
+    repos = {raiz.resolve()}
+    if proceso is not None and proceso.returncode == 0 and proceso.stdout.strip():
+        repos.add(Path(proceso.stdout.strip()).resolve())
+    if destino.is_dir():
+        raise UsoInvalido(f"--recibo {ruta} es un directorio")
+    if not any(destino == repo or repo in destino.parents for repo in repos):
+        return destino  # fuera del repo (un temporal)
+    if destino.parent == (raiz / "docs" / "planes").resolve() and destino.name.endswith(".recibo.md") \
+            and destino.name != ".recibo.md":
+        return destino
+    raise UsoInvalido(f"--recibo {ruta}: dentro del repo solo se acepta docs/planes/*.recibo.md")
 
 
 def interpretar(argv: list[str]) -> tuple[Path, Path | None, list[str]]:
@@ -563,10 +664,11 @@ def interpretar(argv: list[str]) -> tuple[Path, Path | None, list[str]]:
                     else Path.cwd()).resolve()
     if not raiz.is_dir():
         raise UsoInvalido(f"la raíz {raiz} no es un directorio")
-    return raiz, Path(valores["--recibo"]) if "--recibo" in valores else None, posicionales
+    ruta_recibo = validar_recibo(raiz, Path(valores["--recibo"])) if "--recibo" in valores else None
+    return raiz, ruta_recibo, posicionales
 
 
-def despachar(posicionales: list[str], raiz: Path, ruta_recibo: Path | None, cierre_json: Path, timeout: float) -> int:
+def despachar(posicionales: list[str], raiz: Path, ruta_recibo: Path | None, cierre_json: Path | None, timeout: float) -> int:
     """Corre el subcomando; levanta `UsoInvalido` si los argumentos no coinciden con ninguno."""
     if len(posicionales) == 3 and posicionales[0] == "tarea" and RE_CLAVE_TAREAS.fullmatch(posicionales[2]):
         pedidas = list(dict.fromkeys(int(t[1:]) for t in posicionales[2].split(",")))
@@ -580,7 +682,7 @@ def despachar(posicionales: list[str], raiz: Path, ruta_recibo: Path | None, cie
     raise UsoInvalido(USO)
 
 
-def main(argv: list[str], cierre_json: Path = CIERRE_JSON, timeout: float = TIMEOUT_CRITERIO) -> int:
+def main(argv: list[str], cierre_json: Path | None = None, timeout: float = TIMEOUT_CRITERIO) -> int:
     """Punto de entrada testeable: devuelve el exit (0 pasa, 1 falla, 2 uso inválido).
 
     Mientras corre existe `.claude/.verificando` con el PID (lo mira el hook Stop); se borra siempre.

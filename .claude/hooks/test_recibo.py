@@ -9,6 +9,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import recibo  # noqa: E402
 
@@ -127,22 +129,71 @@ def test_escribir_y_leer_recibo_por_secciones(tmp_path):
     ]
 
 
+def hashes(cuantos: int) -> list[str]:
+    """Hashes completos (40 hexadecimales) ficticios y distintos."""
+    return [f"{i:040x}" for i in range(1, cuantos + 1)]
+
+
 def test_indice_registra_head_y_conserva_50(tmp_path):
-    for i in range(60):
-        recibo.registrar_head(tmp_path, f"h{i}")
+    lista = hashes(60)
+    for hash_ in lista:
+        recibo.registrar_head(tmp_path, hash_, "cierre")
     datos = json.loads((tmp_path / ".claude" / ".recibos.json").read_text(encoding="utf-8"))
     assert len(datos) == 50
-    assert datos[-1] == "h59" and datos[0] == "h10"
-    assert recibo.head_tiene_recibo(tmp_path, "h59")
-    assert not recibo.head_tiene_recibo(tmp_path, "h0")
-    # Registrar de nuevo un HEAD no lo duplica.
-    recibo.registrar_head(tmp_path, "h59")
+    assert datos[-1] == {"head": lista[59], "alcance": "cierre"} and datos[0]["head"] == lista[10]
+    assert recibo.head_tiene_recibo(tmp_path, lista[59])
+    assert not recibo.head_tiene_recibo(tmp_path, lista[0])
+    # Registrar de nuevo un HEAD con el mismo alcance no lo duplica.
+    recibo.registrar_head(tmp_path, lista[59], "cierre")
     assert len(recibo._leer_indice(tmp_path)) == 50
 
 
 def test_head_sin_registrar_no_tiene_recibo(tmp_path):
-    assert not recibo.head_tiene_recibo(tmp_path, "aaa1234")
-    recibo.registrar_head(tmp_path, "aaa1234567")
-    assert recibo.head_tiene_recibo(tmp_path, "aaa1234")  # prefijo
-    assert not recibo.head_tiene_recibo(tmp_path, "bbb1234")
+    completo = repo_con(tmp_path, {"a.txt": "a\n"})
+    assert not recibo.head_tiene_recibo(tmp_path, completo)
+    recibo.registrar_head(tmp_path, completo[:10], "cierre")  # el prefijo se resuelve contra el repo
+    assert recibo.head_tiene_recibo(tmp_path, completo)
+    assert recibo.head_tiene_recibo(tmp_path, recibo.head(tmp_path))
+    assert not recibo.head_tiene_recibo(tmp_path, "b" * 40)
     assert not recibo.head_tiene_recibo(tmp_path, "")
+
+
+def test_registrar_head_guarda_alcance_y_hash_completo(tmp_path):
+    completo = repo_con(tmp_path, {"a.txt": "a\n"})
+    assert recibo.head_completo(tmp_path) == completo
+    recibo.registrar_head(tmp_path, recibo.head(tmp_path), "todo 2026-11-13-demo.md")  # hash corto
+    datos = json.loads((tmp_path / ".claude" / ".recibos.json").read_text(encoding="utf-8"))
+    assert datos == [{"head": completo, "alcance": "todo 2026-11-13-demo.md"}]
+    assert recibo.head_tiene_recibo(tmp_path, completo, "todo 2026-11-13-demo.md")
+    assert not recibo.head_tiene_recibo(tmp_path, completo, "cierre")
+    assert not recibo.head_tiene_recibo(tmp_path, completo, "todo otro.md")
+    # Mismo HEAD con otro alcance: conviven dos entradas.
+    recibo.registrar_head(tmp_path, completo, "cierre")
+    assert [e["alcance"] for e in recibo._leer_indice(tmp_path)] == ["todo 2026-11-13-demo.md", "cierre"]
+    with pytest.raises(ValueError):
+        recibo.registrar_head(tmp_path, "nada", "cierre")
+
+
+def test_indice_ignora_entradas_que_no_son_hash_completo(tmp_path):
+    completo = repo_con(tmp_path, {"a.txt": "a\n"})
+    ruta = tmp_path / ".claude" / ".recibos.json"
+    ruta.parent.mkdir()
+    entradas = ["", completo, completo[:7], {"head": "", "alcance": "cierre"}, {"head": completo[:7], "alcance": "cierre"},
+                {"head": completo.upper(), "alcance": "cierre"}, {"head": completo}, {"alcance": "cierre"}, 7, None]
+    ruta.write_text(json.dumps(entradas), encoding="utf-8")
+    assert recibo._leer_indice(tmp_path) == []
+    assert not recibo.head_tiene_recibo(tmp_path, completo)
+    assert not recibo.head_tiene_recibo(tmp_path, "")
+    ruta.write_text(json.dumps([*entradas, {"head": completo, "alcance": "cierre"}]), encoding="utf-8")
+    assert recibo._leer_indice(tmp_path) == [{"head": completo, "alcance": "cierre"}]
+
+
+def test_hash_prefijo_no_cuenta_como_recibo(tmp_path):
+    completo = repo_con(tmp_path, {"a.txt": "a\n"})
+    otro = completo[:7] + ("0" if completo[7] != "0" else "1") * 33  # mismo prefijo, otro hash
+    ruta = tmp_path / ".claude" / ".recibos.json"
+    ruta.parent.mkdir()
+    ruta.write_text(json.dumps([{"head": otro, "alcance": "cierre"}]), encoding="utf-8")
+    assert not recibo.head_tiene_recibo(tmp_path, completo)  # comparte prefijo con una entrada y no basta
+    assert not recibo.head_tiene_recibo(tmp_path, completo[:7])
+    assert not recibo.head_tiene_recibo(tmp_path, otro[:7])  # el prefijo ni siquiera resuelve a un commit

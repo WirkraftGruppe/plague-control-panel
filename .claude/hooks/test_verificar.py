@@ -62,6 +62,8 @@ class Repo:
         git(self.raiz, "symbolic-ref", "HEAD", "refs/heads/main")
         for clave, valor in (("user.name", "t"), ("user.email", "t@t"), ("commit.gpgsign", "false"), ("core.autocrlf", "false")):
             git(self.raiz, "config", clave, valor)
+        # Los criterios de prueba escriben marcas `*.txt` en el repo: se ignoran como haría un .gitignore.
+        (self.raiz / ".git" / "info" / "exclude").write_text("*.txt\n", encoding="utf-8", newline="\n")
 
     def escribir(self, ruta: str, contenido: str) -> None:
         archivo = self.raiz / ruta
@@ -212,6 +214,7 @@ def test_contrato_modificado_sin_decision_del_usuario_falla(repo):
         "sin decisiones.md": None,
         "línea del agente": f"- 2026-10-28 (agente) cambió los criterios {corto}\n",
         "usuario sin el hash": "- 2026-10-28 (usuario) acepta otra cosa abcdef1\n",
+        "usuario con el hash pero sin commitear": f"- 2026-10-28 (usuario) acepta {corto}\n",
     }
     for nombre, contenido in casos.items():
         (repo.raiz / "nuevo.txt").unlink(missing_ok=True)
@@ -221,15 +224,16 @@ def test_contrato_modificado_sin_decision_del_usuario_falla(repo):
         assert codigo == 1, f"{nombre}: {salida}"
         texto = repo.recibo()
         assert "- Contrato: FALLA: contrato MODIFICADO sin decisión del usuario" in texto, nombre
-        assert (repo.raiz / "nuevo.txt").exists(), f"{nombre}: se ejecutan los criterios del último commit"
+        assert not (repo.raiz / "nuevo.txt").exists(), f"{nombre}: no se ejecuta ningún criterio"
         assert texto.rstrip().endswith("- Veredicto: FALLA"), nombre
-        assert "  - PASA (exit 0, nuevo: —) `T1 [cmd] echo nuevo > nuevo.txt`" in texto, nombre
+        assert "echo nuevo" not in texto, nombre
 
 
 def test_contrato_modificado_con_decision_del_usuario_pasa(repo):
     repo.congelar(plan_texto(tarea(1, "cmd true")))
     corto = repo.modificar_contrato(plan_texto(tarea(1, "cmd true", "cmd echo nuevo > nuevo.txt")))
-    repo.escribir("docs/decisiones.md", f"- 2026-11-13 (usuario) acepta el cambio de criterios {corto}\n")
+    repo.commit("registro: decisión del usuario", "docs/decisiones.md",
+                f"- 2026-11-13 (usuario) acepta el cambio de criterios {corto}\n")
     codigo, salida = repo.correr("tarea", PLAN, "T1")
     assert codigo == 0, salida
     assert (repo.raiz / "nuevo.txt").exists()
@@ -368,13 +372,15 @@ def test_todo_repite_tarea_si_cambio_el_contrato_o_hubo_falla(repo):
 
 
 def test_todo_falla_por_versionados_de_claude_y_solo_informa_el_resto(repo):
-    repo.congelar(plan_texto(tarea(1, "cmd true")), {"codigo.py": "x = 1\n", "CLAUDE.md": "a\n", ".claude/h.py": "h = 1\n"})
+    # Desde la auditoría (H6/H7) `todo` ya no solo informa lo modificado fuera de `.claude/`: cualquier
+    # ruta fuera de las de proceso es FALLA. Lo de proceso (`docs/estado.md`) sigue sin contar.
+    repo.congelar(plan_texto(tarea(1, "cmd true")),
+                  {"codigo.py": "x = 1\n", "CLAUDE.md": "a\n", ".claude/h.py": "h = 1\n", "docs/estado.md": "a\n"})
     cierre = repo.cierre("true")
-    repo.escribir("codigo.py", "x = 2\n")
+    repo.escribir("docs/estado.md", "b\n")
     codigo, salida = repo.correr("todo", PLAN, cierre_json=cierre)
     assert codigo == 0, salida
-    assert "- Fuera de alcance (informativo): M codigo.py" in salida
-    for ruta in ("CLAUDE.md", ".claude/h.py"):
+    for ruta in ("codigo.py", "CLAUDE.md", ".claude/h.py"):
         repo.escribir(ruta, "cambiado\n")
         codigo, salida = repo.correr("todo", PLAN, cierre_json=cierre)
         assert codigo == 1, salida
@@ -477,3 +483,135 @@ def test_recibo_en_la_ruta_indicada_y_cli_de_punta_a_punta(repo, tmp_path):
     assert re.search(r"^- Veredicto: PASA$", destino.read_text(encoding="utf-8"), re.M)
     assert not (repo.raiz / RECIBO).exists()
     assert not (repo.raiz / ".claude" / ".verificando").exists()
+
+
+# ---------------------------------------------------------------------------
+# Hallazgos de la auditoría (H1, H6/H7, H8, H9)
+# ---------------------------------------------------------------------------
+
+CIERRE_HEAD = ".claude/hooks/cierre_global.json"
+
+
+def test_contrato_modificado_sin_decision_no_ejecuta_criterios(repo):
+    repo.congelar(plan_texto(tarea(1, "cmd echo original > original.txt")))
+    repo.modificar_contrato(plan_texto(tarea(1, "cmd echo nuevo > nuevo.txt")))
+    for modo in (["tarea", PLAN, "T1"], ["todo", PLAN]):
+        codigo, salida = repo.correr(*modo, cierre_json=repo.cierre("echo cierre > cierre.txt"))
+        assert codigo == 1, salida
+        texto = repo.recibo()
+        assert "- Contrato: FALLA: contrato MODIFICADO sin decisión del usuario" in texto
+        assert texto.rstrip().endswith("- Veredicto: FALLA")
+    for marca in ("original.txt", "nuevo.txt", "cierre.txt"):
+        assert not (repo.raiz / marca).exists(), f"{marca}: no se ejecuta ningún criterio"
+    assert not (repo.raiz / ".claude" / ".recibos.json").exists()
+    assert "  - " not in texto.split("- Criterios:", 1)[1].split("- duración")[0]
+
+
+def test_decisiones_y_cierre_global_se_leen_de_git(repo):
+    comandos = {"comandos": ["echo head > cierre_head.txt"]}
+    repo.congelar(plan_texto(tarea(1, "cmd true")), {CIERRE_HEAD: json.dumps(comandos)})
+    corto = repo.modificar_contrato(plan_texto(tarea(1, "cmd echo nuevo > nuevo.txt")))
+    # Una decisión del usuario que solo está en el disco no vale: no se ejecuta nada.
+    repo.escribir("docs/decisiones.md", f"- 2026-11-13 (usuario) acepta {corto}\n")
+    codigo, salida = repo.correr("tarea", PLAN, "T1")
+    assert codigo == 1 and "sin decisión del usuario" in salida
+    assert not (repo.raiz / "nuevo.txt").exists()
+    # Commiteada sí vale: el cierre global sale del HEAD aunque el disco diga otra cosa.
+    git(repo.raiz, "add", "docs/decisiones.md")
+    git(repo.raiz, "commit", "-q", "-m", "registro: decisión del usuario")
+    repo.escribir(CIERRE_HEAD, json.dumps({"comandos": ["echo disco > cierre_disco.txt"]}))
+    codigo, salida = repo.correr("todo", PLAN)
+    assert (repo.raiz / "nuevo.txt").exists() and (repo.raiz / "cierre_head.txt").exists()
+    assert not (repo.raiz / "cierre_disco.txt").exists(), "el cierre global no se lee del disco"
+    assert "- Contrato: modificado y aceptado" in salida
+    assert codigo == 1 and f"M {CIERRE_HEAD}" in salida, "el cierre global modificado en el disco es FALLA"
+    (repo.raiz / "cierre_head.txt").unlink()
+    codigo, salida = repo.correr("cierre")
+    assert (repo.raiz / "cierre_head.txt").exists() and not (repo.raiz / "cierre_disco.txt").exists()
+    assert codigo == 1 and f"M {CIERRE_HEAD}" in salida
+    git(repo.raiz, "checkout", "-q", "--", CIERRE_HEAD)
+    assert repo.correr("cierre")[0] == 0
+    # Sin cierre_global.json en el HEAD no hay cierre: uso inválido.
+    git(repo.raiz, "rm", "-q", CIERRE_HEAD)
+    git(repo.raiz, "commit", "-q", "-m", "sin cierre")
+    assert repo.correr("cierre")[0] == 2
+
+
+def test_todo_falla_con_archivo_sin_seguimiento_fuera_de_proceso(repo):
+    repo.congelar(plan_texto(tarea(1, "cmd true")))
+    cierre = repo.cierre("true")
+    # Archivos ignorados y de proceso no cuentan (ni lo que crean los criterios).
+    repo.escribir("ignorado.txt", "x\n")
+    repo.escribir("docs/estado.md", "nuevo\n")
+    repo.escribir("docs/metodo/nota.md", "nueva\n")
+    codigo, salida = repo.correr("todo", PLAN, cierre_json=cierre)
+    assert codigo == 0, salida
+    assert recibo.head_tiene_recibo(repo.raiz, repo.head(), f"todo {Path(PLAN).name}")
+    repo.vacio()
+    for ruta in ("suelto.py", "carpeta/otro.py"):
+        repo.escribir(ruta, "x = 1\n")
+        for modo in (["todo", PLAN], ["cierre"]):
+            codigo, salida = repo.correr(*modo, cierre_json=cierre)
+            assert codigo == 1, f"{modo} {ruta}: {salida}"
+            assert f"?? {ruta}" in salida and "- Veredicto: FALLA" in salida
+            assert not recibo.head_tiene_recibo(repo.raiz, repo.head()), "con FALLA no se registra el HEAD"
+        (repo.raiz / ruta).unlink()
+    assert repo.correr("todo", PLAN, cierre_json=cierre)[0] == 0
+    assert recibo.head_tiene_recibo(repo.raiz, repo.head(), f"todo {Path(PLAN).name}")
+
+
+def test_todo_no_reutiliza_recibo_previo_con_arbol_sucio(repo):
+    repo.congelar(plan_texto(tarea(1, "cmd echo uno >> marca1.txt")))
+    cierre = repo.cierre("true")
+    assert repo.correr("todo", PLAN, cierre_json=cierre)[0] == 0
+    codigo, salida = repo.correr("todo", PLAN, cierre_json=cierre)
+    assert codigo == 0 and "recibo previo" in salida, "con el árbol limpio sí se reutiliza"
+    repo.escribir("suelto.py", "x = 1\n")
+    codigo, salida = repo.correr("todo", PLAN, cierre_json=cierre)
+    assert codigo == 1, salida
+    assert "recibo previo" not in salida and "`T1 [cmd] echo uno" in salida
+    assert (repo.raiz / "marca1.txt").read_text(encoding="utf-8").splitlines() == ["uno", "uno"]
+    # Un archivo versionado modificado tampoco deja reutilizar.
+    (repo.raiz / "suelto.py").unlink()
+    repo.commit("otro", "k.py", "k = 1\n")
+    assert repo.correr("todo", PLAN, cierre_json=cierre)[0] == 0
+    repo.escribir("k.py", "k = 2\n")
+    codigo, salida = repo.correr("todo", PLAN, cierre_json=cierre)
+    assert codigo == 1 and "recibo previo" not in salida
+
+
+def test_recibo_fuera_de_docs_planes_es_uso_invalido(repo, tmp_path):
+    repo.congelar(plan_texto(tarea(1, "cmd true")), {".claude/settings.json": "{}\n", "docs/otro.md": "x\n"})
+    antes = {r: (repo.raiz / r).read_bytes() for r in (".claude/settings.json", "docs/otro.md")}
+    rechazadas = [".claude/settings.json", "docs/otro.md", "otro.recibo.md", "docs/planes/x.md", "docs/planes/.recibo.md",
+                  "docs/planes/sub/x.recibo.md", "docs/planes/../../.claude/settings.json", "docs", "docs/planes"]
+    for ruta in rechazadas:
+        codigo, salida = repo.correr("--recibo", str(repo.raiz / ruta), "tarea", PLAN, "T1")
+        assert codigo == 2 and salida == "", ruta
+    assert {r: (repo.raiz / r).read_bytes() for r in antes} == antes
+    assert not (repo.raiz / "otro.recibo.md").exists() and not (repo.raiz / "docs/planes/x.md").exists()
+    # Aceptadas: el recibo del plan dentro de docs/planes y un archivo fuera del repo.
+    assert repo.correr("--recibo", str(repo.raiz / RECIBO), "tarea", PLAN, "T1")[0] == 0
+    assert (repo.raiz / RECIBO).exists()
+    destino = tmp_path / "temporal.md"
+    assert repo.correr("--recibo", str(destino), "tarea", PLAN, "T1")[0] == 0 and destino.exists()
+
+
+def test_tarea_cuenta_commits_sin_prefijo_en_rama_de_subtarea(repo):
+    repo.congelar(plan_texto(tarea(1, "cmd true", extra=PUEDE_A) + tarea(2, "cmd true", extra="- **Puede tocar**: `b.py`\n")))
+    git(repo.raiz, "checkout", "-q", "-b", "plan/demo")
+    repo.commit("registro: demo", "docs/estado.md")  # de la rama del plan, no de la subtarea
+    git(repo.raiz, "checkout", "-q", "-b", "demo-T1")
+    repo.commit("T1: lo propio", "a.py")
+    repo.commit("arreglo sin prefijo", "a.py", "a = 2\n")
+    assert repo.correr("tarea", PLAN, "T1")[0] == 0
+    repo.commit("arreglo ajeno sin prefijo", "fuera.py")
+    codigo, salida = repo.correr("tarea", PLAN, "T1")
+    assert codigo == 1, salida
+    assert "arreglo ajeno sin prefijo -> fuera.py" in repo.recibo()
+    assert "registro: demo" not in repo.recibo()
+    # Pidiendo otra tarea (T2) los commits de esta rama no se le atribuyen.
+    assert repo.correr("tarea", PLAN, "T2")[0] == 0
+    # En una rama que no es `<slug>-T<n>` solo cuentan los commits `T<n>:`, como antes.
+    git(repo.raiz, "checkout", "-q", "-b", "otra-rama")
+    assert repo.correr("tarea", PLAN, "T1")[0] == 0
