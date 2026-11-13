@@ -13,7 +13,7 @@ Mergeado: protocolo-decisiones, diseno-panel y ajustes-flujo en `main` (último:
 ## Pendiente inmediato
 - multiempresa: T1 a T14 hechas; verificación TODO 180/181 en 5c7b016 (solo CONTRATO MODIFICADO). Falta la prueba manual del usuario.
 - multiempresa: pasar a un plan los pendientes sin dueño y decidir el merge a `main`.
-- metodo-v2: ola 1 en curso (T1, T3, T6 a T9); sigue la integración T10 y la ola 2.
+- metodo-v2: T1 a T11 integradas en `plan/metodo-v2`; falta el cierre (auditoría y verificación TODO) y aplicar `docs/metodo/parche-settings.md`.
 - Después de multiempresa: despliegue en Railway; antes, `showmigrations` contra producción (P-flujo-sitio-15).
 - P-diseno-panel-1 (primer clic en un marcador del panel lateral): en un plan aparte.
 

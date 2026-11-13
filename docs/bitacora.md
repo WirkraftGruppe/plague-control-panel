@@ -15,6 +15,14 @@ Problemas abiertos: ver `py -3 .claude/hooks/pendientes.py` (cada plan los decla
 
 ## Entradas (la más reciente arriba)
 
+### 2026-11-13 — Plan `metodo-v2` (método v2 de TerritoryOS) ejecutado, sin fusionar
+Hecho:
+- Rama `plan/metodo-v2` desde `metodo/autonomia-github` (79535db), worktree `worktrees/metodo-v2`; contrato congelado en d8e3ac5. Ejecutado con el método v1 (juez-plan, verificador), por decisión del usuario.
+- Ola 1 (T1 `recibo.py`, T3 `revisar_plan.py`, T6 `contexto.sh` sobre `docs/estado.md`, T7 `medir_metodo.py` y `docs/metodo/`, T8 tres agentes, T9 stdin de los tests de `pre-push`) y ola 2 (T2 `verificar.py`, T4 `recibo_pendiente.py`, T5 `commit-msg`, T11 CLAUDE.md de 7911 B, plantilla v2 y parche de settings), cada T verificada en PASA e integrada.
+- `verificar.py tarea` sobre `multiempresa` T1 (contra la raíz, recibo a un temporal): todos sus criterios en PASA; veredicto FALLA solo por el contrato modificado sin línea `(usuario)`.
+- Incidente: `worktree-integrar.sh` borra la rama desde la raíz (en `plan/multiempresa`) y sale con 1 tras cada merge correcto (P-metodo-v2-5); las ramas se borraron desde el worktree del plan.
+Pendiente: cierre (auditor-seguridad, verificación TODO); el usuario aplica `docs/metodo/parche-settings.md` y decide el merge.
+
 ### 2026-10-23 — `diseno-panel` fusionado en `main`
 Hecho:
 - El usuario autorizó el merge con la verificación TODO en 104/105 (FALLA solo `congelado.sh` por los contratos modificados c235fc8 y f386238, aprobados por él). Merge `--no-ff` en `main` (7270e4c); 5 decisiones copiadas a `docs/decisiones.md`.
