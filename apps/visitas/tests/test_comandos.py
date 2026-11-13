@@ -6,7 +6,6 @@ from decimal import Decimal
 from io import StringIO
 from unittest import mock
 
-from django.conf import settings
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.db import OperationalError
@@ -108,12 +107,19 @@ class CerrarAbiertasTests(TestCase):
         self.assertIn("1", salida)
 
 
-@override_settings(DEBUG=True, MEDIA_ROOT=tempfile.mkdtemp(prefix="revision-demo-"))
+MEDIA_REVISION_DEMO = tempfile.mkdtemp(prefix="revision-demo-")
+
+
+@override_settings(DEBUG=True, MEDIA_ROOT=MEDIA_REVISION_DEMO)
 class RevisionDemoTests(TestCase):
+    # La ruta queda guardada en la clase: se borra el directorio temporal, nunca
+    # settings.MEDIA_ROOT, que después de deshacer el override es el media/ real.
+    media_temporal = MEDIA_REVISION_DEMO
+
     @classmethod
     def tearDownClass(cls):
+        shutil.rmtree(cls.media_temporal, ignore_errors=True)
         super().tearDownClass()
-        shutil.rmtree(settings.MEDIA_ROOT, ignore_errors=True)
 
     def preparar(self):
         visita = crear_visita(origen=Visita.Origen.APP, estado=Visita.Estado.CANCELADA)
