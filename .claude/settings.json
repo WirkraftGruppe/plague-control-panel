@@ -79,7 +79,15 @@
       "Edit(.claude/settings.local.json)",
       "Edit(.claude/hooks/permisos.py)",
       "Edit(.claude/hooks/guardia_bash.py)",
-      "Edit(.claude/hooks/pre-push)"
+      "Edit(.claude/hooks/pre-push)",
+      "Edit(.claude/.recibos.json)",
+      "Edit(.claude/hooks/recibo.py)",
+      "Edit(.claude/hooks/commit-msg)",
+      "Edit(.claude/hooks/commit_msg.py)",
+      "Bash(git commit *--no-v*)",
+      "Bash(git push *--no-v*)",
+      "Bash(git commit *--am*)",
+      "Bash(git push *--forc*)"
     ]
   },
   "hooks": {
@@ -110,8 +118,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "py -3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/verificar_plan.py --aviso",
-            "timeout": 900
+            "command": "py -3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/recibo_pendiente.py",
+            "timeout": 30
           }
         ]
       }

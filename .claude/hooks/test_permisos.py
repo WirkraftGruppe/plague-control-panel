@@ -74,7 +74,7 @@ class TestPermisos(unittest.TestCase):
         self.assertIn("Bash", guardia["matcher"])
         self.assertIn("guardia_bash.py", guardia["hooks"][0]["command"])
         cierre = hooks["Stop"][0]["hooks"][0]
-        self.assertIn("verificar_plan.py --aviso", cierre["command"])
+        self.assertIn("recibo_pendiente.py", cierre["command"])
 
 
 def entrada_de_git(lineas):

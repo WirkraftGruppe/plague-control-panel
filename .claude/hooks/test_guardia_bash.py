@@ -102,6 +102,11 @@ BLOQUEADOS = [
     "ls\ngit stash",
     "cat <<EOF\ntexto\nEOF\ngit stash",
     "cat <<EOF && git stash\ntexto\nEOF",
+    'git commit --no-verif -m "cierre: x"',
+    "git commit --amen --no-edit",
+    "git push --no-verif origin HEAD",
+    "git push --forc origin plan/x",
+    "git push --mirr origin",
 ]
 
 PERMITIDOS = [
@@ -158,6 +163,8 @@ PERMITIDOS = [
     "echo 'texto con comilla \" suelta'",
     "gh pr create --title x --body \"$(cat <<'EOF'\nNo se usa `git stash` ni gh pr merge; don't.\nEOF\n)\"",
     "cat <<EOF | grep x\ngit stash\nEOF",
+    "git commit -m 'T1: algo'",
+    "git push -u origin plan/x",
 ]
 
 

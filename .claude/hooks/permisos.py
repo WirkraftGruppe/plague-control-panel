@@ -105,6 +105,16 @@ DENY = [
     "Edit(.claude/hooks/permisos.py)",
     "Edit(.claude/hooks/guardia_bash.py)",
     "Edit(.claude/hooks/pre-push)",
+    # El control de `cierre:` (H4 de la auditoría de metodo-v2).
+    "Edit(.claude/.recibos.json)",
+    "Edit(.claude/hooks/recibo.py)",
+    "Edit(.claude/hooks/commit-msg)",
+    "Edit(.claude/hooks/commit_msg.py)",
+    # Abreviaturas de opciones largas que git acepta (H2): `--no-verif`, `--amen`, `--forc`.
+    "Bash(git commit *--no-v*)",
+    "Bash(git push *--no-v*)",
+    "Bash(git commit *--am*)",
+    "Bash(git push *--forc*)",
 ]
 
 

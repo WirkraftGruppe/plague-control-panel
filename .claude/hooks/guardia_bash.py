@@ -42,7 +42,11 @@ INTERPRETES = {"python", "python3", "py", "node", "perl", "ruby"}
 ESCRITORES = {"cp", "mv", "rm", "ln", "install", "chmod", "sed", "tee", "truncate", "dd", "touch"}
 RAMAS_PROTEGIDAS = {"main", "master"}
 REMOTOS_PERMITIDOS = {"origin"}
-RUTAS_PROTEGIDAS = (".git/hooks", ".claude/settings.json", ".claude/settings.local.json")
+RUTAS_PROTEGIDAS = (
+    ".git/hooks", ".claude/settings.json", ".claude/settings.local.json",
+    ".claude/.recibos.json", ".claude/hooks/recibo.py",
+    ".claude/hooks/commit-msg", ".claude/hooks/commit_msg.py",
+)
 ENV_DE_EJEMPLO = {".env.example", ".env.sample", ".env.template", ".env.dist"}
 EXTENSIONES_SECRETAS = (".pem", ".key", ".jks", ".keystore")
 RE_ASIGNACION = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
@@ -106,6 +110,14 @@ def grupo_corto(token: str, letra: str) -> bool:
     return bool(re.fullmatch(r"-[A-Za-z]+", token)) and letra in token
 
 
+def es_prefijo(a: str, *largas: str) -> bool:
+    """True si `a` es una opción larga o una abreviatura de alguna (git acepta prefijos únicos)."""
+    if not a.startswith("--") or len(a) < 4:
+        return False
+    nombre = a.split("=", 1)[0]
+    return any(larga.startswith(nombre) for larga in largas)
+
+
 def revisar_grueso(texto: str) -> str | None:
     """Búsqueda por patrón sobre texto que no se pudo separar en comandos."""
     for patron, motivo in PATRONES_GRUESOS:
@@ -142,7 +154,7 @@ def regla_git(args: list[str]) -> str | None:
         j = 0
         while j < len(resto):
             a = resto[j]
-            if a in {"--amend", "--all", "--no-verify"} or grupo_corto(a, "a") or grupo_corto(a, "n"):
+            if es_prefijo(a, "--amend", "--all", "--no-verify") or grupo_corto(a, "a") or grupo_corto(a, "n"):
                 return "`git commit` sin `--amend`, `-a`/`--all` ni `--no-verify`"
             j += 2 if a in con_valor or (re.fullmatch(r"-[A-Za-z]+", a) and a[-1] in "mFCct") else 1
         return None
@@ -173,7 +185,7 @@ def regla_push(resto: list[str]) -> str | None:
     i = 0
     while i < len(resto):
         a = resto[i]
-        if a.startswith("--force") or a in {"--mirror", "--all", "--prune", "--no-verify"} or grupo_corto(a, "f"):
+        if es_prefijo(a, "--force", "--force-with-lease", "--force-if-includes", "--mirror", "--all", "--prune", "--no-verify") or grupo_corto(a, "f"):
             return f"`git push {a}`: sin forzar, sin `--no-verify` y sin subir todas las ramas"
         if a in {"--delete", "-d"} or grupo_corto(a, "d"):
             borrar = True
