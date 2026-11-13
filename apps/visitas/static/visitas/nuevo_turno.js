@@ -92,7 +92,7 @@
 
   function iniciarPlano(contenedor, planos, raiz, porPunto, marcar, sincronizar) {
     var selector = raiz.querySelector("#turno-plano-selector");
-    var mapa = L.map(contenedor, { crs: L.CRS.Simple, minZoom: -4, maxZoom: 2, attributionControl: false });
+    var mapa = L.map(contenedor, { crs: L.CRS.Simple, minZoom: -4, maxZoom: 2, attributionControl: false, keyboard: false });
     var capa = L.layerGroup().addTo(mapa);
 
     function mostrar(plano) {
