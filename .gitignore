@@ -19,6 +19,8 @@ node_modules/
 .claude/settings.local.json.bak
 .claude/hooks/__pycache__/
 .claude/.ultimo-verificado
+.claude/.recibos.json
+.claude/.verificando
 worktrees/
 
 # App móvil (repositorio aparte, etapa final)
