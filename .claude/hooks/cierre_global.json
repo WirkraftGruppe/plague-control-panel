@@ -1,0 +1,10 @@
+{
+  "_comentario": "Cierre global de Detach (un solo repo). verificar.py todo lo corre en los planes v2 (sin bloque 'Criterios de cierre global') y verificar.py cierre lo corre sin plan. Cada comando se ejecuta con bash desde la raíz.",
+  "comandos": [
+    "PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py check",
+    "PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py makemigrations --check --dry-run",
+    "PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test --keepdb",
+    "./venv/Scripts/python.exe -m ruff check .",
+    "py -3 -m pytest .claude/hooks -q"
+  ]
+}
