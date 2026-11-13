@@ -77,12 +77,28 @@ class TestPermisos(unittest.TestCase):
         self.assertIn("verificar_plan.py --aviso", cierre["command"])
 
 
+def entrada_de_git(lineas):
+    """Bytes que git manda por stdin al pre-push: las líneas con `\n`, sin `\r`."""
+    return "".join(lineas).encode("utf-8")
+
+
+def test_entrada_de_git_no_lleva_retorno_de_carro():
+    # Con `text=True` Windows convierte `\n` en `\r\n` y el `\r` queda en el último campo.
+    entrada = entrada_de_git(["a 1 b 0\n", "c 2 d 0\n"])
+    assert isinstance(entrada, bytes)
+    assert b"\r" not in entrada
+    assert entrada.count(b"\n") == 2
+
+
 def correr_pre_push(remoto, lineas, repo):
     """Ejecuta el hook pre-push con el remoto y las líneas de refs que le pasaría git."""
-    return subprocess.run(
+    p = subprocess.run(
         ["bash", PRE_PUSH.as_posix(), remoto, "https://example.invalid/repo.git"],
-        input="".join(lineas), capture_output=True, text=True, cwd=repo, timeout=60,
+        input=entrada_de_git(lineas), capture_output=True, cwd=repo, timeout=60,
     )
+    p.stdout = p.stdout.decode("utf-8", errors="replace")
+    p.stderr = p.stderr.decode("utf-8", errors="replace")
+    return p
 
 
 class TestPrePush(unittest.TestCase):
