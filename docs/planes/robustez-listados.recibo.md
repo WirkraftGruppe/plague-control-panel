@@ -212,3 +212,25 @@
 - duración: 195.6 s
 - Veredicto: PASA
 
+## 2026-11-13 19:47 — tarea T7 de 2026-11-13-robustez-listados.md
+
+- HEAD verificado: 5ecc174
+- Contrato: modificado y aceptado (f2c0d5a, decisión del usuario)
+- Criterios:
+  - PASA (exit 0, nuevo: sí) `T7 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_robustez_visitas.CantidadNumericaTests.test_cantidad_como_numero_json_da_201_y_valor_exacto --keepdb`
+  - PASA (exit 0, nuevo: sí) `T7 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_robustez_visitas.CantidadNumericaTests.test_nan_se_rechaza --keepdb`
+  - PASA (exit 0, nuevo: sí) `T7 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_robustez_visitas.IncidenciaAsignacionTests.test_turno_ajeno_sin_el_punto_no_marca --keepdb`
+  - PASA (exit 0, nuevo: sí) `T7 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_robustez_visitas.IncidenciaAsignacionTests.test_turno_ajeno_con_el_punto_marca --keepdb`
+  - PASA (exit 0, nuevo: sí) `T7 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_robustez_visitas.ServicioDadoDeBajaTests.test_revision_con_servicio_dado_de_baja_da_400 --keepdb`
+  - PASA (exit 0, nuevo: sí) `T7 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_robustez_visitas.ResolverConsultasTests.test_resolver_precarga_campos_del_servicio --keepdb`
+  - PASA (exit 0, nuevo: sí) `T7 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_robustez_visitas.VisitaDestinoAjenaTests.test_visita_de_otro_empleado_no_es_destino --keepdb`
+  - PASA (exit 0, nuevo: sí) `T7 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_robustez_visitas.VisitaDestinoAjenaTests.test_visita_propia_en_otro_sitio_no_es_destino --keepdb`
+  - PASA (exit 0, nuevo: sí) `T7 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_robustez_visitas.EsquemaRevisionesTests.test_productos_aplicados_tiene_esquema_de_item --keepdb`
+  - PASA (exit 1, nuevo: —) `T7 [grep-0] grep -nE "bloquear=|\*, bloquear" apps/visitas/services.py`
+  - PASA (exit 0, nuevo: —) `T7 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas apps.sitios apps.api --keepdb`
+  - PASA (exit 0, nuevo: —) `T7 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 400 --subtarea T7`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 376.0 s
+- Veredicto: PASA
+
