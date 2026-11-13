@@ -120,3 +120,21 @@
 - duración: 77.2 s
 - Veredicto: PASA
 
+## 2026-11-13 18:28 — tarea T3 de 2026-11-13-robustez-listados.md
+
+- HEAD verificado: 7ee5383
+- Contrato: intacto (congelado en ccb6738)
+- Criterios:
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.clientes.tests.test_admin_errores.AdminErroresTests.test_padre_de_otra_empresa_da_error_de_formulario --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.clientes.tests.test_admin_errores.AdminErroresTests.test_slug_repetido_en_la_empresa_da_error_de_formulario --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.clientes.tests.test_admin_errores.AdminErroresTests.test_referencia_plataforma_de_solo_lectura_da_error_de_formulario --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.accounts.tests.test_admin_rol_plataforma.RolPlataformaAdminTests.test_plataforma_con_empresa_da_error_que_indica_la_salida --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_admin_logo.EmpresaAdminLogoTests.test_logo_del_admin_se_guarda_procesado --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_admin_logo.EmpresaAdminLogoTests.test_logo_invalido_da_error_de_formulario --keepdb`
+  - PASA (exit 0, nuevo: —) `T3 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.clientes apps.accounts apps.empresas apps.sitios apps.visitas apps.servicios --keepdb`
+  - PASA (exit 0, nuevo: —) `T3 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 350 --subtarea T3`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 368.5 s
+- Veredicto: PASA
+
