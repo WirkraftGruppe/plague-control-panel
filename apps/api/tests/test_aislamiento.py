@@ -108,6 +108,10 @@ class AislamientoApiTests(TestCase):
         rutas = self._rutas_con_objetos_reales()
         self.assertEqual(len(rutas), len(OBJETO_POR_RUTA))
         for ruta in rutas:
+            self.assertNotIn(SENTINELA, ruta)
+            self.assertNotIn(SENTINELA_UUID, ruta)
+        self.assertIn(f"/api/v1/qr/{self.codigos['qr']}/resolver/", rutas)
+        for ruta in rutas:
             vista = resolve(ruta).func.view_class
             usuarios = _usuarios_que_pasan_el_permiso(
                 vista, [self.b.admin, self.b.empleado]
