@@ -57,7 +57,7 @@ Los scripts viven en `.claude/hooks/`.
 5. `medir_metodo.py --registrar docs/metodo/metricas.md` y un solo commit `cierre: <slug>` (`commit-msg` lo rechaza sin recibo en PASA).
 6. Al usuario: el recibo sin editar, cada hallazgo con su disposición y lo que queda en sus manos.
 
-**Criterios**: solo los tipos de la plantilla; el `[test]` es nombrado y nuevo respecto de `commit_base`. Quien puede fallar un criterio no lo reescribe; el implementador nunca escribe en `docs/planes/`. Cambiarlo lo decide el usuario: commit `docs(plan): <slug> — modificado: <motivo>`, línea `(usuario)` con su hash en `docs/decisiones.md` y revisión nueva del `revisor`; sin ellas, FALLA.
+**Criterios**: solo los tipos de la plantilla; el `[test]` es nombrado y nuevo respecto de `commit_base`. Quien puede fallar un criterio no lo reescribe; el implementador nunca escribe en `docs/planes/`. Cambiarlo lo decide el usuario: commit `docs(plan): <slug> — modificado: <motivo>`, línea `(usuario)` con su hash corto en `docs/decisiones.md` (la exige `verificar.py`); sin ella, FALLA.
 
 **Presupuesto**: cada `T<n>` lleva `Presupuesto` (400 por defecto) y `bash .claude/hooks/presupuesto.sh . '<commit_base>' <N> --subtarea T<n>`. Se fija antes y nunca se sube; no es golf: lo que no entra va en una `T<m>` nueva, como contrato modificado.
 

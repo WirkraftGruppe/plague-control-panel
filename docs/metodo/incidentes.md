@@ -8,6 +8,7 @@ Formato: `- AAAA-MM-DD — <plan|directo> — <qué pasó> — <costo: tiempo, r
 
 Próxima revisión: 2026-12-13
 
+- 2026-11-13 — cierre multiempresa/metodo-v2 — el principal hizo `cd` a `worktrees/metodo-v2` para leer un archivo, contra la regla de no hacer `cd` a un worktree — se volvió a la raíz y `git status` dio limpio en los dos
 - 2026-11-13 — metodo-v2 — `worktree-integrar.sh` borra la rama de la subtarea con `git -C <raíz> branch -d`; con la raíz en `plan/multiempresa` salió con 1 tras siete merges correctos — ramas borradas a mano desde el worktree del plan; ~5 min (P-metodo-v2-5)
 - 2026-10-23 — diseno-panel — el principal hizo `cd` a un worktree (T2) — se volvió a la raíz y se revisó `git status` en raíz y worktrees; sin daño
 - 2026-10-19 — catalogo-stock — el principal hizo `cd` a un worktree para un spot check y dejó un `cat` esperando stdin — corregido en el acto con `git status`; sin daño

@@ -136,7 +136,7 @@ La ruta **ligera** corre los pasos 1 y 3, sin revisión de cierre ni auditoría,
 - `.claude/.recibos.json` guarda los HEAD con recibo PASA y `.claude/.verificando` marca una verificación en curso; ambos están en `.gitignore`.
 - `recibo_pendiente.py` (hook `Stop`): si la sesión hizo commits y el HEAD no tiene recibo, pide `verificar.py todo` (plan completo) o `verificar.py cierre`; avisa una vez por sesión y HEAD.
 - `commit-msg`: rechaza `cierre: <slug>` sin recibo en PASA. Se instala a mano en `.git/hooks/` (`docs/metodo/parche-settings.md`).
-- **Contrato modificado**: un commit `docs(plan): <slug> — modificado: <motivo>` lo decide el usuario y se acepta con una línea `(usuario)` en `docs/decisiones.md` que lleva el hash corto de ese commit, más una revisión nueva del `revisor`; sin la línea, `verificar.py` da FALLA en el contrato. Quien puede fallar un criterio no lo reescribe.
+- **Contrato modificado**: un commit `docs(plan): <slug> — modificado: <motivo>` lo decide el usuario y se acepta con una línea `(usuario)` en `docs/decisiones.md` que lleva el hash corto de ese commit (es lo único que comprueba `verificar.py`); sin la línea, `verificar.py` da FALLA en el contrato. Quien puede fallar un criterio no lo reescribe.
 - `py -3 .claude/hooks/pendientes.py [--json]` lista los pendientes abiertos: `P-<slug>-<n> [bloqueante|importante|menor|observación] texto` en `## Pendientes que deja este plan`; se cierran con `- cierra: P-<slug>-<n> — cómo` en `### Cierra` del plan que los resuelve.
 
 ### Estado, decisiones y métricas

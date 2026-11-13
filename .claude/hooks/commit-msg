@@ -4,7 +4,8 @@
 # comprobar el recibo y el cierre no puede pasar sin comprobarlo. El resto de los commits pasan.
 raiz="$(git rev-parse --show-toplevel)"
 if [ ! -f "$raiz/.claude/hooks/commit_msg.py" ]; then
-  primera="$(head -n 1 "$1" 2>/dev/null)"
+  # Primera línea no vacía: `--cleanup=verbatim` conserva las líneas en blanco iniciales (P-metodo-v2-26).
+  primera="$(grep -m 1 -v '^[[:space:]]*$' "$1" 2>/dev/null)"
   primera="${primera#"${primera%%[![:space:]]*}"}"
   case "$primera" in
     cierre:*)
@@ -14,4 +15,5 @@ if [ ! -f "$raiz/.claude/hooks/commit_msg.py" ]; then
   esac
   exit 0
 fi
-exec py -3 "$raiz/.claude/hooks/commit_msg.py" "$1"
+# -I: sin la carpeta del script al frente de sys.path ni PYTHON* del entorno (P-metodo-v2-25).
+exec py -3 -I "$raiz/.claude/hooks/commit_msg.py" "$1"

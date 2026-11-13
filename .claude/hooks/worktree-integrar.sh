@@ -10,7 +10,8 @@
 #
 # Pasos: rechaza si el worktree de la subtarea o el de destino tienen cambios sin commitear;
 # muestra cambios.sh --stat; rechaza si hay archivos fuera de los prefijos; merge --no-ff con
-# mensaje "T<n>: integra <slug>-T<n>"; makemigrations --check y tests en el destino; quita la
+# mensaje "T<n>: integra <slug>-T<n>"; makemigrations --check en el destino y la suite de Django
+# solo si la subtarea toca apps/, config/, templates/, manage.py o requirements.txt; quita la
 # junction venv con cmd (nunca borra el contenido del venv real), el worktree y la rama.
 #
 # Validaciones: una <ruta> vacía (o solo "/") es uso inválido; la "/" final de cada prefijo se
@@ -163,9 +164,15 @@ if ! (cd "$ruta_dest" && ./venv/Scripts/python.exe manage.py makemigrations --ch
   deshacer_merge "makemigrations --check falló tras el merge"
   exit 1
 fi
-if ! (cd "$ruta_dest" && ./venv/Scripts/python.exe manage.py test --keepdb); then
-  deshacer_merge "los tests fallaron tras el merge"
-  exit 1
+# La suite de Django solo corre si la subtarea toca código o dependencias de Django (P-metodo-v2-23).
+rutas_django='^(apps/|config/|templates/|manage\.py$|requirements\.txt$)'
+if git -C "$ruta_dest" diff --name-only ORIG_HEAD HEAD | grep -Eq "$rutas_django"; then
+  if ! (cd "$ruta_dest" && ./venv/Scripts/python.exe manage.py test --keepdb); then
+    deshacer_merge "los tests fallaron tras el merge"
+    exit 1
+  fi
+else
+  echo "aviso: $nombre no toca apps/, config/, templates/, manage.py ni requirements.txt; se omite la suite de Django"
 fi
 
 # 6. Quita la junction (solo el enlace) y luego el worktree.
@@ -180,6 +187,8 @@ git -C "$raiz" worktree remove "$ruta_sub" || {
   exit 1
 }
 
-# 7. Borra la rama.
-git -C "$raiz" branch -d "$nombre" || exit 1
+# 7. Borra la rama desde el worktree destino (donde ya está fusionada). Si falla, el merge y los
+# tests ya pasaron: es un aviso, no un error (P-metodo-v2-5).
+git -C "$ruta_dest" branch -d "$nombre" ||
+  echo "aviso: no se pudo borrar la rama $nombre; borrarla a mano con git branch -d $nombre" >&2
 echo "integrada $nombre en $destino"

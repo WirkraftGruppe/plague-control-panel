@@ -157,6 +157,34 @@ def test_hook_sin_commit_msg_py_rechaza_cierre(raiz):
         assert pasa.returncode == 0, pasa.stderr
 
 
+def test_hook_invoca_python_aislado(raiz):
+    """P-metodo-v2-25: un `subprocess.py` junto a los hooks no reemplaza al de la biblioteca estándar."""
+    assert "py -3 -I" in (DIR_HOOKS / "commit-msg").read_text(encoding="utf-8")
+    destino = instalar_hook(raiz)
+    # Si se importara este módulo, el hook saldría con 0 y el cierre pasaría sin recibo.
+    (destino / "subprocess.py").write_text("import sys" + chr(10) + "sys.exit(0)" + chr(10),
+                                           encoding="utf-8", newline=chr(10))
+    preparar(raiz, "docs/estado.md")
+    rechazado = git(raiz, "commit", "-q", "-m", "cierre: demo", comprobar=False)
+    assert rechazado.returncode != 0
+    assert "verificar.py todo" in rechazado.stderr
+
+
+def test_cierre_tras_linea_en_blanco_se_controla(raiz, tmp_path, capsys):
+    """P-metodo-v2-26: las líneas en blanco iniciales no esconden un `cierre:`."""
+    codigo, error = correr(raiz, tmp_path, chr(10) + "  " + chr(10) + "cierre: demo" + chr(10), capsys)
+    assert codigo == 1
+    assert "verificar.py todo" in error
+    # El fallback del hook (sin commit_msg.py) tampoco se saltea con `--cleanup=verbatim`.
+    instalar_hook(raiz, con_commit_msg=False)
+    mensaje = tmp_path / "verbatim.txt"
+    mensaje.write_text(chr(10) + "cierre: demo" + chr(10), encoding="utf-8", newline=chr(10))
+    preparar(raiz, "w.txt")
+    rechazado = git(raiz, "commit", "-q", "--cleanup=verbatim", "-F", str(mensaje), comprobar=False)
+    assert rechazado.returncode != 0
+    assert "commit_msg.py" in rechazado.stderr
+
+
 def test_cierre_con_recibo_de_cierre_en_plan_completo_se_rechaza(raiz, tmp_path, capsys):
     recibo.registrar_head(raiz, recibo.head_completo(raiz), "cierre")
     codigo, error = correr(raiz, tmp_path, "cierre: demo\n", capsys)

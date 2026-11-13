@@ -18,7 +18,9 @@ import sys
 from pathlib import Path
 
 DIR_HOOKS = Path(__file__).resolve().parent
-sys.path.insert(0, str(DIR_HOOKS))
+# Al final, no al principio: un `subprocess.py` (u otro nombre de la biblioteca estándar) en esta
+# carpeta no puede reemplazar al módulo real (P-metodo-v2-25). El hook corre con `py -3 -I`.
+sys.path.append(str(DIR_HOOKS))
 
 import recibo  # noqa: E402
 
@@ -41,9 +43,13 @@ def raiz_por_defecto() -> Path:
 
 
 def slug_del_mensaje(archivo: str) -> str | None:
-    """Slug si la primera línea del mensaje empieza con `cierre: <slug>`; si no, None."""
+    """Slug si la primera línea no vacía del mensaje empieza con `cierre: <slug>`; si no, None.
+
+    Se salta las líneas en blanco iniciales: `git commit --cleanup=verbatim` las conserva (P-metodo-v2-26).
+    """
     try:
-        lineas = Path(archivo).read_text(encoding="utf-8", errors="replace").splitlines()
+        lineas = [linea for linea in Path(archivo).read_text(encoding="utf-8", errors="replace").splitlines()
+                  if linea.strip()]
     except OSError:
         return None
     coincidencia = RE_CIERRE.match(lineas[0].strip()) if lineas else None
