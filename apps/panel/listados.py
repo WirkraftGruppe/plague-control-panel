@@ -11,7 +11,7 @@ from django.views.generic import ListView
 class ListadoPanelMixin(ListView):
     """Listado paginado con búsqueda (`q`) y orden (`orden`) seguros.
 
-    El orden solo acepta campos de `orden_permitido` (con o sin `-`); cualquier
+    El orden solo acepta campos de `orden_permitido` (con un `-` opcional); cualquier
     otro valor se ignora. Con el encabezado `HX-Request` se usa `template_parcial`.
     """
 
@@ -23,10 +23,12 @@ class ListadoPanelMixin(ListView):
     def get_orden(self):
         """Devuelve el parámetro `orden` si está en la lista blanca, o ''."""
         orden = self.request.GET.get("orden", "")
-        return orden if orden.lstrip("-") in self.orden_permitido else ""
+        campo = orden.removeprefix("-")
+        return orden if campo in self.orden_permitido else ""
 
     def get_busqueda(self):
-        return self.request.GET.get("q", "").strip()
+        """Devuelve `q` sin el carácter NUL (PostgreSQL lo rechaza)."""
+        return self.request.GET.get("q", "").replace("\x00", "").strip()
 
     def get_queryset(self):
         queryset = super().get_queryset()
