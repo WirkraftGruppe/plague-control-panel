@@ -1,6 +1,7 @@
 """Formularios del panel de Sitios."""
 
 from django import forms
+from django.db.models import Q
 
 from apps.clientes.empresa import FormularioDeEmpresa
 from apps.clientes.models import Cliente
@@ -144,8 +145,8 @@ class ProgramacionForm(forms.Form):
         widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
     )
 
-    def __init__(self, *args, empresa, **kwargs):
+    def __init__(self, *args, empresa, servicio_actual_id=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["servicio"].queryset = TipoServicio.objects.de_empresa(
             empresa
-        ).filter(activo=True)
+        ).filter(Q(activo=True) | Q(pk=servicio_actual_id))

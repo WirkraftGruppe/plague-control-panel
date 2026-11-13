@@ -46,7 +46,7 @@ def _rutas_con_parametro():
 
     for ruta in recorrer(get_resolver().url_patterns, "/"):
         if ruta.startswith("/api/v1/") and "<" in ruta:
-            ruta = re.sub(r"<uuid:\w+>", SENTINELA_UUID, ruta)
+            ruta = re.sub(r"<uuid:\w+>|<str:codigo>", SENTINELA_UUID, ruta)
             yield re.sub(r"<(?:\w+:)?\w+>", SENTINELA, ruta)
 
 
@@ -107,6 +107,10 @@ class AislamientoApiTests(TestCase):
     def test_rutas_con_objeto_de_otra_empresa_dan_404(self):
         rutas = self._rutas_con_objetos_reales()
         self.assertEqual(len(rutas), len(OBJETO_POR_RUTA))
+        for ruta in rutas:
+            self.assertNotIn(SENTINELA, ruta)
+            self.assertNotIn(SENTINELA_UUID, ruta)
+        self.assertIn(f"/api/v1/qr/{self.codigos['qr']}/resolver/", rutas)
         for ruta in rutas:
             vista = resolve(ruta).func.view_class
             usuarios = _usuarios_que_pasan_el_permiso(

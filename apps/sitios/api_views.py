@@ -1,5 +1,7 @@
 """Vistas de la API de Sitios: resolver QR, imagen del plano y puntos del empleado."""
 
+from uuid import UUID
+
 from django.core.exceptions import (
     RequestDataTooBig,
     TooManyFieldsSent,
@@ -96,7 +98,18 @@ class ResolverQRView(APIView):
 
     @extend_schema(
         request=None,
-        responses={200: ResolverQRSerializer},
+        parameters=[
+            OpenApiParameter("codigo", OpenApiTypes.UUID, OpenApiParameter.PATH)
+        ],
+        responses={
+            200: ResolverQRSerializer,
+            404: OpenApiResponse(
+                description=(
+                    "QR inexistente, código mal formado, punto, sitio o cliente "
+                    "inactivo."
+                )
+            ),
+        },
         summary="Resolver un código QR",
         description=(
             "Empleados y administradores. Un QR inexistente, de un punto o sitio "
@@ -107,10 +120,17 @@ class ResolverQRView(APIView):
             "la revisión (la abierta propia del sitio o, si no hay, la pendiente más "
             "antigua) y `null` si al abrir se crearía una nueva. El servicio y "
             "`en_turno` se calculan sobre la visita destino: el del ítem del punto "
-            "en ella o, si no lo tiene, el del punto con `en_turno` falso."
+            "en ella o, si no lo tiene, el del punto con `en_turno` falso. Un punto "
+            "sin servicio llega con `servicio` nulo y su revisión fuera de turno "
+            "da 400 hasta que el administrador le asigne uno. Un punto con plano "
+            "pero sin `x`/`y` no aparece en `plano.puntos`."
         ),
     )
     def post(self, request, codigo):
+        try:
+            codigo = UUID(codigo)
+        except ValueError:
+            raise NotFound("El código QR no corresponde a un sitio activo.") from None
         empresa = empresa_de(request)
         punto = (
             PuntoControl.objects.de_empresa(empresa)
@@ -275,6 +295,11 @@ _RESPUESTAS_CAMPO = {
     403: OpenApiResponse(description="Solo administradores."),
     404: OpenApiResponse(description="No existe."),
 }
+_RESPUESTAS_ALTA_SITIO = {
+    codigo: respuesta
+    for codigo, respuesta in _RESPUESTAS_CAMPO.items()
+    if codigo != 404
+}
 
 
 class AltaSitioView(APIView):
@@ -286,7 +311,7 @@ class AltaSitioView(APIView):
 
     @extend_schema(
         request=AltaSitioSerializer,
-        responses={201: SitioCampoSerializer, **_RESPUESTAS_CAMPO},
+        responses={201: SitioCampoSerializer, **_RESPUESTAS_ALTA_SITIO},
         summary="Crear un sitio en campo",
         description=(
             "Solo administradores. Cliente activo, coordenadas y `precision_m` "

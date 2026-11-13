@@ -8,7 +8,7 @@ app_name = "sitios"
 
 urlpatterns = [
     path(
-        "qr/<uuid:codigo>/resolver/",
+        "qr/<str:codigo>/resolver/",
         api_views.ResolverQRView.as_view(),
         name="qr-resolver",
     ),
