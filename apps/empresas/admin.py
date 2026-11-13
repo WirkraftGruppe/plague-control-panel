@@ -44,7 +44,7 @@ class ErroresGeneralesMixin:
             return campo
 
     def _get_validation_exclusions(self):
-        """Mantiene `empresa` en la validación de restricciones si la instancia la tiene."""
+        """`empresa` entra en las restricciones si la instancia la tiene."""
         exclusiones = super()._get_validation_exclusions()
         if getattr(self.instance, "empresa_id", None) is not None:
             exclusiones.discard("empresa")

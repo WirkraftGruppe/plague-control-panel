@@ -1,4 +1,4 @@
-"""Admin del operador: un error del modelo en un campo ausente es error de formulario."""
+"""Admin del operador: el error de un campo ausente es error de formulario."""
 
 from django.test import TestCase
 from django.urls import reverse
