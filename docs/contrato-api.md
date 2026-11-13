@@ -61,15 +61,17 @@ límite de pedidos (throttle) y el rol que la puede usar. Todas las rutas cuelga
   cabecera `Retry-After` (segundos de espera), también la del balde de fallos de login.
 - **Usuario `plataforma`**: en `auth/token/` y `auth/token/refresh/` recibe 401 con el mismo
   `detalle` que una credencial inválida (no se distingue). `auth/token/` responde 400 si
-  falta el usuario o la contraseña. Con un token de `plataforma` solo alcanzan `GET /api/v1/`,
-  el esquema y la documentación, y la renovación; lo demás da 403.
+  falta el usuario o la contraseña. `plataforma` no obtiene ni renueva tokens, así que no
+  usa la API.
 - **Esquema y documentación** (`schema/`, `docs/`): exigen token o sesión de una empresa
   activa; `plataforma` no entra. Sin credenciales, 401.
 - **Errores**: todo error es `{"detalle", "campos"}`. Un `__all__` de Django va a `detalle`.
   Un `non_field_errors` de primer nivel va a `detalle`; uno anidado va a `campos` bajo su
   ruta (`productos_aplicados.0`).
-- **404 JSON**: una ruta inexistente bajo `/api/` y un código de QR mal formado en
-  `qr/<codigo>/resolver/` responden 404 con `{"detalle": "No encontrado.", "campos": {}}`.
+- **404 JSON**: una ruta inexistente bajo `/api/` responde 404 con
+  `{"detalle": "No encontrado.", "campos": {}}`. Un código de QR mal formado en
+  `qr/<codigo>/resolver/` responde el mismo 404 que un QR inexistente:
+  `{"detalle": "El código QR no corresponde a un sitio activo.", "campos": {}}`.
 
 | Método | Ruta | Auth | Throttle | Respuesta |
 |---|---|---|---|---|
