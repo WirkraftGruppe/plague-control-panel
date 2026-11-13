@@ -138,3 +138,20 @@
 - duración: 368.5 s
 - Veredicto: PASA
 
+## 2026-11-13 18:52 — tarea T5 de 2026-11-13-robustez-listados.md
+
+- HEAD verificado: 898c4c7
+- Contrato: modificado y aceptado (f2c0d5a, decisión del usuario)
+- Criterios:
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_robustez_sitios.ProgramacionRobustezTests.test_servicio_desactivado_se_conserva_al_editar_la_fila --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_robustez_sitios.ProgramacionRobustezTests.test_punto_inactivo_no_se_programa --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_robustez_sitios.ProgramacionRobustezTests.test_no_se_asigna_otro_servicio_inactivo --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_robustez_sitios.GeocodificacionEmpresaTests.test_cache_de_una_empresa_no_responde_a_otra --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_robustez_sitios.ResolverRobustezTests.test_codigo_mal_formado_da_404_json --keepdb`
+  - PASA (exit 0, nuevo: —) `T5 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios apps.visitas --keepdb`
+  - PASA (exit 0, nuevo: —) `T5 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 350 --subtarea T5`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 278.5 s
+- Veredicto: PASA
+
