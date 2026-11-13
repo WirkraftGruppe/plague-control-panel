@@ -323,6 +323,7 @@ commit_base: ccb6738
 | Fecha | Modo | Bloqueantes | Decisiones | Menores |
 |---|---|---|---|---|
 | 2026-11-13 17:31 | plan | 4 | 0 | 6 |
+| 2026-11-13 18:30 | plan | 0 | 0 | 2 |
 
 Auditoría: pendiente
 Hallazgos: —
