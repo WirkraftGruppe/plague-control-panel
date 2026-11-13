@@ -234,3 +234,19 @@
 - duración: 376.0 s
 - Veredicto: PASA
 
+## 2026-11-13 19:49 — tarea T10 de 2026-11-13-robustez-listados.md
+
+- HEAD verificado: 43e91eb
+- Contrato: modificado y aceptado (f2c0d5a, decisión del usuario)
+- Criterios:
+  - PASA (exit 0, nuevo: —) `T10 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py spectacular --validate --file "$TEMP/openapi-robustez.yaml" && diff -q --strip-trailing-cr "$TEMP/openapi-robustez.yaml" docs/api/openapi-v1.yaml`
+  - PASA (exit 0, nuevo: —) `T10 [cmd] ./venv/Scripts/python.exe -c "import yaml; d=yaml.safe_load(open('docs/api/openapi-v1.yaml', encoding='utf-8')); S=d['components']['schemas']; r=lambda x: S[x['\$ref'].split('/')[-1]] if '\$ref' in x else x; p=[r(s['properties']['productos_aplicados']) for s in S.values() if 'productos_aplicados' in s.get('properties', {})]; assert p and all(x.get('type') == 'array' and r(x['items']).get('type') == 'object' and r(x['items']).get('properties') for x in p), p"`
+  - PASA (exit 0, nuevo: —) `T10 [cmd] ./venv/Scripts/python.exe -c "import yaml; d=yaml.safe_load(open('docs/api/openapi-v1.yaml', encoding='utf-8')); c=[v for k, v in d['paths'].items() if k.endswith('/revisiones/')][0]['post']['requestBody']['content']['multipart/form-data']; assert c['encoding']['productos_aplicados']['contentType'] == 'application/json', c"`
+  - PASA (exit 0, nuevo: —) `T10 [grep-1] grep -n "Retry-After" docs/contrato-api.md`
+  - PASA (exit 0, nuevo: —) `T10 [grep-1] grep -n "plataforma" docs/contrato-api.md`
+  - PASA (exit 0, nuevo: —) `T10 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 500 --subtarea T10`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 2.5 s
+- Veredicto: PASA
+
