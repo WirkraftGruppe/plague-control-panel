@@ -1,0 +1,6 @@
+- 2026-01-01 — DECISION-UNO — motivo — reemplaza a: (nada)
+- 2026-01-01 — DECISION-DOS — motivo — reemplaza a: (nada)
+- 2026-01-01 — DECISION-TRES — motivo — reemplaza a: (nada)
+- 2026-01-01 — DECISION-CUATRO — motivo — reemplaza a: (nada)
+- 2026-01-01 — DECISION-CINCO — motivo — reemplaza a: (nada)
+- 2026-01-01 — DECISION-SEIS — motivo — reemplaza a: (nada)

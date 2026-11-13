@@ -1,22 +1,20 @@
-# Plan: plan de juguete
+# Plan de juguete
 
-- **slug**: `juguete`
-- **objetivo**: ENCABEZADO-DEL-PLAN
+- **slug**: `plan-v2`
+ENCABEZADO-DEL-PLAN
 
 ## Subtareas
 
-### T1 — Subtarea de juguete
-
+### T1 — algo
 TEXTO-DE-LA-SUBTAREA
 
 ## Registro de verificación
 
-### Estado de subtareas
+commit_base: abc1234
 
 | Tarea | Estado |
 |---|---|
 | T1 | pendiente |
 
 ### Corridas
-
 TEXTO-DE-CORRIDAS
