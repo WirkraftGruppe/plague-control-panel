@@ -5,8 +5,10 @@
   existía en el commit `base` (True/False) o None si el formato del comando no se reconoce.
 - `escribir_recibo(ruta, seccion)`: agrega una sección al final del recibo.
 - `leer_recibo(ruta)`: secciones ya escritas, salteando los bloques de código.
-- `registrar_head` / `head_tiene_recibo`: índice `<raiz>/.claude/.recibos.json`
-  (lista con los últimos 50 HEAD verificados con veredicto PASA).
+- `head_completo(raiz)`: hash de 40 hexadecimales del HEAD (`git rev-parse HEAD`).
+- `registrar_head` / `head_tiene_recibo`: índice `<raiz>/.claude/.recibos.json`, lista de los últimos
+  50 `{"head": <hash completo>, "alcance": "todo <plan>" | "cierre"}` verificados con veredicto
+  PASA. Solo valen hashes de 40 hexadecimales y se comparan por igualdad, nunca por prefijo.
 
 `git` se invoca siempre con `-C <directorio>`.
 """
@@ -18,6 +20,7 @@ import subprocess
 from pathlib import Path
 
 MAX_HEADS = 50
+RE_HASH_COMPLETO = re.compile(r"[0-9a-f]{40}")
 LINEAS_SALIDA_FALLA = 30
 
 
@@ -166,26 +169,69 @@ def _ruta_indice(raiz) -> Path:
     return Path(raiz) / ".claude" / ".recibos.json"
 
 
-def _leer_indice(raiz) -> list:
-    """Lista de HEAD registrados; vacía si el índice no existe o está corrupto."""
+def head_completo(raiz):
+    """Hash completo (40 hexadecimales) del HEAD del repo de `raiz`; None si no hay."""
+    proceso = _git(raiz, "rev-parse", "HEAD")
+    if proceso is None or proceso.returncode != 0:
+        return None
+    valor = proceso.stdout.strip().lower()
+    return valor if RE_HASH_COMPLETO.fullmatch(valor) else None
+
+
+def _hash_completo(raiz, hash_) -> str | None:
+    """El hash de 40 hexadecimales del commit que nombra `hash_` (completo o corto); None si no resuelve."""
+    valor = str(hash_ or "").strip().lower()
+    if RE_HASH_COMPLETO.fullmatch(valor):
+        return valor
+    if not re.fullmatch(r"[0-9a-f]{4,39}", valor):
+        return None
+    proceso = _git(raiz, "rev-parse", "--verify", "--quiet", f"{valor}^{{commit}}")
+    if proceso is None or proceso.returncode != 0:
+        return None
+    resuelto = proceso.stdout.strip().lower()
+    return resuelto if RE_HASH_COMPLETO.fullmatch(resuelto) else None
+
+
+def _leer_indice(raiz) -> list[dict]:
+    """Entradas `{"head", "alcance"}` válidas del índice; vacía si no existe o está corrupto.
+
+    Solo cuentan las entradas con un hash de 40 hexadecimales y un alcance de texto: cualquier otra
+    cosa (cadenas sueltas, hashes cortos, `""`) se descarta.
+    """
     try:
         datos = json.loads(_ruta_indice(raiz).read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return []
-    return [h for h in datos if isinstance(h, str)] if isinstance(datos, list) else []
+    if not isinstance(datos, list):
+        return []
+    return [{"head": e["head"], "alcance": e["alcance"]} for e in datos
+            if isinstance(e, dict) and isinstance(e.get("head"), str) and isinstance(e.get("alcance"), str)
+            and RE_HASH_COMPLETO.fullmatch(e["head"])]
 
 
-def registrar_head(raiz, hash_: str) -> None:
-    """Agrega `hash_` al índice conservando los últimos 50. Solo se llama con veredicto PASA."""
-    lista = [h for h in _leer_indice(raiz) if h != hash_]
-    lista = (lista + [hash_])[-MAX_HEADS:]
+def registrar_head(raiz, hash_: str, alcance: str = "cierre") -> None:
+    """Agrega `{"head": <hash completo>, "alcance": alcance}` al índice conservando los últimos 50.
+
+    `alcance` es `todo <plan>` o `cierre`. Solo se llama con veredicto PASA. Un hash corto se
+    resuelve contra el repo; si no resuelve a un commit, levanta `ValueError`.
+    """
+    completo = _hash_completo(raiz, hash_)
+    if completo is None:
+        raise ValueError(f"no es un commit del repo: {hash_!r}")
+    lista = [e for e in _leer_indice(raiz) if not (e["head"] == completo and e["alcance"] == alcance)]
+    lista = (lista + [{"head": completo, "alcance": alcance}])[-MAX_HEADS:]
     ruta = _ruta_indice(raiz)
     ruta.parent.mkdir(parents=True, exist_ok=True)
     ruta.write_text(json.dumps(lista, indent=2), encoding="utf-8", newline="\n")
 
 
-def head_tiene_recibo(raiz, hash_: str) -> bool:
-    """True si `hash_` figura en el índice; compara por prefijo (hash corto contra largo)."""
-    if not hash_:
+def head_tiene_recibo(raiz, hash_: str, alcance: str | None = None) -> bool:
+    """True si el commit de `hash_` figura en el índice (con ese `alcance`, si se pide).
+
+    La comparación es por igualdad de hashes completos: un hash corto se resuelve primero contra el
+    repo, y un prefijo de una entrada nunca alcanza.
+    """
+    completo = _hash_completo(raiz, hash_)
+    if completo is None:
         return False
-    return any(h.startswith(hash_) or hash_.startswith(h) for h in _leer_indice(raiz))
+    return any(e["head"] == completo and (alcance is None or e["alcance"] == alcance) for e in _leer_indice(raiz))
