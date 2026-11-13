@@ -239,7 +239,14 @@ SPECTACULAR_SETTINGS = {
     "SERVE_PERMISSIONS": ["rest_framework.permissions.IsAuthenticated"],
     "SERVE_AUTHENTICATION": [
         "apps.empresas.autenticacion.JWTAutenticacionEmpresa",
-        "rest_framework.authentication.SessionAuthentication",
+        # Sesión solo con empresa activa: `plataforma` y empresas inactivas no
+        # leen el esquema (P-multiempresa-6).
+        "apps.api.autenticacion.SesionAutenticacionEmpresa",
+    ],
+    # 401 y 429 comunes, con `Retry-After`, en las rutas que los dan.
+    "POSTPROCESSING_HOOKS": [
+        "drf_spectacular.hooks.postprocess_schema_enums",
+        "apps.api.esquema.agregar_respuestas_comunes",
     ],
     "COMPONENT_SPLIT_REQUEST": True,
     "SWAGGER_UI_DIST": "SIDECAR",

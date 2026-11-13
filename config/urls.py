@@ -13,3 +13,6 @@ urlpatterns = [
     # Sin sitio público: la raíz lleva al login del panel (destino fijo).
     path("", RedirectView.as_view(pattern_name="panel:ingresar", permanent=False)),
 ]
+
+# Bajo /api/ el 404 de una ruta inexistente es el JSON de la API; el resto, HTML.
+handler404 = "apps.api.views.no_encontrado"
