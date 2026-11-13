@@ -11,7 +11,11 @@ class TokenNormalizadoSerializer(TokenObtainPairSerializer):
 
     @classmethod
     def get_token(cls, user):
-        """No emite tokens a un usuario de una empresa inactiva."""
+        """No emite tokens a `plataforma` ni a un usuario de una empresa inactiva."""
+        if user.es_plataforma:
+            raise AuthenticationFailed(
+                cls.default_error_messages["no_active_account"], "no_active_account"
+            )
         if user.empresa is not None and not user.empresa.activo:
             raise AuthenticationFailed(
                 "La empresa está inactiva.", code="empresa_inactiva"

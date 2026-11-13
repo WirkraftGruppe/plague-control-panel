@@ -1,6 +1,12 @@
 """Vistas transversales de la API: raíz y tokens JWT."""
 
+import math
+import time
+
+from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.http import JsonResponse
+from django.views.defaults import page_not_found
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import (
     OpenApiResponse,
@@ -18,7 +24,13 @@ from rest_framework_simplejwt.settings import api_settings
 from rest_framework_simplejwt.utils import get_md5_hash_password
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-from apps.accounts.limites import baldes_llenos, limpiar_usuario_ip, registrar_fallo
+from apps.accounts.limites import (
+    _baldes,
+    _fallos_vigentes,
+    baldes_llenos,
+    limpiar_usuario_ip,
+    registrar_fallo,
+)
 from apps.accounts.red import ip_del_cliente
 
 from .serializers import TokenNormalizadoSerializer
@@ -66,9 +78,31 @@ class RenovacionSerializer(TokenRefreshSerializer):
             raise AuthenticationFailed(
                 self.error_messages["no_active_account"], "no_active_account"
             )
+        if usuario.es_plataforma:
+            raise AuthenticationFailed(
+                self.error_messages["no_active_account"], "no_active_account"
+            )
         if usuario.empresa is not None and not usuario.empresa.activo:
             raise AuthenticationFailed("La empresa está inactiva.", "empresa_inactiva")
         return super().validate(attrs)
+
+
+def segundos_de_espera(request, usuario):
+    """Segundos hasta que el balde de usuario lleno libere un lugar (`Retry-After`)."""
+    ahora = time.time()
+    esperas = []
+    for clave, maximo, ventana in _baldes(request, usuario)[1:]:
+        fallos = sorted(_fallos_vigentes(clave, ventana, ahora))
+        if len(fallos) >= maximo:
+            esperas.append(fallos[len(fallos) - maximo] + ventana - ahora)
+    return max(1, math.ceil(max(esperas, default=settings.VENTANA_MINUTOS * 60)))
+
+
+def no_encontrado(request, exception):
+    """404 JSON de la API bajo `/api/`; el resto, la página HTML de Django."""
+    if request.path.startswith("/api/"):
+        return JsonResponse({"detalle": "No encontrado.", "campos": {}}, status=404)
+    return page_not_found(request, exception)
 
 
 class RaizView(APIView):
@@ -94,6 +128,7 @@ RESPUESTAS_DE_CONTRATO = {
     description="Intercambia usuario y contraseña por un par de tokens JWT.",
     responses={
         200: TOKENS,
+        400: OpenApiResponse(description="Falta el usuario o la contraseña."),
         401: OpenApiResponse(description="Credenciales inválidas o cuenta inactiva."),
         **RESPUESTAS_DE_CONTRATO,
     },
@@ -111,7 +146,7 @@ class ObtenerToken(TokenObtainPairView):
         )
         usuario = "" if usuario is None else str(usuario)
         if baldes_llenos(request, usuario, solo_usuario=True):
-            raise Throttled()
+            raise Throttled(wait=segundos_de_espera(request, usuario))
         try:
             respuesta = super().post(request, *args, **kwargs)
         except AuthenticationFailed:
