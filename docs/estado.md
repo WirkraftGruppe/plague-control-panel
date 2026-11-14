@@ -1,22 +1,22 @@
 # Estado de Detach
 <!-- Se reescribe: 25 líneas y 3000 bytes como máximo. Lo histórico, en git y en el registro de sesiones. -->
 Actualizado: 2026-11-14
-Plan activo: (ninguno)
-Mergeado: acelerar-tests (PR #4), robustez-listados (PR #1), el ancho del panel de nuevo turno (PR #2) y el estado (PR #3) en `main` (2026-11-14). Antes: multiempresa, metodo-v2, protocolo-decisiones, diseno-panel y ajustes-flujo. Desplegado: nada todavía (lo confirma el usuario).
+Plan activo: soporte-app-operario (`docs/planes/2026-11-14-soporte-app-operario.md`, congelado, commit_base 2229493; ninguna T empezada)
+Mergeado: recibo-tras-cierre (PR #7), guardia-cd-worktrees (PR #6), acelerar-tests (PR #4), robustez-listados (PR #1), PR #2 y #3 en `main` (2026-11-14). Desplegado: nada todavía (lo confirma el usuario).
 
 ## Carriles
 | Plan | Rama | Worktree | Sesión |
 |---|---|---|---|
-| recibo tras el cierre (directo) | recibo-tras-cierre | raíz | PR pendiente |
+| soporte-app-operario | plan/soporte-app-operario | raíz (las T en `worktrees/soporte-app-operario-T<n>`) | libre: la retoma la sesión siguiente |
 
 ## Pendiente inmediato
-- Siguiente: preparación del despliegue en Railway (pendientes con etiqueta `despliegue`) → app móvil (`expo`).
-- Fusionar `recibo-tras-cierre` (PR #7: `recibo_pendiente.py` no pide verificar tras un cierre que solo toca docs de proceso). La guarda del `cd` ya está en `main` (PR #6).
+- Ejecutar soporte-app-operario: ola 1 = T1 (visitas) y T2 (empresas) en paralelo, luego T3 (integración, rutas y contrato, del principal); ola 2 = T4, T5, T6 en paralelo y T7 (cierre con revisor y auditor-seguridad).
+- Después: preparación del despliegue en Railway (pendientes `despliegue`) → app móvil (`expo`).
 - Antes del despliegue: `showmigrations` contra producción (P-flujo-sitio-15), lo corre el usuario.
 - Prueba en navegador del primer clic en un marcador y de los filtros de turnos (P-robustez-listados-7), la hace el usuario.
-- GitHub: `gh` usa la cuenta activa `WirkraftGruppe` (admin del repo) y Claude abre los PR con `gh pr create`; git fija la misma cuenta con `credential.https://github.com.username` en `.git/config` (sin selector de cuentas).
+- GitHub: cuenta `WirkraftGruppe` en `gh` y en `.git/config`; Claude abre los PR con `gh pr create`.
 - La base de desarrollo de la raíz es anterior a la demo actual: `manage.py cargar_demo` antes de probar.
-- Suite de Django: 981 tests en ~101 s (MD5 solo en tests); `--parallel` descartado.
+- Suite de Django: 981 tests en ~101 s; `--parallel` descartado.
 
 ## Esperan tu decisión
 - Ninguna.
