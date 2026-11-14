@@ -131,7 +131,7 @@ commit_base: eb1dbda
 | T1 | hecha | c6186b2 | PASA 2026-11-14 |
 | T2 | hecha | 50d255d | PASA 2026-11-14 |
 | T3 | hecha | c2fd363 | PASA 2026-11-14 |
-| T4 | pendiente | | |
+| T4 | hecha | 49d302e | PASA 2026-11-14 |
 
 ### Revisiones
 
@@ -143,7 +143,7 @@ commit_base: eb1dbda
 | 2026-11-14 19:20 | plan | 0 | 0 | 3 |
 
 Auditoría: hecha 2026-11-14 — 0 bloqueantes, 1 necesita decisión (BAJA: contacto del sitio con el cliente dado de baja), 0 menores nuevos.
-Hallazgos: revisor de cierre, 4 menores → pendiente P-ajustes-api-app-base-2 a -5; auditoría, contacto con cliente de baja → espera decisión (P-ajustes-api-app-base-6, "Esperan tu decisión" de `docs/estado.md`); P-ajustes-api-app-base-1 sigue igual.
+Hallazgos: revisor de cierre, 4 menores → pendiente P-ajustes-api-app-base-2 a -5; auditoría, contacto con cliente de baja → espera decisión (P-ajustes-api-app-base-6, "Esperan tu decisión" de `docs/estado.md`); P-ajustes-api-app-base-1 sigue igual. Contrato modificado (997807d, usuario): T4 (opción a de P-6) en PASA; revisión del contrato modificado, 3 menores atendidos en la implementación (los tests cargan el contacto y comprueban lista y detalle; sin cambios de esquema, openapi igual; corridos también `apps.visitas`, `apps.api` y `config.tests.test_ajustes_api_app_base`). P-1 a -5 con etiqueta `despues` (usuario).
 
 ### Decisiones del plan
 
@@ -160,7 +160,7 @@ Hallazgos: revisor de cierre, 4 menores → pendiente P-ajustes-api-app-base-2 a
 - P-ajustes-api-app-base-3 [menor] [despues] `test_detalle_de_otra_empresa_da_404` (y `config/tests/test_ajustes_api_app_base.py:41`) pasaría sin `de_empresa`, porque el turno de B es de otro empleado; falta el caso de un usuario que cambió de empresa con turnos activos en la anterior.
 - P-ajustes-api-app-base-4 [menor] [despues] Ningún test comprueba `sitio.contacto`, `estado` y `proximo_vencimiento` en la respuesta de `visitas/abrir/` (`apps/visitas/api_views.py:174`); hoy se cumple por usar el mismo serializer.
 - P-ajustes-api-app-base-5 [observación] [despues] `apps/api/tests/test_auth.py:50` pasó de comparar el cuerpo exacto de la raíz a dos comprobaciones sueltas; el cuerpo exacto lo compara `test_raiz_y_codigos.py:125`.
-- P-ajustes-api-app-base-6 [menor] Espera decisión del usuario (auditoría, BAJA): con el cliente o el sitio dados de baja, un turno pendiente sigue en `me/visitas/` y entrega `sitio.contacto` sin plazo (`apps/visitas/serializers.py:241-247`, `apps/clientes/panel_views.py:85-90`). Opciones: (a) `contacto: null` si el sitio o el cliente están inactivos; (b) cancelar o quitar los turnos pendientes al dar de baja.
+- P-ajustes-api-app-base-6 [menor] Decidido por el usuario: opción (a), resuelto en T4 (auditoría, BAJA): con el cliente o el sitio dados de baja, un turno pendiente sigue en `me/visitas/` y entrega `sitio.contacto` sin plazo (`apps/visitas/serializers.py:241-247`, `apps/clientes/panel_views.py:85-90`). Opciones: (a) `contacto: null` si el sitio o el cliente están inactivos; (b) cancelar o quitar los turnos pendientes al dar de baja.
 
 ### Decisiones
 
@@ -168,3 +168,5 @@ Hallazgos: revisor de cierre, 4 menores → pendiente P-ajustes-api-app-base-2 a
 - 2026-11-14 — el empleado recibe `sitio.contacto{nombre, telefono}` solo en sus turnos activos (`me/visitas/`, `me/visitas/<pk>/`, `visitas/abrir/`); el historial y el cierre siguen sin contacto — la app lo necesita para llegar al sitio; la Ley 25.326 art. 16 sigue aplicando al historial — (usuario) — reemplaza a: (nada)
 
 ### Cierra
+
+- cierra: P-ajustes-api-app-base-6 — T4: `sitio.contacto` es `null` con el sitio o el cliente dados de baja (contrato modificado 997807d)

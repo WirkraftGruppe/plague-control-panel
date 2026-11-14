@@ -488,3 +488,17 @@
 - duración: 191.7 s
 - Veredicto: PASA
 
+## 2026-11-14 19:26 — tarea T4 de 2026-11-14-ajustes-api-app-base.md
+
+- HEAD verificado: b91399b
+- Contrato: modificado y aceptado (997807d, decisión del usuario)
+- Criterios:
+  - PASA (exit 0, nuevo: sí) `T4 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_turno_app.TurnoAppTests.test_contacto_null_con_cliente_dado_de_baja --keepdb`
+  - PASA (exit 0, nuevo: sí) `T4 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_turno_app.TurnoAppTests.test_contacto_null_con_sitio_dado_de_baja --keepdb`
+  - PASA (exit 0, nuevo: —) `T4 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_turno_app apps.api --keepdb`
+  - PASA (exit 0, nuevo: —) `T4 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 120 --subtarea T4`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 7.3 s
+- Veredicto: PASA
+
