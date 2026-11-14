@@ -193,3 +193,60 @@ def test_plan_de_la_rama_tiene_prioridad(entorno):
     _commit(raiz, "b.txt")
     assert rp.plan_activo(raiz) == PLAN
     assert _stop(raiz, marcas) == (0, "")
+
+
+def _commit_en(raiz, ruta, texto="x"):
+    """Commitea `ruta` (con sus carpetas) y devuelve el HEAD."""
+    archivo = raiz / ruta
+    archivo.parent.mkdir(parents=True, exist_ok=True)
+    archivo.write_text(texto, encoding="utf-8")
+    _git(raiz, "add", ruta)
+    _git(raiz, "commit", "-m", f"cambio {ruta}")
+    return recibo.head(raiz)
+
+
+def _codigo_con_recibo(raiz, marcas):
+    """Plan completo con todo hecho, sesión iniciada, un commit de código y su recibo en PASA."""
+    _con_plan(raiz, _plan(["hecha"], ruta="completo"))
+    _inicio(raiz, marcas)
+    recibo.registrar_head(raiz, _commit_en(raiz, "apps/a.py"), f"todo {PLAN}")
+
+
+def test_cierre_solo_con_documentos_tras_un_recibo_no_pide(entorno):
+    raiz, marcas = entorno
+    _codigo_con_recibo(raiz, marcas)
+    for ruta in ("docs/estado.md", "docs/decisiones.md", "docs/bitacora.md",
+                 "docs/metodo/metricas.md", "docs/planes/demo.recibo.md"):
+        _commit_en(raiz, ruta, f"Plan activo: {PLAN}\ncierre\n")
+    assert _stop(raiz, marcas) == (0, "")
+
+
+def test_codigo_despues_del_recibo_pide(entorno):
+    raiz, marcas = entorno
+    _codigo_con_recibo(raiz, marcas)
+    _commit_en(raiz, "docs/estado.md", f"Plan activo: {PLAN}\nActualizado: cierre\n")
+    _commit_en(raiz, "apps/b.py")
+    codigo, err = _stop(raiz, marcas)
+    assert codigo == 2
+    assert f"verificar.py todo {PLAN}" in err
+
+
+def test_solo_documentos_sin_recibo_previo_pide(entorno):
+    raiz, marcas = entorno
+    _con_plan(raiz, _plan(["hecha"], ruta="completo"))
+    _inicio(raiz, marcas)
+    _commit_en(raiz, "docs/estado.md", f"Plan activo: {PLAN}\nActualizado: cierre\n")
+    codigo, err = _stop(raiz, marcas)
+    assert codigo == 2
+    assert f"verificar.py todo {PLAN}" in err
+
+
+def test_renombre_desde_fuera_de_proceso_pide(entorno):
+    raiz, marcas = entorno
+    _codigo_con_recibo(raiz, marcas)
+    (raiz / "docs" / "metodo").mkdir(parents=True, exist_ok=True)
+    _git(raiz, "mv", "apps/a.py", "docs/metodo/a.py")
+    _git(raiz, "commit", "-m", "mueve a.py a docs/metodo")
+    codigo, err = _stop(raiz, marcas)
+    assert codigo == 2
+    assert f"verificar.py todo {PLAN}" in err
