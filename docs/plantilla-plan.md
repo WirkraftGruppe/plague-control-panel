@@ -66,6 +66,8 @@ Reglas para escribir criterios (las hacen cumplir `revisar_plan.py` y `verificar
   PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test <ruta.punteada.Clase.test_nombre> --keepdb
   Los tests de hooks usan pytest: py -3 -m pytest .claude/hooks/<archivo>::<función> -q
 - Prohibido: "funciona", "tests pasando", "revisado", "sin regresiones", "quedó implementado".
+- Los criterios de una subtarea corren sus tests nombrados y, como mucho, los de las apps que toca;
+  la suite completa corre una sola vez, en el cierre global (`revisar_plan.py` avisa si no).
 - Dos subtareas no escriben el mismo archivo ni crean migraciones en la misma app en paralelo.
 - `Puede tocar` respeta la tabla de propiedad de `convenciones-proyecto`: nada de otro dueño.
 - Presupuesto: `presupuesto.sh . '<commit_base>' <N> --subtarea T<n>` mide los commits `T<n>:` (sin

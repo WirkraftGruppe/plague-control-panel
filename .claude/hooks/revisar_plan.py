@@ -330,6 +330,25 @@ def grep_cumple(tipo: str, argumentos: list[str], raiz: Path) -> bool | None:
     return proceso.returncode == 0 if tipo == "grep-1" else proceso.returncode == 1
 
 
+FLAGS_CON_VALOR = ("-v", "--verbosity", "--parallel", "-k", "--tag", "--exclude-tag", "--pattern", "-p")
+
+
+def corre_suite_completa(comando: str) -> bool:
+    """True si `manage.py test` va sin etiquetas: solo flags (con sus valores, como `-v 2`)."""
+    try:
+        tokens = shlex.split(comando)
+    except ValueError:
+        return False
+    sin_flags = []
+    for i, token in enumerate(tokens):
+        if token.startswith("-"):
+            continue
+        if i > 0 and tokens[i - 1] in FLAGS_CON_VALOR:
+            continue
+        sin_flags.append(token)
+    return bool(sin_flags) and sin_flags[-1] == "test" and verificar_plan.es_suite(shlex.join(sin_flags))
+
+
 def revisar_criterio(
     n: int, tipo: str, comando: str, raiz: Path, avisos: list[str], cubiertas: list[str]
 ) -> list[str]:
@@ -337,6 +356,8 @@ def revisar_criterio(
     if tipo not in verificar_plan.TIPOS:
         return [f"T{n}: tipo de criterio desconocido [{tipo}] en `{comando}`"]
     errores = []
+    if corre_suite_completa(comando):
+        avisos.append(f"T{n}: corre la suite completa; usa sus tests nombrados o las apps que toca")
     if tipo in ("cmd", "cmd-falla", "test") and RE_MANAGE_SIN_VENV.search(comando):
         errores.append(f"T{n}: `manage.py` sin ./venv/Scripts/python.exe: `{comando}`")
     if tipo == "test":

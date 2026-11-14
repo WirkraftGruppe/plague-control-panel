@@ -1,5 +1,5 @@
 from django.contrib.auth import get_user_model
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from apps.empresas.tests.ayudas import una_empresa
@@ -8,6 +8,11 @@ User = get_user_model()
 CLAVE = "Clave-Segura-2026"
 
 
+# Hasher real: `test_no_expone_hash` busca el prefijo "pbkdf2" en el HTML, que con el
+# MD5 de los tests no aparecería nunca. En la clase, para que cubra `setUpTestData`.
+@override_settings(
+    PASSWORD_HASHERS=["django.contrib.auth.hashers.PBKDF2PasswordHasher"]
+)
 class UsuarioPanelTests(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -24,6 +29,10 @@ class UsuarioPanelTests(TestCase):
 
     def setUp(self):
         self.client.force_login(self.admin)
+
+    def test_hash_del_empleado_es_pbkdf2(self):
+        """Sin esto, `test_no_expone_hash` pasaría siempre con el MD5 de los tests."""
+        self.assertTrue(self.empleado.password.startswith("pbkdf2_sha256$"))
 
     def test_no_expone_hash(self):
         urls = [
