@@ -9,7 +9,7 @@ Suite de Django, `manage.py test --keepdb`, en la máquina de desarrollo (aceler
 | 2026-11-14 | antes (PBKDF2) | 977 | 551 |
 | 2026-11-14 | después (MD5 solo en tests) | 981 | 101 |
 
-`verificar.py todo`: 2788 s en robustez-listados (criterios de subtarea con la suite entera); el de acelerar-tests se anota al cierre.
+`verificar.py todo`: 2788 s en robustez-listados (criterios de subtarea con la suite entera); 528 s en acelerar-tests (con `pytest .claude/hooks`, porque el plan toca el método).
 
 ## Por plan
 

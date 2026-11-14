@@ -48,35 +48,35 @@ _ENTORNO_PROD = {
     "SITE_URL": "https://ejemplo.test",
 }
 
-# Carga los settings como si fuera `manage.py test` e imprime el primer hasher.
-_PRIMER_HASHER_COMO_TEST = (
+_IMPRIMIR_HASHERS = (
+    "from django.conf import settings as s; print('|'.join(s.PASSWORD_HASHERS))"
+)
+
+# Carga los settings como si fuera `manage.py test` e imprime la lista de hashers.
+_HASHERS_COMO_TEST = (
     "import os, sys; sys.argv = ['manage.py', 'test'];"
     "os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings');"
-    "from django.conf import settings as s; print(s.PASSWORD_HASHERS[0])"
+    + _IMPRIMIR_HASHERS
 )
 
 
 class SettingsTests(SimpleTestCase):
+    def _sin_md5(self, proceso):
+        """Ningún hasher de la lista es MD5 y el primero es PBKDF2."""
+        self.assertEqual(proceso.returncode, 0, proceso.stdout + proceso.stderr)
+        hashers = proceso.stdout.strip().splitlines()[-1].split("|")
+        self.assertTrue(hashers[0].endswith("PBKDF2PasswordHasher"), hashers)
+        self.assertFalse(any("MD5" in h for h in hashers), hashers)
+
     def test_prod_primer_hasher_no_es_md5(self):
-        """Producción nunca usa MD5, aunque se invoque como `manage.py test`."""
-        r = _correr_python(["-c", _PRIMER_HASHER_COMO_TEST], **_ENTORNO_PROD)
-        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        primero = r.stdout.strip().splitlines()[-1]
-        self.assertNotIn("MD5", primero)
-        self.assertIn("PBKDF2", primero)
+        """Producción no acepta MD5, aunque se invoque como `manage.py test`."""
+        self._sin_md5(_correr_python(["-c", _HASHERS_COMO_TEST], **_ENTORNO_PROD))
 
     def test_dev_fuera_de_tests_no_usa_md5(self):
         """El servidor y los comandos de desarrollo siguen con el hasher por defecto."""
-        r = _correr(
-            [
-                "shell",
-                "-c",
-                "from django.conf import settings as s; print(s.PASSWORD_HASHERS[0])",
-            ],
-            DJANGO_ENV="development",
+        self._sin_md5(
+            _correr(["shell", "-c", _IMPRIMIR_HASHERS], DJANGO_ENV="development")
         )
-        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        self.assertNotIn("MD5", r.stdout.strip().splitlines()[-1])
 
     def test_dev_en_tests_usa_md5(self):
         """La suite corre con MD5 para que crear usuarios de prueba sea rápido."""
