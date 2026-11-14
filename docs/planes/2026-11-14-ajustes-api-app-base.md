@@ -108,9 +108,9 @@ commit_base: eb1dbda
 
 | Tarea | Estado | Commit | Recibo |
 |---|---|---|---|
-| T1 | pendiente | | |
+| T1 | hecha | c6186b2 | PASA 2026-11-14 |
 | T2 | hecha | 50d255d | PASA 2026-11-14 |
-| T3 | pendiente | | |
+| T3 | hecha | c2fd363 | PASA 2026-11-14 |
 
 ### Revisiones
 

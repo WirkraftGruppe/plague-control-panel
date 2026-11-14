@@ -423,3 +423,23 @@
 - duración: 29.3 s
 - Veredicto: PASA
 
+## 2026-11-14 18:47 — tarea T3 de 2026-11-14-ajustes-api-app-base.md
+
+- HEAD verificado: f4a09ec
+- Contrato: intacto (congelado en eb1dbda)
+- Criterios:
+  - PASA (exit 0, nuevo: —) `T3 [cmd] git log --oneline plan/ajustes-api-app-base | grep -q "T1: integra ajustes-api-app-base-T1"`
+  - PASA (exit 0, nuevo: —) `T3 [cmd] git log --oneline plan/ajustes-api-app-base | grep -q "T2: integra ajustes-api-app-base-T2"`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test config.tests.test_ajustes_api_app_base.IntegracionAppBaseTests.test_detalle_de_turno_por_url --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test config.tests.test_ajustes_api_app_base.IntegracionAppBaseTests.test_detalle_de_otra_empresa_por_url_da_404 --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test config.tests.test_ajustes_api_app_base.IntegracionAppBaseTests.test_me_visitas_con_empresa_inactiva_trae_code --keepdb`
+  - PASA (exit 0, nuevo: —) `T3 [cmd] grep -qF "/api/v1/me/visitas/<pk>/" docs/contrato-api.md`
+  - PASA (exit 0, nuevo: —) `T3 [grep-1] grep -n "empresa_inactiva" docs/contrato-api.md`
+  - PASA (exit 0, nuevo: —) `T3 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api --keepdb`
+  - PASA (exit 0, nuevo: —) `T3 [cmd] T=$(mktemp) && PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py spectacular --validate --file "$(cygpath -w "$T")" && diff -q --strip-trailing-cr "$T" docs/api/openapi-v1.yaml; r=$?; rm -f "$T"; exit $r`
+  - PASA (exit 0, nuevo: —) `T3 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 300 --subtarea T3`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 13.1 s
+- Veredicto: PASA
+
