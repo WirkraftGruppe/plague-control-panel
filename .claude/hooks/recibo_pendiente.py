@@ -15,9 +15,11 @@ Flujo:
    - Plan `completo` (línea `- **ruta**:`; sin ella, v1, cuenta como completo) con todas las tareas
      `hecha` o `PASA` y HEAD sin recibo: pide `verificar.py todo <plan>`.
    - Plan `ligero` o sin plan, con commits y sin recibo: pide `verificar.py cierre`.
+   Antes de eso, si un ancestro cercano tiene recibo en PASA y desde él solo cambiaron rutas de
+   proceso (`RUTAS_DE_CIERRE` de `commit_msg.py`, sin renombres), no pide: es el commit `cierre:`.
 5. Avisa una sola vez por sesión y HEAD (marca en el directorio temporal); para pedir, sale con 2.
 
-Nunca ejecuta criterios: solo `git rev-parse`, `git branch` y `git reflog`.
+Nunca ejecuta criterios: solo `git rev-parse`, `git branch`, `git reflog`, `git rev-list` y `git diff`.
 El directorio temporal se puede cambiar con `RECIBO_PENDIENTE_TMP` (los tests lo pasan por parámetro).
 """
 from __future__ import annotations
@@ -34,9 +36,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import recibo  # noqa: E402
+from commit_msg import RUTAS_DE_CIERRE  # noqa: E402 - la misma lista que el commit `cierre:`
 
 HORAS_VERIFICANDO = 2
 ENTRADAS_REFLOG = 50
+# Hasta dónde se busca hacia atrás el último commit con recibo en PASA (el índice guarda 50).
+ANCESTROS_CON_RECIBO = 50
 RE_SLUG = re.compile(r"[a-z0-9][a-z0-9.\-]*")
 RE_RAMA = re.compile(r"^(?:plan/(?P<a>[a-z0-9][a-z0-9.\-]*)|(?P<b>[a-z0-9][a-z0-9.\-]*?)-T\d+[a-z]?)$")
 
@@ -159,12 +164,46 @@ def _hay_verificacion(raiz: Path, ahora: float) -> bool:
         return False
 
 
+def _es_de_proceso(ruta: str) -> bool:
+    """True si `ruta` está en `RUTAS_DE_CIERRE` (carpeta con `/` final o archivo exacto)."""
+    return any(ruta == p or (p.endswith("/") and ruta.startswith(p)) for p in RUTAS_DE_CIERRE)
+
+
+def _ultimo_con_recibo(raiz: Path):
+    """El ancestro más cercano del HEAD (incluido) con recibo en PASA, entre los últimos
+    ANCESTROS_CON_RECIBO; None si no hay ninguno."""
+    con_recibo = {e["head"] for e in recibo._leer_indice(raiz)}
+    if not con_recibo:
+        return None
+    proceso = recibo._git(raiz, "rev-list", f"--max-count={ANCESTROS_CON_RECIBO}", "HEAD")
+    if proceso is None or proceso.returncode != 0:
+        return None
+    return next((h for h in proceso.stdout.split() if h.lower() in con_recibo), None)
+
+
+def solo_proceso_desde_recibo(raiz: Path) -> bool:
+    """True si hay un recibo previo en PASA y, desde ese commit, solo cambiaron rutas de proceso.
+
+    Sin renombres (`--no-renames`): mover un archivo desde fuera del proceso cuenta como su borrado.
+    Sin recibo previo o si git falla, False (se pide como siempre).
+    """
+    base = _ultimo_con_recibo(raiz)
+    if base is None:
+        return False
+    proceso = recibo._git(raiz, "diff", "--name-only", "--no-renames", "-z", base, "HEAD")
+    if proceso is None or proceso.returncode != 0:
+        return False
+    return all(_es_de_proceso(r) for r in proceso.stdout.split("\0") if r)
+
+
 def pendiente(raiz: Path, inicial):
     """Devuelve (mensaje, head) si falta un recibo, o None si no hay nada que avisar."""
     actual = recibo.head(raiz)
     if not actual or not inicial or actual == inicial:
         return None
     if recibo.head_tiene_recibo(raiz, actual) or not _commiteo_desde(raiz, inicial):
+        return None
+    if solo_proceso_desde_recibo(raiz):
         return None
     plan = plan_activo(raiz)
     if plan:
