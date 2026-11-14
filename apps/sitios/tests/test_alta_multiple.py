@@ -46,6 +46,20 @@ class AltaMultiplePuntosTests(DatosDeDosEmpresas, TestCase):
         self.assertIn("cantidad", respuesta.context["form"].errors)
         self.assertEqual(self.sitio_a.puntos.count(), 1)
 
+    def test_nombre_de_mas_de_cien_da_error_de_formulario(self):
+        respuesta = self.client.post(
+            self.url,
+            self._datos(prefijo="x" * 90, cantidad="1", numero_inicial="99999999999"),
+        )
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertIn("prefijo", respuesta.context["form"].errors)
+        self.assertEqual(self.sitio_a.puntos.count(), 1)
+        # Con el número 0 el último nombre mide 92 caracteres: se acepta.
+        respuesta = self.client.post(
+            self.url, self._datos(prefijo="x" * 90, cantidad="1", numero_inicial="0")
+        )
+        self.assertEqual(respuesta.status_code, 302)
+
     def test_servicio_de_otra_empresa_no_se_acepta(self):
         respuesta = self.client.post(self.url, self._datos(servicio=self.servicio_b.pk))
         self.assertEqual(respuesta.status_code, 200)
