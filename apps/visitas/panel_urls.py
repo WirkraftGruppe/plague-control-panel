@@ -16,6 +16,11 @@ urlpatterns = [
     ),
     path("fotos/<uuid:codigo>/", panel_views.FotoVisita.as_view(), name="foto"),
     path(
+        "no-revisados/<uuid:codigo>/foto/",
+        panel_views.FotoNoRevisado.as_view(),
+        name="foto_no_revisado",
+    ),
+    path(
         "sitios/<int:sitio_pk>/turnos/nuevo/",
         panel_views.NuevoTurnoView.as_view(),
         name="nuevo_turno",

@@ -21,7 +21,7 @@
     {% if visita.observaciones %}<dt>Observaciones</dt><dd>{{ visita.observaciones|linebreaksbr }}</dd>{% endif %}
   </dl>
 
-  {% if visita.incidencia or con_ubicacion %}
+  {% if visita.incidencia or con_ubicacion or no_revisados %}
     <h2>Incidencia</h2>
     {% if visita.incidencia %}<p>{{ visita.incidencia_detalle|default:"Sin detalle." }}</p>{% endif %}
     {% if con_ubicacion %}<p>Hay una apertura o una revisión registrada lejos del punto de control.</p>{% endif %}
@@ -34,6 +34,8 @@
       </form>
     {% endif %}
   {% endif %}
+
+  {% include "visitas/panel/_no_revisados.html" %}
 
   {% for servicio, filas in planillas %}
     <h2>Planilla de la visita · {{ servicio }}</h2>
