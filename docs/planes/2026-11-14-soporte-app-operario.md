@@ -26,6 +26,7 @@ Solo T1 crea migraciones (`visitas`). `apps/api/tests/test_contrato_doc.py` exig
 |---|---|---|
 | 1 | T1, T2, T3 (integración) | visitas (T1), empresas (ninguna) |
 | 2 | T4, T5, T6, T7 (integración y cierre) | sitios, visitas (ninguna) |
+| 3 (modificado 2026-11-14) | T8, T9, T10 (integración y cierre) | visitas, sitios (ninguna) |
 
 ## Subtareas
 
@@ -40,7 +41,7 @@ Solo T1 crea migraciones (`visitas`). `apps/api/tests/test_contrato_doc.py` exig
 - **Presupuesto**: 750 líneas agregadas
 - **Qué hacer**:
   - Modelo `PuntoNoRevisado(ModeloDeEmpresa)` en `apps/visitas/models.py`, `padre_de_empresa = "visita"`, `referencias_de_empresa = ("punto",)`: `visita` (FK, `related_name="no_revisados"`), `punto` (FK a `sitios.PuntoControl`, PROTECT), `motivo` (TextChoices `falta_estacion`, `codigo_ilegible`, `sin_acceso`, `otro`), `detalle` (opcional), `latitud`, `longitud`, `precision_m`, `distancia_m` opcionales (mismos tipos que `Revision`), `foto` (ImageField opcional, nombre aleatorio como `ruta_foto`), `foto_codigo` (UUID único), `cliente_uuid` (UUID, `null=True, blank=True` como `Revision.cliente_uuid`; obligatorio en el serializer y el servicio), `creado`. Restricciones únicas `(empresa, cliente_uuid)` y `(visita, punto)`. Sin historial de coordenadas. Migración con `makemigrations visitas --name punto_no_revisado`. Admin de solo lectura. `test_no_nula.py` pasa de 13 a 14 modelos de empresa.
-  - Servicio `registrar_no_revisado(*, empleado, visita_pk, punto, motivo, detalle="", latitud=None, longitud=None, precision_m=None, foto=None, cliente_uuid)`: `cliente_uuid` ya usado en la empresa → `NoRevisadoDuplicado` (como `RevisionDuplicada`, también en la carrera de `IntegrityError`); bloquea Sitio y Visita filtrando por la empresa del empleado, `pk` y `empleado`; visita inexistente, ajena o de otra empresa → `VisitaNoEncontrada` (404); visita propia no abierta → `ValidationError` "La visita no está abierta" (400, como `registrar_revision`); punto de otro sitio, inactivo o ya reportado en la visita → `ValidationError`; la foto pasa por `procesar_imagen` dentro de `_transaccion_con_archivos`; distancia con `ubicacion.verificar` si hay coordenadas. No crea `Revision`, no llama a `actualizar_vencimiento` y no cambia `cerrar_visita`.
+  - Servicio `registrar_no_revisado(*, empleado, visita_pk, punto, motivo, detalle="", latitud=None, longitud=None, precision_m=None, foto=None, cliente_uuid)`: `cliente_uuid` ya usado en la empresa → `NoRevisadoDuplicado` (como `RevisionDuplicada`, también en la carrera de `IntegrityError`); bloquea Sitio y Visita filtrando por la empresa del empleado, `pk` y `empleado`; visita inexistente, ajena o de otra empresa → `VisitaNoEncontrada` (404); visita propia no abierta → `ValidationError` "La visita no está abierta" (400, como `registrar_revision`); punto de otro sitio, inactivo o ya reportado en la visita → `ValidationError`; la foto pasa por `procesar_imagen` dentro de `_transaccion_con_archivos`; distancia con `ubicacion.verificar` si hay coordenadas. No crea `Revision`, no llama a `actualizar_vencimiento` y no cambia `cerrar_visita` (modificado 2026-11-14: el cierre de una visita con solo reportes lo agrega T8).
   - `condicion_incidencia_sin_revisar()` (un `Q` sobre `Visita`): `incidencia_revisada_en` nulo y (`incidencia=True` o `estado=realizada` con algún `PuntoNoRevisado`). `marcar_incidencia_revisada` acepta una visita realizada que solo tiene reportes.
   - Vista `ReportarNoRevisadoView` en `api_views.py` (sin ruta; la cablea T3 como `visitas/<int:pk>/no-revisados/`, kwarg `pk`): multipart, `EsEmpleado | EsAdministrador`, `throttle_scope = "crear_visita"`, 413 antes de leer el cuerpo como `CrearRevisionView`; busca la visita (`de_empresa`, `pk`, `empleado`) **antes** de validar el cuerpo, como `CerrarVisitaView`, para que una visita de otra empresa dé 404 aun con el cuerpo vacío; serializer de escritura con campos explícitos (`punto`, `motivo`, `detalle`, `latitud`, `longitud`, `precision_m`, `foto` con `validar_tamano_foto`, `cliente_uuid` obligatorio); 201 con el reporte sin coordenadas ni foto; 404 con `VisitaNoEncontrada`; 409 con el duplicado, sin datos de otro empleado. `extend_schema` con 201, 400, 404, 409 y 413.
   - `ItemTurnoSerializer` suma `no_revisado` (motivo o `null`), calculado en `VisitaActivaSerializer.get_items`, con `no_revisados` en el `prefetch_related` de `MisVisitasView` y de `AbrirVisitaView` (que usa el mismo serializer). `test_api_mis_turnos.py` suma `no_revisado` al ítem esperado.
@@ -53,7 +54,6 @@ Solo T1 crea migraciones (`visitas`). `apps/api/tests/test_contrato_doc.py` exig
   - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_no_revisados.NoRevisadosApiTests.test_punto_inactivo_o_ya_reportado_da_400 --keepdb`
   - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_no_revisados.NoRevisadosApiTests.test_respuesta_sin_coordenadas_ni_foto --keepdb`
   - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_no_revisados.NoRevisadosApiTests.test_reporte_no_crea_revision_ni_cambia_vencimiento --keepdb`
-  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_no_revisados.NoRevisadosApiTests.test_visita_solo_con_reportes_no_se_cierra --keepdb`
   - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_no_revisados.NoRevisadosApiTests.test_mismo_cliente_uuid_no_duplica --keepdb`
   - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_no_revisados.NoRevisadosApiTests.test_409_no_expone_datos_de_otro_empleado --keepdb`
   - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_no_revisados.NoRevisadosApiTests.test_foto_se_procesa_y_respeta_el_limite --keepdb`
@@ -196,6 +196,70 @@ Solo T1 crea migraciones (`visitas`). `apps/api/tests/test_contrato_doc.py` exig
   - `[cmd]` `git log --oneline plan/soporte-app-operario | grep -q "T5: integra soporte-app-operario-T5"`
   - `[cmd]` `git log --oneline plan/soporte-app-operario | grep -q "T6: integra soporte-app-operario-T6"`
 
+### T8 — Cierre de una visita con solo reportes (modificado 2026-11-14, decisión del usuario)
+
+- **Ola**: 3
+- **Depende de**: T7
+- **Puede tocar**: `apps/visitas/services.py`, `apps/visitas/serializers.py`, `apps/visitas/api_views.py`, `apps/visitas/panel_views.py`, `apps/visitas/templatetags/visitas_ui.py`, `apps/visitas/templates/visitas/panel/ficha.html`, `apps/visitas/templates/visitas/panel/_grupo_turnos.html`, `apps/visitas/tests/test_cierre_solo_reportes.py`, `apps/visitas/tests/test_no_revisados.py`
+- **No puede tocar**: `docs/planes/`, `config/`, `docs/`, `apps/visitas/models.py`, `apps/visitas/migrations/`, `apps/api/`, archivos de otras apps
+- **Skill a leer antes**: `.agents/skills/django-security/SKILL.md` § Authorization
+- **Worktree**: sí
+- **Presupuesto**: 400 líneas agregadas
+- **Qué hacer**:
+  - `cerrar_visita` (`apps/visitas/services.py`): una visita abierta sin revisiones y con al menos un `PuntoNoRevisado` se cierra como `realizada` con el `cierre` pedido (empleado, administrador o sistema), con las mismas validaciones del cierre con revisiones (planilla salvo en el del sistema, motivo de la manual); `cerrada_en` por defecto es ahora, o el `creado` del último reporte en el cierre por sistema. Una visita sin revisiones ni reportes sigue como hoy: 400 al empleado y `_cerrar_sin_revisiones` en el cierre por sistema (pendiente si es asignada, cancelada si no). No cambia `proximo_vencimiento` de ningún punto. El cierre nocturno (`cerrar_visitas_abiertas`) aplica la misma regla porque llama a `cerrar_visita`.
+  - API: `VisitaRealizadaSerializer` (respuesta de `visitas/<pk>/cerrar/` y de `me/historial/`) suma `sin_revisiones` (booleano: realizada sin ninguna revisión), sin consultas extra por visita (con las revisiones ya precargadas). `me/visitas/` no cambia.
+  - Panel: la ficha del turno y el listado de turnos (`_grupo_turnos.html`) muestran la etiqueta "Cerrado sin revisiones" en lugar de "Realizada" para esas visitas, sin una consulta por fila. Sus reportes cuentan en "Incidencias sin revisar" (ya lo hace `condicion_incidencia_sin_revisar`).
+  - En `test_no_revisados.py`, quitar `test_visita_solo_con_reportes_no_se_cierra` (lo reemplaza este contrato).
+- **Criterios**:
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_cierre_solo_reportes.CierreSoloReportesTests.test_empleado_cierra_visita_con_solo_reportes --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_cierre_solo_reportes.CierreSoloReportesTests.test_visita_sin_revisiones_ni_reportes_no_se_cierra --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_cierre_solo_reportes.CierreSoloReportesTests.test_cierre_nocturno_con_solo_reportes_queda_realizada --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_cierre_solo_reportes.CierreSoloReportesTests.test_cierre_con_solo_reportes_no_cambia_vencimiento --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_cierre_solo_reportes.CierreSoloReportesTests.test_historial_marca_sin_revisiones --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_cierre_solo_reportes.CierreSoloReportesTests.test_panel_muestra_cerrado_sin_revisiones --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_cierre_solo_reportes.CierreSoloReportesTests.test_cuenta_en_incidencias_sin_revisar --keepdb`
+  - `[grep-0]` `grep -n "test_visita_solo_con_reportes_no_se_cierra" apps/visitas/tests/test_no_revisados.py`
+  - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py makemigrations --check --dry-run`
+  - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas --keepdb`
+  - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 400 --subtarea T8`
+
+### T9 — Botón "Imprimir" de la hoja de QR y nombre largo en el alta múltiple (modificado 2026-11-14, decisión del usuario)
+
+- **Ola**: 3
+- **Depende de**: T7
+- **Puede tocar**: `apps/sitios/templates/sitios/panel/hoja_qr.html`, `apps/sitios/static/sitios/hoja_qr.js`, `apps/sitios/panel_forms.py`, `apps/sitios/tests/test_hoja_qr.py`, `apps/sitios/tests/test_alta_multiple.py`
+- **No puede tocar**: `docs/planes/`, `config/`, `docs/`, `templates/`, `static/`, `apps/sitios/models.py`, `apps/sitios/migrations/`, archivos de otras apps
+- **Skill a leer antes**: `.agents/skills/django-security/SKILL.md` § Authorization (CSP)
+- **Worktree**: sí
+- **Presupuesto**: 150 líneas agregadas
+- **Qué hacer**:
+  - Hoja de QR: vuelve el botón "Imprimir" (en lugar de la indicación de Ctrl+P), que llama a `window.print()` desde `apps/sitios/static/sitios/hoja_qr.js`, cargado con `<script src="{% static ... %}" defer>`; sin `onclick` ni script inline (CSP `script-src 'self'`).
+  - `PuntosAltaMultipleForm.clean()`: si el último nombre, `"<prefijo> <numero_inicial + cantidad - 1>"`, supera el `max_length` de `PuntoControl.nombre`, error de formulario en `prefijo`; no se crea ningún punto.
+- **Criterios**:
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_hoja_qr.HojaQRTests.test_boton_imprimir_usa_script_estatico --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_alta_multiple.AltaMultiplePuntosTests.test_nombre_de_mas_de_cien_da_error_de_formulario --keepdb`
+  - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py findstatic sitios/hoja_qr.js`
+  - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios --keepdb`
+  - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 150 --subtarea T9`
+
+### T10 — Integración ola 3, docs y cierre (principal) (modificado 2026-11-14)
+
+- **Ola**: 3 (después de verificar T8 y T9)
+- **Depende de**: T8, T9
+- **Puede tocar**: `docs/contrato-api.md`, `docs/01-modelo-y-arquitectura.md`, `docs/api/openapi-v1.yaml`
+- **Pasos**:
+  1. Integrar T8 y T9 desde la raíz, de a una, con `verificar.py tarea`.
+  2. Un commit `T10:` con el contrato (cierre con solo reportes, `sin_revisiones` en `visitas/<pk>/cerrar/` y `me/historial/`, `Actualizado:`), el doc 01 (regla de 3.6.2) y `openapi-v1.yaml` regenerado.
+  3. `revisor` limitado a la migración `0002_punto_no_revisado` y a `openapi-v1.yaml` frente a `docs/contrato-api.md` (solo bloqueantes; lo demás, a pendientes); `verificar.py todo`; commit `cierre:`; PR nuevo a `main` (el #8 ya está fusionado).
+- **Presupuesto**: 200 líneas agregadas (el yaml regenerado cuenta)
+- **Criterios**:
+  - `[cmd]` `git log --oneline plan/soporte-app-operario | grep -q "T8: integra soporte-app-operario-T8"`
+  - `[cmd]` `git log --oneline plan/soporte-app-operario | grep -q "T9: integra soporte-app-operario-T9"`
+  - `[grep-1]` `grep -n "sin_revisiones" docs/contrato-api.md`
+  - `[grep-0]` `grep -n "ni habilita el cierre" docs/contrato-api.md`
+  - `[grep-0]` `grep -n "sigue exigiendo al menos una revisión" docs/01-modelo-y-arquitectura.md`
+  - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 200 --subtarea T10`
+
 ## Registro de verificación
 
 commit_base: 2229493
@@ -209,6 +273,9 @@ commit_base: 2229493
 | T5 | hecha | 778dea9 | PASA 2026-11-14 |
 | T6 | hecha | fc2fa51 | PASA 2026-11-14 |
 | T7 | hecha | 762f104 | PASA 2026-11-14 |
+| T8 | pendiente | | |
+| T9 | pendiente | | |
+| T10 | pendiente | | |
 
 ### Revisiones
 
