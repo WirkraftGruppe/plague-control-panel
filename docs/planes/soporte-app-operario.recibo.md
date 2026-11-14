@@ -100,3 +100,21 @@
 - duración: 36.3 s
 - Veredicto: PASA
 
+## 2026-11-14 16:19 — tarea T5 de 2026-11-14-soporte-app-operario.md
+
+- HEAD verificado: 8743e93
+- Contrato: intacto (congelado en 2229493)
+- Criterios:
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_no_revisados.NoRevisadosPanelTests.test_contador_cuenta_visita_realizada_con_reporte --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_no_revisados.NoRevisadosPanelTests.test_visita_abierta_con_reporte_no_cuenta --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_no_revisados.NoRevisadosPanelTests.test_marcar_revisada_la_saca_del_contador --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_no_revisados.NoRevisadosPanelTests.test_ficha_del_turno_lista_los_reportes --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_no_revisados.NoRevisadosPanelTests.test_foto_de_reporte_de_otra_empresa_da_404 --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_no_revisados.NoRevisadosPanelTests.test_empleado_no_ve_la_foto --keepdb`
+  - PASA (exit 0, nuevo: —) `T5 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas --keepdb`
+  - PASA (exit 0, nuevo: —) `T5 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 400 --subtarea T5`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 20.9 s
+- Veredicto: PASA
+

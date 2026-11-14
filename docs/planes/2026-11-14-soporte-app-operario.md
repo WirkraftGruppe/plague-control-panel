@@ -206,7 +206,7 @@ commit_base: 2229493
 | T2 | hecha | 2fc1214 | PASA 2026-11-14 |
 | T3 | hecha | 0e588c8 | PASA 2026-11-14 |
 | T4 | hecha | 3c9fd0a | PASA 2026-11-14 |
-| T5 | pendiente | | |
+| T5 | hecha | 778dea9 | PASA 2026-11-14 |
 | T6 | hecha | fc2fa51 | PASA 2026-11-14 |
 | T7 | pendiente | | |
 
