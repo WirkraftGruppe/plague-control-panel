@@ -3,7 +3,8 @@
 {% block panel_contenido %}
   <h1>Turno {{ visita.pk }}</h1>
   <p>
-    {% include "panel/partials/etiqueta_estado.html" with tono=visita.estado|tono_estado texto=visita.get_estado_display %}
+    {% if sin_revisiones %}{% include "panel/partials/etiqueta_estado.html" with tono="neutral" texto="Cerrado sin revisiones" %}
+    {% else %}{% include "panel/partials/etiqueta_estado.html" with tono=visita.estado|tono_estado texto=visita.get_estado_display %}{% endif %}
     {% if visita.incidencia %}{% include "panel/partials/etiqueta_estado.html" with tono="danger" texto="Incidencia" %}{% endif %}
     {% if con_ubicacion %}{% include "panel/partials/etiqueta_estado.html" with tono="danger" texto="Incidencia de ubicación" %}{% endif %}
     {% if visita.incidencia_asignacion %}{% include "panel/partials/etiqueta_estado.html" with tono="danger" texto="Incidencia de asignación" %}{% endif %}

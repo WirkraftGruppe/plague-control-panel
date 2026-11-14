@@ -19,7 +19,6 @@ from apps.sitios.models import PuntoControl, Sitio
 from apps.visitas.api_views import MAX_BYTES_PEDIDO, ReportarNoRevisadoView
 from apps.visitas.models import PuntoNoRevisado, Revision, Visita
 from apps.visitas.services import (
-    cerrar_visita,
     condicion_incidencia_sin_revisar,
     crear_turno,
     marcar_incidencia_revisada,
@@ -174,16 +173,6 @@ class NoRevisadosApiTests(ApiVisitasBase):
             .proximo_vencimiento
         )
         self.assertEqual(antes, despues)
-
-    def test_visita_solo_con_reportes_no_se_cierra(self):
-        visita = self._abierta()
-        self.assertEqual(self._reportar(visita.id).status_code, 201)
-        with self.assertRaises(ValidationError):
-            cerrar_visita(visita, quien=self.empleado, cierre=Visita.Cierre.EMPLEADO)
-        r = self._cerrar(visita)
-        self.assertEqual(r.status_code, 400, r.content)
-        visita.refresh_from_db()
-        self.assertEqual(visita.estado, Visita.Estado.ABIERTA)
 
     def test_mismo_cliente_uuid_no_duplica(self):
         visita = self._abierta()

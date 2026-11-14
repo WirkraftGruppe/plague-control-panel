@@ -355,6 +355,7 @@ class VisitaRealizadaSerializer(serializers.ModelSerializer):
     sitio = SitioResumenSerializer(read_only=True)
     realizada_en = serializers.DateTimeField(source="cerrada_en", read_only=True)
     revisiones = RevisionSerializer(many=True, read_only=True)
+    sin_revisiones = serializers.SerializerMethodField()
 
     class Meta:
         model = Visita
@@ -366,6 +367,12 @@ class VisitaRealizadaSerializer(serializers.ModelSerializer):
             "observaciones",
             "incidencia",
             "incidencia_detalle",
+            "sin_revisiones",
             "revisiones",
         ]
         read_only_fields = fields
+
+    def get_sin_revisiones(self, visita) -> bool:
+        """Realizada sin ninguna revisión (cerrada con solo reportes)."""
+        # `all()` usa las revisiones precargadas: sin consulta por visita.
+        return visita.estado == Visita.Estado.REALIZADA and not visita.revisiones.all()
