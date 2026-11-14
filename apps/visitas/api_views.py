@@ -239,8 +239,10 @@ class ReportarNoRevisadoView(APIView):
             "Multipart. `punto` es el id de un punto activo del sitio de la visita "
             "y `motivo` uno de `falta_estacion`, `codigo_ilegible`, `sin_acceso` u "
             "`otro`. `foto` es opcional (hasta 8 MB). No es una revisión: no cuenta "
-            "para el vencimiento ni para cerrar la visita. Un `cliente_uuid` ya "
-            "registrado responde 409; `reporte` solo viene si es del mismo empleado."
+            "para el vencimiento, pero una visita sin revisiones y con al menos un "
+            "reporte se puede cerrar (`sin_revisiones`). Un `cliente_uuid` ya "
+            "registrado responde 409; `reporte` y `visita` solo vienen si es del "
+            "mismo empleado."
         ),
         request={"multipart/form-data": ReportarNoRevisadoSerializer},
         responses={
