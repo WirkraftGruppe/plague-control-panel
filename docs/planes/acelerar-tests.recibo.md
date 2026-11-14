@@ -31,3 +31,23 @@
 - duración: 117.2 s
 - Veredicto: PASA
 
+## 2026-11-14 10:03 — tarea T3 de 2026-11-14-acelerar-tests.md
+
+- HEAD verificado: d558741
+- Contrato: intacto (congelado en 49cfb0b)
+- Criterios:
+  - PASA (exit 0, nuevo: —) `T3 [cmd] git log --oneline plan/acelerar-tests | grep -q "T1: integra acelerar-tests-T1"`
+  - PASA (exit 0, nuevo: —) `T3 [cmd] git log --oneline plan/acelerar-tests | grep -q "T2: integra acelerar-tests-T2"`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test config.tests.test_settings.SettingsTests.test_prod_primer_hasher_no_es_md5 --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test config.tests.test_settings.SettingsTests.test_dev_fuera_de_tests_no_usa_md5 --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test config.tests.test_settings.SettingsTests.test_dev_en_tests_usa_md5 --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.accounts.tests.test_panel.UsuarioPanelTests.test_hash_del_empleado_es_pbkdf2 --keepdb`
+  - PASA (exit 1, nuevo: —) `T3 [grep-0] grep -n "PASSWORD_HASHERS" config/settings/prod.py`
+  - PASA (exit 0, nuevo: —) `T3 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.accounts config --keepdb`
+  - PASA (exit 0, nuevo: —) `T3 [grep-1] grep -n "## Tiempos de la suite" docs/metodo/metricas.md`
+  - PASA (exit 0, nuevo: —) `T3 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 150 --subtarea T3`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 29.5 s
+- Veredicto: PASA
+

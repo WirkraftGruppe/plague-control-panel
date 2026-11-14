@@ -96,7 +96,7 @@ commit_base: 49cfb0b
 |---|---|---|---|
 | T1 | hecha | 79226e3 | PASA 2026-11-14 |
 | T2 | hecha | bf7dea7 | PASA 2026-11-14 |
-| T3 | pendiente | | |
+| T3 | hecha | d558741 | PASA 2026-11-14 |
 
 ### Revisiones
 
