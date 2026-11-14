@@ -287,3 +287,24 @@
 - duración: 20.0 s
 - Veredicto: PASA
 
+## 2026-11-14 17:10 — tarea T8 de 2026-11-14-soporte-app-operario.md
+
+- HEAD verificado: 2b4523f
+- Contrato: modificado y aceptado (c9bc222, decisión del usuario)
+- Criterios:
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_cierre_solo_reportes.CierreSoloReportesTests.test_empleado_cierra_visita_con_solo_reportes --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_cierre_solo_reportes.CierreSoloReportesTests.test_visita_sin_revisiones_ni_reportes_no_se_cierra --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_cierre_solo_reportes.CierreSoloReportesTests.test_cierre_nocturno_con_solo_reportes_queda_realizada --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_cierre_solo_reportes.CierreSoloReportesTests.test_cierre_con_solo_reportes_no_cambia_vencimiento --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_cierre_solo_reportes.CierreSoloReportesTests.test_historial_marca_sin_revisiones --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_cierre_solo_reportes.CierreSoloReportesTests.test_panel_muestra_cerrado_sin_revisiones --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_cierre_solo_reportes.CierreSoloReportesTests.test_cuenta_en_incidencias_sin_revisar --keepdb`
+  - PASA (exit 1, nuevo: —) `T8 [grep-0] grep -n "test_visita_solo_con_reportes_no_se_cierra" apps/visitas/tests/test_no_revisados.py`
+  - PASA (exit 0, nuevo: —) `T8 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py makemigrations --check --dry-run`
+  - PASA (exit 0, nuevo: —) `T8 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas --keepdb`
+  - PASA (exit 0, nuevo: —) `T8 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 400 --subtarea T8`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 24.1 s
+- Veredicto: PASA
+
