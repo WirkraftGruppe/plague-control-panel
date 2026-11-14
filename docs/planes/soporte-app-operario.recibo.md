@@ -63,3 +63,16 @@
 - duración: 31.8 s
 - Veredicto: PASA
 
+## 2026-11-14 16:11 — tarea T6 de 2026-11-14-soporte-app-operario.md
+
+- HEAD verificado: ef96b26
+- Contrato: intacto (congelado en 2229493)
+- Criterios:
+  - PASA (exit 0, nuevo: —) `T6 [grep-1] grep -n "PuntoNoRevisado" docs/01-modelo-y-arquitectura.md`
+  - PASA (exit 0, nuevo: —) `T6 [cmd] T=$(mktemp) && PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py spectacular --validate --file "$(cygpath -w "$T")" && diff -q --strip-trailing-cr "$T" docs/api/openapi-v1.yaml; r=$?; rm -f "$T"; exit $r`
+  - PASA (exit 0, nuevo: —) `T6 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 400 --subtarea T6`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 2.1 s
+- Veredicto: PASA
+
