@@ -17,7 +17,7 @@ Una sola aplicación Django con dos superficies sobre una misma base de datos, c
 
 Tres roles, sobre `AUTH_USER_MODEL` propio (`accounts.User`) con campo `rol`. Un usuario pertenece a una sola empresa (salvo `plataforma`) y los nombres de usuario son únicos en toda la base:
 
-- **Plataforma** — el operador de Detach. No pertenece a ninguna empresa (`empresa` nula) y es superusuario. Es el único rol con acceso a `/admin/` y a sus acciones de supresión de datos (Ley 25.326) y regeneración de QR; no entra al panel. Obtiene un token de la API, pero con él solo alcanza `GET /api/v1/`, el esquema, `/api/v1/docs/` y la renovación del token; todo lo demás le da 403. Da de alta las empresas.
+- **Plataforma** — el operador de Detach. No pertenece a ninguna empresa (`empresa` nula) y es superusuario. Es el único rol con acceso a `/admin/` y a sus acciones de supresión de datos (Ley 25.326) y regeneración de QR; no entra al panel. No usa la API: `auth/token/` y `auth/token/refresh/` le responden 401, y el esquema y `/api/v1/docs/` exigen una empresa activa. Da de alta las empresas.
 - **Administrador** — accede al panel de su empresa. Crea clientes y sitios (con su responsable y la programación de cada punto); arma turnos para los empleados; carga visitas manuales; genera QR, informes y certificados; crea las cuentas de su empresa (no hay autorregistro); edita el nombre, el logo y el correo de su empresa.
 - **Empleado** — accede solo a la API desde la app. Ve sus visitas asignadas, escanea QR, completa la planilla, consulta su historial y lo descarga.
 
@@ -98,7 +98,7 @@ El trabajo recurrente no se modela aparte: no hay una entidad que agrupe sitio, 
 - `cuenta_como_servicio` (booleano): `False` si la abrió un administrador
 - `datos` (JSON) — respuestas a los `CampoPlanilla` de ámbito `visita`, **por servicio**: `{slug_del_servicio: {clave: valor}}`, con un servicio por cada uno de los ítems y las revisiones del turno; `esquema_planilla` guarda el esquema usado, con la misma forma. Los errores de validación vuelven como `"slug: clave: mensaje"` bajo `datos`
 - `observaciones`, `incidencia` (booleano) + `incidencia_detalle`
-- `incidencia_asignacion` (otro empleado tenía un turno pendiente en el sitio cuando esta visita se abrió), `incidencia_revisada_por` e `incidencia_revisada_en`
+- `incidencia_asignacion` (otro empleado tenía un turno pendiente en el sitio que incluía ese punto cuando esta visita se abrió), `incidencia_revisada_por` e `incidencia_revisada_en`
 - `creado`, `actualizado`
 
 Coherencia: una `realizada` lleva `cerrada_en`; una `cancelada` no; una `abierta` lleva `abierta_en`; una `pendiente` no tiene revisiones.

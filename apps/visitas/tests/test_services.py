@@ -21,7 +21,7 @@ from apps.empresas.tests.ayudas import una_empresa
 from apps.productos.models import Producto
 from apps.servicios.models import CampoPlanilla
 from apps.sitios.models import PuntoControl, Sitio
-from apps.visitas.models import Foto, ProductoAplicado, Revision, Visita
+from apps.visitas.models import Foto, ItemTurno, ProductoAplicado, Revision, Visita
 from apps.visitas.services import (
     MAX_FOTOS,
     MAX_PRODUCTOS,
@@ -188,6 +188,10 @@ class CicloVisitaTests(SinArchivosMixin, TestCase):
         )
         self.visita.empleado = otro
         self.visita.save()
+        # El turno ajeno incluye el punto: solo así hay incidencia de asignación.
+        ItemTurno.objects.create(
+            visita=self.visita, punto=self.punto, servicio=self.visita.tipo
+        )
         visita, creada = abrir(empleado=self.empleado, sitio=self.sitio)
         self.assertTrue(creada)
         self.assertNotEqual(visita.pk, self.visita.pk)

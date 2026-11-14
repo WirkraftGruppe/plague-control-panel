@@ -18,6 +18,12 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+        '401':
+          description: Falta autenticación o es inválida.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/v1/auth/token/:
     post:
       operationId: auth_token_create
@@ -38,6 +44,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Tokens'
           description: ''
+        '400':
+          description: Falta el usuario o la contraseña.
         '401':
           description: Credenciales inválidas o cuenta inactiva.
         '415':
@@ -102,6 +110,12 @@ paths:
           description: La foto es de otro empleado.
         '404':
           description: La foto no existe o es de otra empresa.
+        '401':
+          description: Falta autenticación o es inválida.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/v1/me/historial/:
     get:
       operationId: me_historial_list
@@ -143,6 +157,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedVisitaRealizadaList'
           description: ''
+        '401':
+          description: Falta autenticación o es inválida.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/v1/me/puntos/:
     get:
       operationId: me_puntos_list
@@ -169,6 +189,12 @@ paths:
                 items:
                   $ref: '#/components/schemas/MiPunto'
           description: ''
+        '401':
+          description: Falta autenticación o es inválida.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/v1/me/visitas/:
     get:
       operationId: me_visitas_list
@@ -200,6 +226,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedVisitaActivaList'
           description: ''
+        '401':
+          description: Falta autenticación o es inválida.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/v1/planos/{id}/imagen/:
     get:
       operationId: planos_imagen_retrieve
@@ -226,6 +258,12 @@ paths:
           description: ''
         '404':
           description: El plano no existe o no es accesible.
+        '401':
+          description: Falta autenticación o es inválida.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/v1/productos/:
     get:
       operationId: productos_list
@@ -247,6 +285,12 @@ paths:
           description: ''
         '304':
           description: El catálogo no cambió.
+        '401':
+          description: Falta autenticación o es inválida.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/v1/puntos/{id}/ubicacion/:
     post:
       operationId: puntos_ubicacion_create
@@ -288,6 +332,23 @@ paths:
           description: Solo administradores.
         '404':
           description: No existe.
+        '401':
+          description: Falta autenticación o es inválida.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Demasiados pedidos; reintentar tras `Retry-After`.
+          headers:
+            Retry-After:
+              description: Segundos de espera antes de reintentar.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/v1/qr/{codigo}/resolver/:
     post:
       operationId: qr_resolver_create
@@ -299,7 +360,9 @@ paths:
         (la abierta propia del sitio o, si no hay, la pendiente más antigua) y `null`
         si al abrir se crearía una nueva. El servicio y `en_turno` se calculan sobre
         la visita destino: el del ítem del punto en ella o, si no lo tiene, el del
-        punto con `en_turno` falso.'
+        punto con `en_turno` falso. Un punto sin servicio llega con `servicio` nulo
+        y su revisión fuera de turno da 400 hasta que el administrador le asigne uno.
+        Un punto con plano pero sin `x`/`y` no aparece en `plano.puntos`.'
       summary: Resolver un código QR
       parameters:
       - in: path
@@ -319,6 +382,26 @@ paths:
               schema:
                 $ref: '#/components/schemas/ResolverQR'
           description: ''
+        '404':
+          description: QR inexistente, código mal formado, punto, sitio o cliente
+            inactivo.
+        '401':
+          description: Falta autenticación o es inválida.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Demasiados pedidos; reintentar tras `Retry-After`.
+          headers:
+            Retry-After:
+              description: Segundos de espera antes de reintentar.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/v1/revisiones/:
     post:
       operationId: revisiones_create
@@ -337,6 +420,9 @@ paths:
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/CrearRevisionRequest'
+            encoding:
+              productos_aplicados:
+                contentType: application/json
         required: true
       security:
       - jwtAuth: []
@@ -349,14 +435,32 @@ paths:
           description: ''
         '400':
           description: 'Validación: QR que no es de un punto del sitio, visita no
-            abierta, coordenadas faltantes, punto sin servicio, planilla inválida
-            o revisión con más horas de atraso que el máximo (168 por defecto).'
+            abierta, coordenadas faltantes, punto sin servicio o con el servicio dado
+            de baja, planilla inválida o revisión con más horas de atraso que el máximo
+            (168 por defecto).'
         '404':
           description: La visita no existe o es de otro usuario.
         '409':
           description: El `cliente_uuid` ya fue registrado.
         '413':
           description: El pedido supera el tamaño permitido.
+        '401':
+          description: Falta autenticación o es inválida.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Demasiados pedidos; reintentar tras `Retry-After`.
+          headers:
+            Retry-After:
+              description: Segundos de espera antes de reintentar.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/v1/sitios/:
     post:
       operationId: sitios_create
@@ -390,8 +494,23 @@ paths:
           description: Datos inválidos o precisión de GPS insuficiente.
         '403':
           description: Solo administradores.
-        '404':
-          description: No existe.
+        '401':
+          description: Falta autenticación o es inválida.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Demasiados pedidos; reintentar tras `Retry-After`.
+          headers:
+            Retry-After:
+              description: Segundos de espera antes de reintentar.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/v1/sitios/{id}/puntos/:
     post:
       operationId: sitios_puntos_create
@@ -432,6 +551,23 @@ paths:
           description: Solo administradores.
         '404':
           description: No existe.
+        '401':
+          description: Falta autenticación o es inválida.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Demasiados pedidos; reintentar tras `Retry-After`.
+          headers:
+            Retry-After:
+              description: Segundos de espera antes de reintentar.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/v1/visitas/{id}/cerrar/:
     post:
       operationId: visitas_cerrar_create
@@ -474,6 +610,23 @@ paths:
           description: La visita no existe o es de otro usuario.
         '409':
           description: La visita ya la cerró el sistema o un administrador.
+        '401':
+          description: Falta autenticación o es inválida.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Demasiados pedidos; reintentar tras `Retry-After`.
+          headers:
+            Retry-After:
+              description: Segundos de espera antes de reintentar.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/v1/visitas/abrir/:
     post:
       operationId: visitas_abrir_create
@@ -515,6 +668,23 @@ paths:
           description: ''
         '400':
           description: QR inexistente, de un punto o sitio inactivo.
+        '401':
+          description: Falta autenticación o es inválida.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Demasiados pedidos; reintentar tras `Retry-After`.
+          headers:
+            Retry-After:
+              description: Segundos de espera antes de reintentar.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 components:
   schemas:
     AbrirVisitaRequest:
@@ -690,9 +860,32 @@ components:
           minLength: 1
           maxLength: 50000
         productos_aplicados:
-          type: string
+          type: array
+          items:
+            type: object
+            required:
+            - producto
+            - dosis
+            - unidad_dosis
+            - cantidad
+            - unidad
+            properties:
+              producto:
+                type: integer
+                description: Id del catálogo.
+              lote:
+                type: string
+              dosis:
+                type: number
+              unidad_dosis:
+                type: string
+              cantidad:
+                type: number
+              unidad:
+                type: string
+                description: Unidad de la cantidad.
           minLength: 1
-          maxLength: 50000
+          maxItems: 50000
         fotos:
           type: array
           items:
@@ -1456,6 +1649,20 @@ components:
       - realizada_en
       - revisiones
       - sitio
+    Error:
+      type: object
+      properties:
+        detalle:
+          type: string
+        campos:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+      required:
+      - detalle
+      - campos
   securitySchemes:
     jwtAuth:
       type: http

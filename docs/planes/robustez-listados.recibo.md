@@ -1,0 +1,360 @@
+## 2026-11-13 17:50 — tarea T4 de 2026-11-13-robustez-listados.md
+
+- HEAD verificado: 506b64b
+- Contrato: intacto (congelado en ccb6738)
+- Criterios:
+  - PASA (exit 0, nuevo: sí) `T4 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.servicios.tests.test_slug_concurrente.SlugConcurrenteTests.test_choque_de_slug_reintenta_con_sufijo --keepdb`
+  - PASA (exit 0, nuevo: sí) `T4 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.productos.tests.test_unidad_bloqueada.UnidadBloqueadaTests.test_modo_unidad_con_movimientos_da_error --keepdb`
+  - PASA (exit 0, nuevo: sí) `T4 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.productos.tests.test_unidad_bloqueada.UnidadBloqueadaTests.test_admin_unidades_de_solo_lectura_con_movimientos --keepdb`
+  - PASA (exit 0, nuevo: —) `T4 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.servicios apps.productos --keepdb`
+  - PASA (exit 0, nuevo: —) `T4 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 250 --subtarea T4`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 16.5 s
+- Veredicto: PASA
+
+## 2026-11-13 17:52 — tarea T1 de 2026-11-13-robustez-listados.md
+
+- HEAD verificado: 506b64b
+- Contrato: intacto (congelado en ccb6738)
+- Criterios:
+  - FALLA (exit 1, nuevo: —) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.panel.tests.test_listados_robustez.ListadosRobustezTests.test_orden_con_doble_guion_responde_200_en_todos --keepdb`
+    ```
+    E
+    ======================================================================
+    ERROR: test_listados_robustez (unittest.loader._FailedTest.test_listados_robustez)
+    ----------------------------------------------------------------------
+    ImportError: Failed to import test module: test_listados_robustez
+    Traceback (most recent call last):
+      File "C:\Users\Emanuel\AppData\Local\Programs\Python\Python313\Lib\unittest\loader.py", line 141, in loadTestsFromName
+        module = __import__(module_name)
+    ModuleNotFoundError: No module named 'apps.panel.tests.test_listados_robustez'
+    
+    
+    ----------------------------------------------------------------------
+    Ran 1 test in 0.000s
+    
+    FAILED (errors=1)
+    Found 1 test(s).
+    System check identified no issues (0 silenced).
+    ```
+  - FALLA (exit 1, nuevo: —) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.panel.tests.test_listados_robustez.ListadosRobustezTests.test_busqueda_con_nul_responde_200_en_todos --keepdb`
+    ```
+    E
+    ======================================================================
+    ERROR: test_listados_robustez (unittest.loader._FailedTest.test_listados_robustez)
+    ----------------------------------------------------------------------
+    ImportError: Failed to import test module: test_listados_robustez
+    Traceback (most recent call last):
+      File "C:\Users\Emanuel\AppData\Local\Programs\Python\Python313\Lib\unittest\loader.py", line 141, in loadTestsFromName
+        module = __import__(module_name)
+    ModuleNotFoundError: No module named 'apps.panel.tests.test_listados_robustez'
+    
+    
+    ----------------------------------------------------------------------
+    Ran 1 test in 0.000s
+    
+    FAILED (errors=1)
+    Found 1 test(s).
+    System check identified no issues (0 silenced).
+    ```
+  - FALLA (exit 1, nuevo: —) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.panel.tests.test_listados_robustez.ListadosRobustezTests.test_get_busqueda_descarta_nul --keepdb`
+    ```
+    E
+    ======================================================================
+    ERROR: test_listados_robustez (unittest.loader._FailedTest.test_listados_robustez)
+    ----------------------------------------------------------------------
+    ImportError: Failed to import test module: test_listados_robustez
+    Traceback (most recent call last):
+      File "C:\Users\Emanuel\AppData\Local\Programs\Python\Python313\Lib\unittest\loader.py", line 141, in loadTestsFromName
+        module = __import__(module_name)
+    ModuleNotFoundError: No module named 'apps.panel.tests.test_listados_robustez'
+    
+    
+    ----------------------------------------------------------------------
+    Ran 1 test in 0.000s
+    
+    FAILED (errors=1)
+    Found 1 test(s).
+    System check identified no issues (0 silenced).
+    ```
+  - PASA (exit 0, nuevo: —) `T1 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.panel --keepdb`
+  - PASA (exit 0, nuevo: —) `T1 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 150 --subtarea T1`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 119.6 s
+- Veredicto: FALLA
+
+## 2026-11-13 18:03 — tarea T1 de 2026-11-13-robustez-listados.md
+
+- HEAD verificado: b1f560b
+- Contrato: intacto (congelado en ccb6738)
+- Criterios:
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.panel.tests.test_listados_robustez.ListadosRobustezTests.test_orden_con_doble_guion_responde_200_en_todos --keepdb`
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.panel.tests.test_listados_robustez.ListadosRobustezTests.test_busqueda_con_nul_responde_200_en_todos --keepdb`
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.panel.tests.test_listados_robustez.ListadosRobustezTests.test_get_busqueda_descarta_nul --keepdb`
+  - PASA (exit 0, nuevo: —) `T1 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.panel --keepdb`
+  - PASA (exit 0, nuevo: —) `T1 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 150 --subtarea T1`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 121.1 s
+- Veredicto: PASA
+
+## 2026-11-13 18:13 — tarea T2 de 2026-11-13-robustez-listados.md
+
+- HEAD verificado: a52a4e0
+- Contrato: intacto (congelado en ccb6738)
+- Criterios:
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api.tests.test_plataforma_api.PlataformaApiTests.test_plataforma_no_obtiene_token --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api.tests.test_plataforma_api.PlataformaApiTests.test_plataforma_no_renueva_token --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api.tests.test_errores_robustez.ErroresRobustezTests.test_non_field_errors_anidado_conserva_ruta --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api.tests.test_errores_robustez.ErroresRobustezTests.test_all_de_django_va_a_detalle --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api.tests.test_errores_robustez.ErroresRobustezTests.test_429_del_balde_lleva_retry_after --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api.tests.test_errores_robustez.ErroresRobustezTests.test_no_encontrado_bajo_api_devuelve_json --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api.tests.test_esquema_robustez.EsquemaRobustezTests.test_sesion_sin_empresa_activa_se_rechaza --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api.tests.test_esquema_robustez.EsquemaRobustezTests.test_postproceso_agrega_401_y_429 --keepdb`
+  - PASA (exit 0, nuevo: —) `T2 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api apps.empresas --keepdb`
+  - PASA (exit 0, nuevo: —) `T2 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 400 --subtarea T2`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 77.2 s
+- Veredicto: PASA
+
+## 2026-11-13 18:28 — tarea T3 de 2026-11-13-robustez-listados.md
+
+- HEAD verificado: 7ee5383
+- Contrato: intacto (congelado en ccb6738)
+- Criterios:
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.clientes.tests.test_admin_errores.AdminErroresTests.test_padre_de_otra_empresa_da_error_de_formulario --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.clientes.tests.test_admin_errores.AdminErroresTests.test_slug_repetido_en_la_empresa_da_error_de_formulario --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.clientes.tests.test_admin_errores.AdminErroresTests.test_referencia_plataforma_de_solo_lectura_da_error_de_formulario --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.accounts.tests.test_admin_rol_plataforma.RolPlataformaAdminTests.test_plataforma_con_empresa_da_error_que_indica_la_salida --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_admin_logo.EmpresaAdminLogoTests.test_logo_del_admin_se_guarda_procesado --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_admin_logo.EmpresaAdminLogoTests.test_logo_invalido_da_error_de_formulario --keepdb`
+  - PASA (exit 0, nuevo: —) `T3 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.clientes apps.accounts apps.empresas apps.sitios apps.visitas apps.servicios --keepdb`
+  - PASA (exit 0, nuevo: —) `T3 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 350 --subtarea T3`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 368.5 s
+- Veredicto: PASA
+
+## 2026-11-13 18:52 — tarea T5 de 2026-11-13-robustez-listados.md
+
+- HEAD verificado: 898c4c7
+- Contrato: modificado y aceptado (f2c0d5a, decisión del usuario)
+- Criterios:
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_robustez_sitios.ProgramacionRobustezTests.test_servicio_desactivado_se_conserva_al_editar_la_fila --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_robustez_sitios.ProgramacionRobustezTests.test_punto_inactivo_no_se_programa --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_robustez_sitios.ProgramacionRobustezTests.test_no_se_asigna_otro_servicio_inactivo --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_robustez_sitios.GeocodificacionEmpresaTests.test_cache_de_una_empresa_no_responde_a_otra --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_robustez_sitios.ResolverRobustezTests.test_codigo_mal_formado_da_404_json --keepdb`
+  - PASA (exit 0, nuevo: —) `T5 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios apps.visitas --keepdb`
+  - PASA (exit 0, nuevo: —) `T5 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 350 --subtarea T5`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 278.5 s
+- Veredicto: PASA
+
+## 2026-11-13 19:03 — tarea T6 de 2026-11-13-robustez-listados.md
+
+- HEAD verificado: 96facef
+- Contrato: modificado y aceptado (f2c0d5a, decisión del usuario)
+- Criterios:
+  - PASA (exit 0, nuevo: —) `T6 [cmd] git log --oneline plan/robustez-listados | grep -q "T1: integra robustez-listados-T1"`
+  - PASA (exit 0, nuevo: —) `T6 [cmd] git log --oneline plan/robustez-listados | grep -q "T2: integra robustez-listados-T2"`
+  - PASA (exit 0, nuevo: —) `T6 [cmd] git log --oneline plan/robustez-listados | grep -q "T3: integra robustez-listados-T3"`
+  - PASA (exit 0, nuevo: —) `T6 [cmd] git log --oneline plan/robustez-listados | grep -q "T4: integra robustez-listados-T4"`
+  - PASA (exit 0, nuevo: —) `T6 [cmd] git log --oneline plan/robustez-listados | grep -q "T5: integra robustez-listados-T5"`
+  - PASA (exit 0, nuevo: sí) `T6 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test config.tests.test_robustez_listados.IntegracionRobustezTests.test_ruta_inexistente_bajo_api_da_404_json --keepdb`
+  - PASA (exit 0, nuevo: sí) `T6 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test config.tests.test_robustez_listados.IntegracionRobustezTests.test_esquema_con_sesion_de_plataforma_se_rechaza --keepdb`
+  - PASA (exit 0, nuevo: sí) `T6 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test config.tests.test_robustez_listados.IntegracionRobustezTests.test_esquema_con_sesion_de_empresa_inactiva_se_rechaza --keepdb`
+  - PASA (exit 0, nuevo: sí) `T6 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test config.tests.test_robustez_listados.IntegracionRobustezTests.test_esquema_con_sesion_de_empresa_activa_responde --keepdb`
+  - PASA (exit 0, nuevo: —) `T6 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test --keepdb`
+  - PASA (exit 0, nuevo: —) `T6 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 120 --subtarea T6`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 541.6 s
+- Veredicto: PASA
+
+## 2026-11-13 19:04 — tarea T2 de 2026-11-13-robustez-listados.md
+
+- HEAD verificado: 96facef
+- Contrato: modificado y aceptado (f2c0d5a, decisión del usuario)
+- Criterios:
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api.tests.test_plataforma_api.PlataformaApiTests.test_plataforma_no_obtiene_token --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api.tests.test_plataforma_api.PlataformaApiTests.test_plataforma_no_renueva_token --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api.tests.test_errores_robustez.ErroresRobustezTests.test_non_field_errors_anidado_conserva_ruta --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api.tests.test_errores_robustez.ErroresRobustezTests.test_all_de_django_va_a_detalle --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api.tests.test_errores_robustez.ErroresRobustezTests.test_429_del_balde_lleva_retry_after --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api.tests.test_errores_robustez.ErroresRobustezTests.test_no_encontrado_bajo_api_devuelve_json --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api.tests.test_esquema_robustez.EsquemaRobustezTests.test_sesion_sin_empresa_activa_se_rechaza --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api.tests.test_esquema_robustez.EsquemaRobustezTests.test_postproceso_agrega_401_y_429 --keepdb`
+  - PASA (exit 0, nuevo: —) `T2 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api apps.empresas --keepdb`
+  - PASA (exit 0, nuevo: —) `T2 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 400 --subtarea T2`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 80.3 s
+- Veredicto: PASA
+
+## 2026-11-13 19:31 — tarea T8 de 2026-11-13-robustez-listados.md
+
+- HEAD verificado: 3364aab
+- Contrato: modificado y aceptado (f2c0d5a, decisión del usuario)
+- Criterios:
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_robustez.MapaPanelLateralTests.test_mapa_del_panel_lateral_sin_teclado --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_robustez.FiltrosTurnosTests.test_listado_de_turnos_usa_la_fila_filtros --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_robustez.NuevoTurnoTarjetaTests.test_sitio_dentro_de_la_tarjeta --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_robustez.AdminSitioConItemsTests.test_sitio_de_solo_lectura_en_pendiente_con_items --keepdb`
+  - PASA (exit 0, nuevo: —) `T8 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas --keepdb`
+  - PASA (exit 0, nuevo: —) `T8 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 250 --subtarea T8`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 195.6 s
+- Veredicto: PASA
+
+## 2026-11-13 19:47 — tarea T7 de 2026-11-13-robustez-listados.md
+
+- HEAD verificado: 5ecc174
+- Contrato: modificado y aceptado (f2c0d5a, decisión del usuario)
+- Criterios:
+  - PASA (exit 0, nuevo: sí) `T7 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_robustez_visitas.CantidadNumericaTests.test_cantidad_como_numero_json_da_201_y_valor_exacto --keepdb`
+  - PASA (exit 0, nuevo: sí) `T7 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_robustez_visitas.CantidadNumericaTests.test_nan_se_rechaza --keepdb`
+  - PASA (exit 0, nuevo: sí) `T7 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_robustez_visitas.IncidenciaAsignacionTests.test_turno_ajeno_sin_el_punto_no_marca --keepdb`
+  - PASA (exit 0, nuevo: sí) `T7 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_robustez_visitas.IncidenciaAsignacionTests.test_turno_ajeno_con_el_punto_marca --keepdb`
+  - PASA (exit 0, nuevo: sí) `T7 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_robustez_visitas.ServicioDadoDeBajaTests.test_revision_con_servicio_dado_de_baja_da_400 --keepdb`
+  - PASA (exit 0, nuevo: sí) `T7 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_robustez_visitas.ResolverConsultasTests.test_resolver_precarga_campos_del_servicio --keepdb`
+  - PASA (exit 0, nuevo: sí) `T7 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_robustez_visitas.VisitaDestinoAjenaTests.test_visita_de_otro_empleado_no_es_destino --keepdb`
+  - PASA (exit 0, nuevo: sí) `T7 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_robustez_visitas.VisitaDestinoAjenaTests.test_visita_propia_en_otro_sitio_no_es_destino --keepdb`
+  - PASA (exit 0, nuevo: sí) `T7 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_robustez_visitas.EsquemaRevisionesTests.test_productos_aplicados_tiene_esquema_de_item --keepdb`
+  - PASA (exit 1, nuevo: —) `T7 [grep-0] grep -nE "bloquear=|\*, bloquear" apps/visitas/services.py`
+  - PASA (exit 0, nuevo: —) `T7 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas apps.sitios apps.api --keepdb`
+  - PASA (exit 0, nuevo: —) `T7 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 400 --subtarea T7`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 376.0 s
+- Veredicto: PASA
+
+## 2026-11-13 19:49 — tarea T10 de 2026-11-13-robustez-listados.md
+
+- HEAD verificado: 43e91eb
+- Contrato: modificado y aceptado (f2c0d5a, decisión del usuario)
+- Criterios:
+  - PASA (exit 0, nuevo: —) `T10 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py spectacular --validate --file "$TEMP/openapi-robustez.yaml" && diff -q --strip-trailing-cr "$TEMP/openapi-robustez.yaml" docs/api/openapi-v1.yaml`
+  - PASA (exit 0, nuevo: —) `T10 [cmd] ./venv/Scripts/python.exe -c "import yaml; d=yaml.safe_load(open('docs/api/openapi-v1.yaml', encoding='utf-8')); S=d['components']['schemas']; r=lambda x: S[x['\$ref'].split('/')[-1]] if '\$ref' in x else x; p=[r(s['properties']['productos_aplicados']) for s in S.values() if 'productos_aplicados' in s.get('properties', {})]; assert p and all(x.get('type') == 'array' and r(x['items']).get('type') == 'object' and r(x['items']).get('properties') for x in p), p"`
+  - PASA (exit 0, nuevo: —) `T10 [cmd] ./venv/Scripts/python.exe -c "import yaml; d=yaml.safe_load(open('docs/api/openapi-v1.yaml', encoding='utf-8')); c=[v for k, v in d['paths'].items() if k.endswith('/revisiones/')][0]['post']['requestBody']['content']['multipart/form-data']; assert c['encoding']['productos_aplicados']['contentType'] == 'application/json', c"`
+  - PASA (exit 0, nuevo: —) `T10 [grep-1] grep -n "Retry-After" docs/contrato-api.md`
+  - PASA (exit 0, nuevo: —) `T10 [grep-1] grep -n "plataforma" docs/contrato-api.md`
+  - PASA (exit 0, nuevo: —) `T10 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 500 --subtarea T10`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 2.5 s
+- Veredicto: PASA
+
+## 2026-11-13 19:50 — tarea T11,T9,T12 de 2026-11-13-robustez-listados.md
+
+- HEAD verificado: 0b3c364
+- Contrato: modificado y aceptado (f2c0d5a, decisión del usuario)
+- Criterios:
+  - PASA (exit 0, nuevo: —) `T11 [cmd] PYTHONIOENCODING=utf-8 py -3 .claude/hooks/pendientes.py --json | PYTHONIOENCODING=utf-8 py -3 -c "import json, sys; d = json.load(sys.stdin); sin = [a['id'] for a in d['abiertos'] if not a['etiquetas']]; av = [x for x in d['avisos'] if 'robustez-listados' in x]; print(av, sin); sys.exit(1 if av or sin else 0)"`
+  - PASA (exit 0, nuevo: —) `T11 [cmd] PYTHONIOENCODING=utf-8 py -3 .claude/hooks/pendientes.py --json | PYTHONIOENCODING=utf-8 py -3 -c "import json, sys; d = json.load(sys.stdin); ok = {'despliegue', 'expo', 'empresa', 'despues'}; mal = [a['id'] for a in d['abiertos'] if a['severidad'] == 'bloqueante' or (a['severidad'] == 'importante' and not ok & set(a['etiquetas']))]; print(mal); sys.exit(1 if mal else 0)"`
+  - PASA (exit 0, nuevo: —) `T11 [cmd] PYTHONIOENCODING=utf-8 py -3 .claude/hooks/pendientes.py --json | PYTHONIOENCODING=utf-8 py -3 -c "import json, sys; d = json.load(sys.stdin); ids = {a['id'] for a in d['abiertos']}; plan = 'P-robustez-panel-9 P-robustez-panel-10 P-diseno-panel-1 P-diseno-panel-2 P-diseno-panel-3 P-diseno-panel-4 P-flujo-sitio-2 P-flujo-sitio-5 P-flujo-sitio-6 P-flujo-sitio-12 P-flujo-sitio-14 P-catalogo-stock-2 P-catalogo-stock-3 P-catalogo-stock-4 P-catalogo-stock-6 P-multiempresa-6 P-multiempresa-20 P-multiempresa-28 P-multiempresa-30 P-multiempresa-38 P-multiempresa-63 P-multiempresa-68 P-multiempresa-72 P-multiempresa-73 P-multiempresa-74 P-multiempresa-75 P-multiempresa-81 P-multiempresa-85 P-multiempresa-86 P-api-movil-1 P-api-movil-2 P-api-movil-6 P-api-movil-11 P-contrato-app-9 P-cierre-puntos-15 P-puntos-control-19 P-saneamiento-5 P-ajustes-flujo-2 P-ajustes-flujo-3 P-ajustes-flujo-4 P-metodo-v2-25 P-metodo-v2-26'.split(); quedan = [i for i in plan if i in ids]; print(quedan); sys.exit(1 if quedan else 0)"`
+  - PASA (exit 0, nuevo: —) `T11 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 450 --subtarea T11`
+  - PASA (exit 0, nuevo: —) `T9 [cmd] git log --oneline plan/robustez-listados | grep -q "T7: integra robustez-listados-T7"`
+  - PASA (exit 0, nuevo: —) `T9 [cmd] git log --oneline plan/robustez-listados | grep -q "T8: integra robustez-listados-T8"`
+  - PASA (exit 0, nuevo: —) `T12 [cmd] git log --oneline plan/robustez-listados | grep -q "T10: integra robustez-listados-T10"`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 1.4 s
+- Veredicto: PASA
+
+## 2026-11-13 20:54 — todo 2026-11-13-robustez-listados.md
+
+- HEAD verificado: 21f539b
+- Contrato: modificado y aceptado (f2c0d5a, decisión del usuario)
+- Criterios:
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.panel.tests.test_listados_robustez.ListadosRobustezTests.test_orden_con_doble_guion_responde_200_en_todos --keepdb`
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.panel.tests.test_listados_robustez.ListadosRobustezTests.test_busqueda_con_nul_responde_200_en_todos --keepdb`
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.panel.tests.test_listados_robustez.ListadosRobustezTests.test_get_busqueda_descarta_nul --keepdb`
+  - PASA (exit 0, nuevo: —) `T1 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.panel --keepdb`
+  - PASA (exit 0, nuevo: —) `T1 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 150 --subtarea T1`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api.tests.test_plataforma_api.PlataformaApiTests.test_plataforma_no_obtiene_token --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api.tests.test_plataforma_api.PlataformaApiTests.test_plataforma_no_renueva_token --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api.tests.test_errores_robustez.ErroresRobustezTests.test_non_field_errors_anidado_conserva_ruta --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api.tests.test_errores_robustez.ErroresRobustezTests.test_all_de_django_va_a_detalle --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api.tests.test_errores_robustez.ErroresRobustezTests.test_429_del_balde_lleva_retry_after --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api.tests.test_errores_robustez.ErroresRobustezTests.test_no_encontrado_bajo_api_devuelve_json --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api.tests.test_esquema_robustez.EsquemaRobustezTests.test_sesion_sin_empresa_activa_se_rechaza --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api.tests.test_esquema_robustez.EsquemaRobustezTests.test_postproceso_agrega_401_y_429 --keepdb`
+  - PASA (exit 0, nuevo: —) `T2 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api apps.empresas --keepdb`
+  - PASA (exit 0, nuevo: —) `T2 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 400 --subtarea T2`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.clientes.tests.test_admin_errores.AdminErroresTests.test_padre_de_otra_empresa_da_error_de_formulario --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.clientes.tests.test_admin_errores.AdminErroresTests.test_slug_repetido_en_la_empresa_da_error_de_formulario --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.clientes.tests.test_admin_errores.AdminErroresTests.test_referencia_plataforma_de_solo_lectura_da_error_de_formulario --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.accounts.tests.test_admin_rol_plataforma.RolPlataformaAdminTests.test_plataforma_con_empresa_da_error_que_indica_la_salida --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_admin_logo.EmpresaAdminLogoTests.test_logo_del_admin_se_guarda_procesado --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.empresas.tests.test_admin_logo.EmpresaAdminLogoTests.test_logo_invalido_da_error_de_formulario --keepdb`
+  - PASA (exit 0, nuevo: —) `T3 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.clientes apps.accounts apps.empresas apps.sitios apps.visitas apps.servicios --keepdb`
+  - PASA (exit 0, nuevo: —) `T3 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 350 --subtarea T3`
+  - PASA (exit 0, nuevo: sí) `T4 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.servicios.tests.test_slug_concurrente.SlugConcurrenteTests.test_choque_de_slug_reintenta_con_sufijo --keepdb`
+  - PASA (exit 0, nuevo: sí) `T4 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.productos.tests.test_unidad_bloqueada.UnidadBloqueadaTests.test_modo_unidad_con_movimientos_da_error --keepdb`
+  - PASA (exit 0, nuevo: sí) `T4 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.productos.tests.test_unidad_bloqueada.UnidadBloqueadaTests.test_admin_unidades_de_solo_lectura_con_movimientos --keepdb`
+  - PASA (exit 0, nuevo: —) `T4 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.servicios apps.productos --keepdb`
+  - PASA (exit 0, nuevo: —) `T4 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 250 --subtarea T4`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_robustez_sitios.ProgramacionRobustezTests.test_servicio_desactivado_se_conserva_al_editar_la_fila --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_robustez_sitios.ProgramacionRobustezTests.test_punto_inactivo_no_se_programa --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_robustez_sitios.ProgramacionRobustezTests.test_no_se_asigna_otro_servicio_inactivo --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_robustez_sitios.GeocodificacionEmpresaTests.test_cache_de_una_empresa_no_responde_a_otra --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_robustez_sitios.ResolverRobustezTests.test_codigo_mal_formado_da_404_json --keepdb`
+  - PASA (exit 0, nuevo: —) `T5 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios apps.visitas --keepdb`
+  - PASA (exit 0, nuevo: —) `T5 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 350 --subtarea T5`
+  - PASA (exit 0, nuevo: —) `T6 [cmd] git log --oneline plan/robustez-listados | grep -q "T1: integra robustez-listados-T1"`
+  - PASA (exit 0, nuevo: —) `T6 [cmd] git log --oneline plan/robustez-listados | grep -q "T2: integra robustez-listados-T2"`
+  - PASA (exit 0, nuevo: —) `T6 [cmd] git log --oneline plan/robustez-listados | grep -q "T3: integra robustez-listados-T3"`
+  - PASA (exit 0, nuevo: —) `T6 [cmd] git log --oneline plan/robustez-listados | grep -q "T4: integra robustez-listados-T4"`
+  - PASA (exit 0, nuevo: —) `T6 [cmd] git log --oneline plan/robustez-listados | grep -q "T5: integra robustez-listados-T5"`
+  - PASA (exit 0, nuevo: sí) `T6 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test config.tests.test_robustez_listados.IntegracionRobustezTests.test_ruta_inexistente_bajo_api_da_404_json --keepdb`
+  - PASA (exit 0, nuevo: sí) `T6 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test config.tests.test_robustez_listados.IntegracionRobustezTests.test_esquema_con_sesion_de_plataforma_se_rechaza --keepdb`
+  - PASA (exit 0, nuevo: sí) `T6 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test config.tests.test_robustez_listados.IntegracionRobustezTests.test_esquema_con_sesion_de_empresa_inactiva_se_rechaza --keepdb`
+  - PASA (exit 0, nuevo: sí) `T6 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test config.tests.test_robustez_listados.IntegracionRobustezTests.test_esquema_con_sesion_de_empresa_activa_responde --keepdb`
+  - PASA (exit 0, nuevo: —) `T6 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test --keepdb`
+  - PASA (exit 0, nuevo: —) `T6 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 120 --subtarea T6`
+  - PASA (exit 0, nuevo: sí) `T7 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_robustez_visitas.CantidadNumericaTests.test_cantidad_como_numero_json_da_201_y_valor_exacto --keepdb`
+  - PASA (exit 0, nuevo: sí) `T7 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_robustez_visitas.CantidadNumericaTests.test_nan_se_rechaza --keepdb`
+  - PASA (exit 0, nuevo: sí) `T7 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_robustez_visitas.IncidenciaAsignacionTests.test_turno_ajeno_sin_el_punto_no_marca --keepdb`
+  - PASA (exit 0, nuevo: sí) `T7 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_robustez_visitas.IncidenciaAsignacionTests.test_turno_ajeno_con_el_punto_marca --keepdb`
+  - PASA (exit 0, nuevo: sí) `T7 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_robustez_visitas.ServicioDadoDeBajaTests.test_revision_con_servicio_dado_de_baja_da_400 --keepdb`
+  - PASA (exit 0, nuevo: sí) `T7 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_robustez_visitas.ResolverConsultasTests.test_resolver_precarga_campos_del_servicio --keepdb`
+  - PASA (exit 0, nuevo: sí) `T7 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_robustez_visitas.VisitaDestinoAjenaTests.test_visita_de_otro_empleado_no_es_destino --keepdb`
+  - PASA (exit 0, nuevo: sí) `T7 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_robustez_visitas.VisitaDestinoAjenaTests.test_visita_propia_en_otro_sitio_no_es_destino --keepdb`
+  - PASA (exit 0, nuevo: sí) `T7 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_robustez_visitas.EsquemaRevisionesTests.test_productos_aplicados_tiene_esquema_de_item --keepdb`
+  - PASA (exit 1, nuevo: —) `T7 [grep-0] grep -nE "bloquear=|\*, bloquear" apps/visitas/services.py`
+  - PASA (exit 0, nuevo: —) `T7 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas apps.sitios apps.api --keepdb`
+  - PASA (exit 0, nuevo: —) `T7 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 400 --subtarea T7`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_robustez.MapaPanelLateralTests.test_mapa_del_panel_lateral_sin_teclado --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_robustez.FiltrosTurnosTests.test_listado_de_turnos_usa_la_fila_filtros --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_robustez.NuevoTurnoTarjetaTests.test_sitio_dentro_de_la_tarjeta --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_robustez.AdminSitioConItemsTests.test_sitio_de_solo_lectura_en_pendiente_con_items --keepdb`
+  - PASA (exit 0, nuevo: —) `T8 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas --keepdb`
+  - PASA (exit 0, nuevo: —) `T8 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 250 --subtarea T8`
+  - PASA (exit 0, nuevo: —) `T9 [cmd] git log --oneline plan/robustez-listados | grep -q "T7: integra robustez-listados-T7"`
+  - PASA (exit 0, nuevo: —) `T9 [cmd] git log --oneline plan/robustez-listados | grep -q "T8: integra robustez-listados-T8"`
+  - PASA (exit 0, nuevo: —) `T10 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py spectacular --validate --file "$TEMP/openapi-robustez.yaml" && diff -q --strip-trailing-cr "$TEMP/openapi-robustez.yaml" docs/api/openapi-v1.yaml`
+  - PASA (exit 0, nuevo: —) `T10 [cmd] ./venv/Scripts/python.exe -c "import yaml; d=yaml.safe_load(open('docs/api/openapi-v1.yaml', encoding='utf-8')); S=d['components']['schemas']; r=lambda x: S[x['\$ref'].split('/')[-1]] if '\$ref' in x else x; p=[r(s['properties']['productos_aplicados']) for s in S.values() if 'productos_aplicados' in s.get('properties', {})]; assert p and all(x.get('type') == 'array' and r(x['items']).get('type') == 'object' and r(x['items']).get('properties') for x in p), p"`
+  - PASA (exit 0, nuevo: —) `T10 [cmd] ./venv/Scripts/python.exe -c "import yaml; d=yaml.safe_load(open('docs/api/openapi-v1.yaml', encoding='utf-8')); c=[v for k, v in d['paths'].items() if k.endswith('/revisiones/')][0]['post']['requestBody']['content']['multipart/form-data']; assert c['encoding']['productos_aplicados']['contentType'] == 'application/json', c"`
+  - PASA (exit 0, nuevo: —) `T10 [grep-1] grep -n "Retry-After" docs/contrato-api.md`
+  - PASA (exit 0, nuevo: —) `T10 [grep-1] grep -n "plataforma" docs/contrato-api.md`
+  - PASA (exit 0, nuevo: —) `T10 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 500 --subtarea T10`
+  - PASA (exit 0, nuevo: —) `T11 [cmd] PYTHONIOENCODING=utf-8 py -3 .claude/hooks/pendientes.py --json | PYTHONIOENCODING=utf-8 py -3 -c "import json, sys; d = json.load(sys.stdin); sin = [a['id'] for a in d['abiertos'] if not a['etiquetas']]; av = [x for x in d['avisos'] if 'robustez-listados' in x]; print(av, sin); sys.exit(1 if av or sin else 0)"`
+  - PASA (exit 0, nuevo: —) `T11 [cmd] PYTHONIOENCODING=utf-8 py -3 .claude/hooks/pendientes.py --json | PYTHONIOENCODING=utf-8 py -3 -c "import json, sys; d = json.load(sys.stdin); ok = {'despliegue', 'expo', 'empresa', 'despues'}; mal = [a['id'] for a in d['abiertos'] if a['severidad'] == 'bloqueante' or (a['severidad'] == 'importante' and not ok & set(a['etiquetas']))]; print(mal); sys.exit(1 if mal else 0)"`
+  - PASA (exit 0, nuevo: —) `T11 [cmd] PYTHONIOENCODING=utf-8 py -3 .claude/hooks/pendientes.py --json | PYTHONIOENCODING=utf-8 py -3 -c "import json, sys; d = json.load(sys.stdin); ids = {a['id'] for a in d['abiertos']}; plan = 'P-robustez-panel-9 P-robustez-panel-10 P-diseno-panel-1 P-diseno-panel-2 P-diseno-panel-3 P-diseno-panel-4 P-flujo-sitio-2 P-flujo-sitio-5 P-flujo-sitio-6 P-flujo-sitio-12 P-flujo-sitio-14 P-catalogo-stock-2 P-catalogo-stock-3 P-catalogo-stock-4 P-catalogo-stock-6 P-multiempresa-6 P-multiempresa-20 P-multiempresa-28 P-multiempresa-30 P-multiempresa-38 P-multiempresa-63 P-multiempresa-68 P-multiempresa-72 P-multiempresa-73 P-multiempresa-74 P-multiempresa-75 P-multiempresa-81 P-multiempresa-85 P-multiempresa-86 P-api-movil-1 P-api-movil-2 P-api-movil-6 P-api-movil-11 P-contrato-app-9 P-cierre-puntos-15 P-puntos-control-19 P-saneamiento-5 P-ajustes-flujo-2 P-ajustes-flujo-3 P-ajustes-flujo-4 P-metodo-v2-25 P-metodo-v2-26'.split(); quedan = [i for i in plan if i in ids]; print(quedan); sys.exit(1 if quedan else 0)"`
+  - PASA (exit 0, nuevo: —) `T11 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 450 --subtarea T11`
+  - PASA (exit 0, nuevo: —) `T12 [cmd] git log --oneline plan/robustez-listados | grep -q "T10: integra robustez-listados-T10"`
+  - PASA (exit 0, nuevo: —) `cierre global [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py check`
+  - PASA (exit 0, nuevo: —) `cierre global [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py makemigrations --check --dry-run`
+  - PASA (exit 0, nuevo: —) `cierre global [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test --keepdb`
+  - PASA (exit 0, nuevo: —) `cierre global [cmd] ./venv/Scripts/python.exe -m ruff check .`
+  - PASA (exit 0, nuevo: —) `cierre global [cmd] py -3 -m pytest .claude/hooks -q`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; modificados y sin seguimiento; se excluyen docs/planes, estado, bitácora, decisiones y metodo)`
+- duración: 2788.5 s
+- Veredicto: PASA
+

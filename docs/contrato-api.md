@@ -1,6 +1,6 @@
 # Contrato de la API v1
 
-Actualizado: 2026-11-11
+Actualizado: 2026-11-13
 
 Resumen legible para la app móvil de Detach. La fuente completa (cuerpos, campos,
 códigos de error) es `docs/api/openapi-v1.yaml`; este archivo agrega, por ruta, el
@@ -23,11 +23,15 @@ límite de pedidos (throttle) y el rol que la puede usar. Todas las rutas cuelga
   (unidad en que se lleva el stock), `modo_unidad` (`unica` o `equivalentes`) y
   `unidades_permitidas` (las unidades en que se puede declarar una cantidad: solo la base
   en `unica`; todas las de su magnitud en `equivalentes`).
-- **Revisiones** (`POST /api/v1/revisiones/`, multipart): `productos_aplicados` es texto
-  JSON con una lista; cada ítem lleva `producto`, `lote`, `dosis`, `unidad_dosis`,
-  `cantidad` y `unidad` (una de las `unidades_permitidas`). El servidor convierte a la
+- **Revisiones** (`POST /api/v1/revisiones/`, multipart): `productos_aplicados` es una parte
+  multipart con JSON (`encoding` `application/json` en el esquema): un arreglo de objetos;
+  cada ítem lleva `producto`, `lote`, `dosis`, `unidad_dosis`,
+  `cantidad` y `unidad` (una de las `unidades_permitidas`). `cantidad` y `dosis` numéricas
+  se guardan con su valor exacto (decimal, sin pasar por coma flotante); `NaN`, `Infinity`
+  y `-Infinity` se rechazan con 400. El servidor convierte a la
   unidad base y descuenta el stock en la misma transacción. Los errores de validación
   van anidados por ítem: `productos_aplicados.<i>.<campo>`.
+  Un servicio dado de baja da 400, igual que un punto sin servicio.
 - **Turnos por sitio**: una visita es un turno en un sitio con `items[]` (punto y servicio).
   `POST /api/v1/visitas/abrir/` recibe solo `qr_codigo` (más coordenadas opcionales): abre
   el turno pendiente más antiguo del empleado en el sitio de ese punto o crea una visita
@@ -48,21 +52,37 @@ límite de pedidos (throttle) y el rol que la puede usar. Todas las rutas cuelga
   punto) y la respuesta lo devuelve en `servicio{id, nombre}` junto con `fuera_de_turno`.
   Si no hay ítem y el punto no tiene servicio, responde 400 con
   `campos.qr_codigo = "El punto no tiene servicio asignado."`: un punto creado en campo
-  nace sin servicio hasta que el administrador le asigne uno.
+  nace sin servicio hasta que el administrador le asigne uno. Ese punto llega al resolver
+  con `servicio` nulo y su revisión fuera de turno da 400 hasta que lo tenga. Un punto con
+  plano pero sin `x`/`y` no aparece en `plano.puntos`, y un cliente inactivo da 404.
 - **Throttle**: `-` es sin límite propio. Los cupos salen de `DEFAULT_THROTTLE_RATES`
   (`token` 10/min, `qr` 30/min, `crear_visita` 120/hora, `alta_campo` 300/hora) y de
-  la renovación de tokens (30/min). Al excederlos la API responde 429.
+  la renovación de tokens (30/min). Al excederlos la API responde 429, siempre con la
+  cabecera `Retry-After` (segundos de espera), también la del balde de fallos de login.
+- **Usuario `plataforma`**: en `auth/token/` y `auth/token/refresh/` recibe 401 con el mismo
+  `detalle` que una credencial inválida (no se distingue). `auth/token/` responde 400 si
+  falta el usuario o la contraseña. `plataforma` no obtiene ni renueva tokens, así que no
+  usa la API.
+- **Esquema y documentación** (`schema/`, `docs/`): exigen token o sesión de una empresa
+  activa; `plataforma` no entra. Sin credenciales, 401.
+- **Errores**: todo error es `{"detalle", "campos"}`. Un `__all__` de Django va a `detalle`.
+  Un `non_field_errors` de primer nivel va a `detalle`; uno anidado va a `campos` bajo su
+  ruta (`productos_aplicados.0`).
+- **404 JSON**: una ruta inexistente bajo `/api/` responde 404 con
+  `{"detalle": "No encontrado.", "campos": {}}`. Un código de QR mal formado en
+  `qr/<codigo>/resolver/` responde el mismo 404 que un QR inexistente:
+  `{"detalle": "El código QR no corresponde a un sitio activo.", "campos": {}}`.
 
 | Método | Ruta | Auth | Throttle | Respuesta |
 |---|---|---|---|---|
 | GET | `/api/v1/` | JWT | - | 200 con el rol del usuario |
-| POST | `/api/v1/auth/token/` | Pública | token, 10/min por IP | 200 con `access` y `refresh`; 401, 415, 429 |
+| POST | `/api/v1/auth/token/` | Pública | token, 10/min por IP | 200 con `access` y `refresh`; 400, 401, 415, 429 |
 | POST | `/api/v1/auth/token/refresh/` | Pública | renovación, 30/min por IP | 200 con un `access` nuevo; 401, 415, 429 |
-| GET | `/api/v1/schema/` | JWT | - | 200 con el esquema OpenAPI |
-| GET | `/api/v1/docs/` | JWT | - | 200 con la documentación interactiva |
-| POST | `/api/v1/qr/<codigo>/resolver/` | Empleado o administrador | qr, 30/min | 200 con el punto, su servicio y estado, y mis visitas |
+| GET | `/api/v1/schema/` | JWT de empresa activa | - | 200 con el esquema OpenAPI; 401 |
+| GET | `/api/v1/docs/` | JWT o sesión de empresa activa | - | 200 con la documentación interactiva; 401 |
+| POST | `/api/v1/qr/<codigo>/resolver/` | Empleado o administrador | qr, 30/min | 200 con el punto, su servicio y estado, y mis visitas; 404 |
 | GET | `/api/v1/planos/<pk>/imagen/` | Empleado o administrador | - | 200 con la imagen; 404 |
-| POST | `/api/v1/sitios/` | Administrador | alta_campo, 300/hora | 201 con el sitio; 400, 403, 404 |
+| POST | `/api/v1/sitios/` | Administrador | alta_campo, 300/hora | 201 con el sitio; 400, 403 |
 | POST | `/api/v1/sitios/<pk>/puntos/` | Administrador | alta_campo, 300/hora | 201 con el punto; 400, 403, 404 |
 | POST | `/api/v1/puntos/<pk>/ubicacion/` | Administrador | alta_campo, 300/hora | 200 con el punto; 400, 403, 404 |
 | GET | `/api/v1/me/puntos/` | Empleado o administrador | - | 200 con los puntos del usuario |

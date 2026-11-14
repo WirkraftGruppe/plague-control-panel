@@ -152,14 +152,16 @@ def _candidatos(datos):
     return resultado
 
 
-def buscar(texto):
+def buscar(texto, empresa_id):
     """Hasta 5 candidatos ``{nombre, lat, lng}`` para el texto de dirección.
 
     Lanza ``TextoInvalido`` si el texto no sirve y ``GeocodificacionError`` si no se
     pudo consultar (sin red, error, o más de una consulta por segundo).
+    La caché es por empresa: el texto de una no responde a otra.
     """
     normalizado = normalizar(texto)
-    clave = "sitios:geocodificacion:" + hashlib.sha256(normalizado.encode()).hexdigest()
+    huella = hashlib.sha256(normalizado.encode()).hexdigest()
+    clave = f"sitios:geocodificacion:{empresa_id}:{huella}"
     guardado = cache.get(clave)
     if guardado is not None:
         return guardado

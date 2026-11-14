@@ -3,7 +3,7 @@
 from django import forms
 from django.views.generic.edit import ModelFormMixin
 
-from apps.empresas.admin import AdminTodosMixin
+from apps.empresas.admin import AdminFormularioMixin, AdminTodosMixin
 
 
 class FormularioDeEmpresa(forms.ModelForm):
@@ -44,7 +44,7 @@ class VistaDeEmpresaMixin:
         return kwargs
 
 
-class AdminRaizMixin(AdminTodosMixin):
+class AdminRaizMixin(AdminFormularioMixin, AdminTodosMixin):
     """Admin de un modelo raíz: pide la empresa al crear y no deja cambiarla."""
 
     def get_readonly_fields(self, request, obj=None):
@@ -58,7 +58,7 @@ class AdminRaizMixin(AdminTodosMixin):
         return formulario
 
 
-class AdminHijoMixin(AdminTodosMixin):
+class AdminHijoMixin(AdminFormularioMixin, AdminTodosMixin):
     """Admin de un modelo hijo: `save()` copia la empresa del padre."""
 
     def get_exclude(self, request, obj=None):

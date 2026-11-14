@@ -9,6 +9,10 @@
 .nuevo-turno .tabla { table-layout: fixed; width: 100%; }
 .nuevo-turno .tabla th:nth-child(1) { width: 68px; }
 .nuevo-turno .tabla th:nth-child(3) { width: 108px; }
-.nuevo-turno .tabla th:nth-child(4) { width: 36%; }
-.nuevo-turno .tabla td { overflow-wrap: anywhere; }
-.nuevo-turno .tabla td select { width: 100%; max-width: 100%; min-width: 0; }
+.nuevo-turno .tabla th:nth-child(4) { width: 42%; }
+.nuevo-turno .tabla th:nth-child(2) { width: 24%; }
+.nuevo-turno .tabla td { overflow-wrap: break-word; word-break: normal; vertical-align: middle; }
+.nuevo-turno .tabla td:nth-child(3) { white-space: normal; }
+.nuevo-turno .tabla td:nth-child(3) .etiqueta-estado, .nuevo-turno .tabla td:nth-child(3) > * { display: inline-block; margin: 4px 0; max-width: 100%; }
+.nuevo-turno .tabla td:nth-child(4) { padding-left: 12px; }
+.nuevo-turno .tabla td select { width: 100%; max-width: 100%; min-width: 0; text-overflow: clip; }

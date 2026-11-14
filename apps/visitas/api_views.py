@@ -8,7 +8,12 @@ from django.core.exceptions import (
 from django.db.models import F
 from django.http import FileResponse
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
+from drf_spectacular.utils import (
+    OpenApiParameter,
+    OpenApiRequest,
+    OpenApiResponse,
+    extend_schema,
+)
 from rest_framework import generics, serializers, status
 from rest_framework.exceptions import APIException, NotFound, PermissionDenied
 from rest_framework.negotiation import BaseContentNegotiation
@@ -151,15 +156,21 @@ class CrearRevisionView(APIView):
             "administrador que escanea un punto sin coordenadas, con precisión de a lo "
             "sumo 50 m, las fija."
         ),
-        request={"multipart/form-data": CrearRevisionSerializer},
+        request={
+            "multipart/form-data": OpenApiRequest(
+                CrearRevisionSerializer,
+                # Viaja como una parte JSON, no como campos sueltos.
+                encoding={"productos_aplicados": {"contentType": "application/json"}},
+            )
+        },
         responses={
             201: RevisionSerializer,
             400: OpenApiResponse(
                 description=(
                     "Validación: QR que no es de un punto del sitio, visita no "
-                    "abierta, coordenadas faltantes, punto sin servicio, planilla "
-                    "inválida o revisión con más horas de atraso que el máximo "
-                    "(168 por defecto)."
+                    "abierta, coordenadas faltantes, punto sin servicio o con el "
+                    "servicio dado de baja, planilla inválida o revisión con más "
+                    "horas de atraso que el máximo (168 por defecto)."
                 )
             ),
             404: OpenApiResponse(

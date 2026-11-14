@@ -2,6 +2,7 @@
 
 import logging
 
+from django.core.exceptions import NON_FIELD_ERRORS
 from django.core.exceptions import ValidationError as ErrorDeDjango
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
@@ -23,12 +24,16 @@ def _como_lista(valor):
 def _aplanar(datos, ruta, campos, generales):
     """Aplana errores anidados en `campos` con claves con punto (`a.0.b`).
 
-    Los `non_field_errors` van a `generales` (el `detalle`).
+    Los `non_field_errors` de primer nivel van a `generales` (el `detalle`); los
+    anidados, a `campos` bajo su ruta (`productos_aplicados.0`).
     """
     if isinstance(datos, dict):
         for clave, valor in datos.items():
             if clave == "non_field_errors":
-                generales.extend(_como_lista(valor))
+                if ruta:
+                    campos.setdefault(ruta, []).extend(_como_lista(valor))
+                else:
+                    generales.extend(_como_lista(valor))
             else:
                 _aplanar(
                     valor, f"{ruta}.{clave}" if ruta else str(clave), campos, generales
@@ -57,9 +62,13 @@ def _detalle_legible(exc, respuesta):
 def manejar_excepcion(exc, contexto):
     """Respuesta uniforme; las excepciones no previstas no exponen su texto."""
     if isinstance(exc, ErrorDeDjango):
-        exc = ValidationError(
-            exc.message_dict if hasattr(exc, "error_dict") else exc.messages
-        )
+        if hasattr(exc, "error_dict"):
+            errores = dict(exc.message_dict)
+            if NON_FIELD_ERRORS in errores:
+                errores["non_field_errors"] = errores.pop(NON_FIELD_ERRORS)
+        else:
+            errores = exc.messages
+        exc = ValidationError(errores)
     respuesta = exception_handler(exc, contexto)
     if respuesta is None:
         logger.exception("Excepción no controlada en la API", exc_info=exc)
