@@ -168,6 +168,40 @@ PERMITIDOS = [
 ]
 
 
+# `cd` a un worktree deja el cwd del principal dentro de él (docs/metodo/incidentes.md).
+CD_A_WORKTREES = [
+    "cd worktrees/x-T1",
+    "cd worktrees",
+    "cd ./worktrees/x-T1/apps",
+    "cd 'worktrees\\x-T1'",
+    "cd -P worktrees/x-T1",
+    "cd \"worktrees/x T1\"",
+    "cd /c/Users/u/Desktop/WEB/plague-control-panel/worktrees/acelerar-tests-T1",
+    "cd C:/Users/u/Desktop/WEB/plague-control-panel/worktrees/x-T1",
+    "cd worktrees/x-T1 && py -3 .claude/hooks/verificar.py tarea docs/planes/p.md T1",
+    "( cd worktrees/x-T1 && py -3 .claude/hooks/verificar.py tarea docs/planes/p.md T1 )",
+    "git status; cd worktrees/x-T1",
+    "pushd worktrees/x-T1",
+    "pushd \"C:\\Users\\u\\plague-control-panel\\worktrees\\x-T1\"",
+    "bash -c 'cd worktrees/x-T1 && ls'",
+    "env FOO=1 cd worktrees/x-T1",
+]
+
+CD_PERMITIDOS = [
+    "cd /c/Users/u/Desktop/WEB/plague-control-panel",
+    "cd docs && ls",
+    "cd",
+    "cd ..",
+    "cd mis-worktrees-viejos",
+    "cd docs/worktrees-notas",
+    "pushd docs",
+    "git -C worktrees/x-T1 status --short",
+    "ls worktrees/x-T1",
+    "py -3 .claude/hooks/verificar.py --raiz worktrees/x-T1 tarea docs/planes/p.md T1",
+    "bash .claude/hooks/worktree-integrar.sh x T1 plan/x apps/a.py",
+]
+
+
 class TestGuardiaBash(unittest.TestCase):
     def test_bloquea_lo_que_queda_en_manos_del_usuario(self):
         for comando in BLOQUEADOS:
@@ -193,6 +227,28 @@ class TestGuardiaBash(unittest.TestCase):
         for entrada in ("", "no es json", "[]", json.dumps({"tool_input": {}}), json.dumps({"tool_input": {"command": 3}})):
             with self.subTest(entrada=entrada):
                 self.assertEqual(guardia_bash.main(entrada, io.StringIO()), 0)
+
+    def test_bloquea_cd_y_pushd_hacia_worktrees(self):
+        for comando in CD_A_WORKTREES:
+            with self.subTest(comando=comando):
+                motivo = guardia_bash.revisar(comando)
+                self.assertIsNotNone(motivo)
+                self.assertIn("git -C", motivo)
+
+    def test_deja_pasar_cd_fuera_de_worktrees(self):
+        for comando in CD_PERMITIDOS:
+            with self.subTest(comando=comando):
+                self.assertIsNone(guardia_bash.revisar(comando))
+
+    def test_main_explica_la_alternativa_al_cd_sin_derivar_al_usuario(self):
+        err = io.StringIO()
+        entrada = json.dumps({"tool_name": "Bash", "tool_input": {"command": "cd worktrees/x-T1 && git status"}})
+        self.assertEqual(guardia_bash.main(entrada, err), 2)
+        mensaje = err.getvalue()
+        self.assertIn("git -C", mensaje)
+        self.assertIn("rutas absolutas", mensaje)
+        self.assertIn("--raiz", mensaje)
+        self.assertNotIn("en manos del usuario", mensaje)
 
     def test_comillas_sin_cerrar_caen_en_la_busqueda_por_patron(self):
         self.assertIsNotNone(guardia_bash.revisar("git stash 'sin cerrar"))
