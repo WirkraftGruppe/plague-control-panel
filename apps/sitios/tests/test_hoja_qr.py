@@ -44,6 +44,13 @@ class HojaQRTests(DatosDeDosEmpresas, TestCase):
         self.assertEqual(self.patio.qr_impreso_el, datetime.date(2026, 1, 1))
         self.assertIsNone(self.punto_a.qr_impreso_el)
 
+    def test_hoja_respeta_la_csp(self):
+        respuesta = self.client.get(self.url)
+        nonce = respuesta.wsgi_request.csp_nonce
+        self.assertContains(respuesta, f'<style nonce="{nonce}">')
+        self.assertNotContains(respuesta, "onclick=")
+        self.assertNotContains(respuesta, 'loading="lazy"')
+
     def test_sitio_de_otra_empresa_da_404(self):
         url = reverse("panel:sitios:hoja_qr", args=[self.sitio_b.pk])
         self.assertEqual(self.client.get(url).status_code, 404)

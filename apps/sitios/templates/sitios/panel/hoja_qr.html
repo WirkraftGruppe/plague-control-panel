@@ -1,7 +1,7 @@
 {% extends "panel/base.html" %}
 {% block title %}Hoja de QR · {{ sitio.nombre }}{% endblock %}
 {% block panel_contenido %}
-<style>
+<style nonce="{{ request.csp_nonce }}">
   .hoja-qr { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem; }
   .hoja-qr figure { margin: 0; text-align: center; break-inside: avoid; border: 1px dashed #999; padding: .5rem; }
   .hoja-qr img { width: 100%; height: auto; }
@@ -22,8 +22,8 @@
     <label><input type="checkbox" name="sin_imprimir" value="1"{% if sin_imprimir %} checked{% endif %}> Solo sin imprimir</label>
     <button class="boton boton-secundario" type="submit">Filtrar</button>
   </form>
+  <p>Para imprimir la hoja, use la opción Imprimir del navegador (Ctrl+P).</p>
   <p>
-    <button class="boton boton-primario" type="button" onclick="window.print()">Imprimir</button>
     <a class="boton boton-secundario" href="{% url 'panel:sitios:ficha' sitio.pk %}?pestana=datos">Volver al sitio</a>
   </p>
   <form method="post" action="{% url 'panel:sitios:hoja_qr' sitio.pk %}{% if querystring %}?{{ querystring }}{% endif %}">
@@ -35,7 +35,7 @@
 <div class="hoja-qr">
   {% for punto in puntos %}
   <figure>
-    <img src="{% url 'panel:sitios:punto_qr_png' punto.pk %}?inline=1" alt="QR de {{ punto.nombre }}" loading="lazy">
+    <img src="{% url 'panel:sitios:punto_qr_png' punto.pk %}?inline=1" alt="QR de {{ punto.nombre }}">
     <figcaption>{{ punto.nombre }}{% if punto.sector %} · {{ punto.sector }}{% endif %}</figcaption>
   </figure>
   {% endfor %}
