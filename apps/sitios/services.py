@@ -219,6 +219,40 @@ def crear_punto_en_campo(
     return punto
 
 
+def crear_puntos_numerados(
+    sitio,
+    *,
+    cantidad,
+    prefijo,
+    numero_inicial,
+    sector="",
+    servicio=None,
+    frecuencia_dias=None,
+    proximo_vencimiento=None,
+):
+    """Crea ``"<prefijo> <n>"`` para ``cantidad`` números desde ``numero_inicial``.
+
+    Un punto por ``save()``, a continuación del último orden del sitio, todo o nada.
+    """
+    _exigir_activo(sitio)
+    with transaction.atomic():
+        ultimo = sitio.puntos.order_by("-orden").values_list("orden", flat=True).first()
+        puntos = []
+        for posicion in range(cantidad):
+            punto = PuntoControl(
+                sitio=sitio,
+                nombre=f"{prefijo} {numero_inicial + posicion}",
+                sector=sector,
+                orden=(ultimo or 0) + posicion + 1,
+                servicio=servicio,
+                frecuencia_dias=frecuencia_dias,
+                proximo_vencimiento=proximo_vencimiento,
+            )
+            punto.save()
+            puntos.append(punto)
+    return puntos
+
+
 def fijar_ubicacion_en_campo(*, administrador, punto, latitud, longitud, precision_m):
     """Fija lat/lng del punto desde el GPS de un administrador."""
     _exigir_precision(precision_m)

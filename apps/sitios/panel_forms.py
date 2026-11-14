@@ -97,6 +97,32 @@ class PuntoAltaForm(PuntoForm):
         fields = [c for c in PuntoForm.Meta.fields if c not in ("latitud", "longitud")]
 
 
+class PuntosAltaMultipleForm(forms.Form):
+    """Alta de varios puntos numerados de una vez ("Cebadero 1" a "Cebadero 12")."""
+
+    cantidad = forms.IntegerField(label="Cantidad", min_value=1, max_value=100)
+    prefijo = forms.CharField(label="Prefijo del nombre", max_length=90)
+    numero_inicial = forms.IntegerField(label="Número inicial", min_value=0, initial=1)
+    sector = forms.CharField(label="Sector", max_length=100, required=False)
+    servicio = forms.ModelChoiceField(
+        TipoServicio.objects.none(), label="Servicio", required=False
+    )
+    frecuencia_dias = forms.IntegerField(
+        label="Frecuencia (días)", min_value=1, max_value=3650, required=False
+    )
+    proximo_vencimiento = forms.DateField(
+        label="Próximo vencimiento",
+        required=False,
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+    )
+
+    def __init__(self, *args, empresa, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["servicio"].queryset = TipoServicio.objects.de_empresa(
+            empresa
+        ).filter(activo=True)
+
+
 def _en_rango(valor, limite, nombre):
     if valor is not None and abs(valor) > limite:
         raise forms.ValidationError(f"{nombre} debe estar entre -{limite} y {limite}.")

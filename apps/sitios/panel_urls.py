@@ -13,6 +13,12 @@ urlpatterns = [
     path("<int:pk>/", vistas.SitioFicha.as_view(), name="ficha"),
     path("<int:pk>/editar/", vistas.SitioEdicion.as_view(), name="editar"),
     path("<int:pk>/puntos/nuevo/", vistas.PuntoAlta.as_view(), name="punto_alta"),
+    path(
+        "<int:pk>/puntos/nuevos/",
+        vistas.PuntosAltaMultiple.as_view(),
+        name="puntos_alta_multiple",
+    ),
+    path("<int:pk>/qr/", vistas.HojaQR.as_view(), name="hoja_qr"),
     path("<int:pk>/planos/nuevo/", vistas.PlanoAlta.as_view(), name="plano_alta"),
     path("planos/<int:pk>/imagen/", vistas.PlanoImagen.as_view(), name="plano_imagen"),
     path("puntos/<int:pk>/editar/", vistas.PuntoEdicion.as_view(), name="punto_editar"),
