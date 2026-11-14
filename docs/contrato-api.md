@@ -43,8 +43,8 @@ límite de pedidos (throttle) y el rol que la puede usar. Todas las rutas cuelga
   estación que no se pudo revisar en una visita abierta propia. Lleva `punto` (id de un punto
   activo del sitio de la visita), `motivo` (`falta_estacion`, `codigo_ilegible`, `sin_acceso`
   u `otro`), `cliente_uuid` (obligatorio) y, opcionales, `detalle`, `latitud`, `longitud`,
-  `precision_m` y una `foto` (hasta 8 MB). Responde 201 con `{id, visita, punto{id, nombre,
-  sector}, motivo, detalle, creado}`, sin coordenadas ni foto. No es una revisión: no mueve
+  `precision_m` y una `foto` (hasta 8 MB). Responde 201 con `{id, visita, punto{id, nombre},
+  motivo, detalle, creado}`, sin coordenadas ni foto. No es una revisión: no mueve
   el vencimiento del punto ni habilita el cierre de la visita. Un punto por visita: un segundo
   reporte del mismo punto, un punto de otro sitio o inactivo dan 400 en `campos.punto`; una
   visita propia que no está abierta, 400 "La visita no está abierta."; una visita ajena, de
