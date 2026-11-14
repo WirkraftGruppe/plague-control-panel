@@ -265,16 +265,28 @@ def ejecutar_criterio(criterio: vp.Criterio, raiz: Path, bash: str, plan: Path |
     return {"comando": etiqueta, "pasa": resultado.pasa, "exit": codigo, "nuevo": nuevo, "salida": resultado.salida}
 
 
-def criterios_de_texto(texto: str, nombre: str) -> list[vp.Criterio]:
-    """Criterios de cierre global del texto de `cierre_global.json` (lista de comandos `[cmd]`)."""
+def elementos_de_texto(texto: str, nombre: str) -> list[tuple[str, tuple[str, ...]]]:
+    """(comando, prefijos `si_toca`) de cada elemento de `comandos`: una cadena o `{"cmd", "si_toca"}`."""
     try:
         datos = json.loads(texto)
     except ValueError as error:
         raise UsoInvalido(f"no se pudo leer {nombre}: {error}") from error
     comandos = datos.get("comandos") if isinstance(datos, dict) else datos
-    if not isinstance(comandos, list) or not all(isinstance(c, str) for c in comandos):
-        raise UsoInvalido(f"{nombre} debe ser una lista de comandos o un objeto con 'comandos'")
-    return [vp.Criterio("cierre global", "cmd", comando) for comando in comandos]
+    elementos: list[tuple[str, tuple[str, ...]]] = []
+    for c in comandos if isinstance(comandos, list) else [None]:
+        if isinstance(c, str):
+            elementos.append((c, ()))
+        elif isinstance(c, dict) and isinstance(c.get("cmd"), str) and isinstance(c.get("si_toca", []), list) \
+                and all(isinstance(p, str) for p in c.get("si_toca", [])):
+            elementos.append((c["cmd"], tuple(c.get("si_toca", []))))
+        else:
+            raise UsoInvalido(f"{nombre} debe ser una lista de comandos o un objeto con 'comandos'")
+    return elementos
+
+
+def criterios_de_texto(texto: str, nombre: str) -> list[vp.Criterio]:
+    """Criterios de cierre global del texto de `cierre_global.json` (lista de comandos `[cmd]`)."""
+    return [vp.Criterio("cierre global", "cmd", comando) for comando, _ in elementos_de_texto(texto, nombre)]
 
 
 def criterios_de_cierre(ruta_json: Path) -> list[vp.Criterio]:
@@ -297,6 +309,28 @@ def criterios_de_cierre_head(raiz: Path) -> list[vp.Criterio]:
 def comandos_de_cierre(raiz: Path, cierre_json: Path | None) -> list[vp.Criterio]:
     """Cierre global: el JSON del HEAD, o `cierre_json` si el llamador (un test) pasa uno explícito."""
     return criterios_de_cierre(cierre_json) if cierre_json is not None else criterios_de_cierre_head(raiz)
+
+
+def condiciones_de_cierre(raiz: Path, cierre_json: Path | None) -> dict[str, tuple[str, ...]]:
+    """Prefijos `si_toca` por comando del mismo cierre que `comandos_de_cierre` (solo los que lo declaran)."""
+    if cierre_json is not None:
+        try:
+            texto, nombre = cierre_json.read_text(encoding="utf-8"), cierre_json.name
+        except OSError as error:
+            raise UsoInvalido(f"no se pudo leer {cierre_json.name}: {error}") from error
+    else:
+        texto, nombre = leer_de_head(raiz, RUTA_CIERRE_JSON), f"HEAD:{RUTA_CIERRE_JSON}"
+    return {c: p for c, p in elementos_de_texto(texto or "[]", nombre) if p}
+
+
+def archivos_cambiados(raiz: Path, base: str | None, modificados: list[tuple[str, str]] | None) -> list[str] | None:
+    """Archivos de `base..HEAD` más los modificados que no son de proceso; None si no hay base o git no responde."""
+    if base is None or modificados is None:
+        return None
+    proceso = recibo._git(raiz, "diff", "--name-only", f"{base}..HEAD")
+    if proceso is None or proceso.returncode != 0:
+        return None
+    return [a for a in proceso.stdout.splitlines() if a.strip()] + [r for _, r in modificados if destino(r, "todo", set(), []) == "falla"]
 
 
 # ---------------------------------------------------------------------------
@@ -481,6 +515,8 @@ def emitir_recibo(ruta: Path | None, seccion: dict) -> None:
         temporal = Path(carpeta) / "seccion.md"
         recibo.escribir_recibo(temporal, seccion)
         texto = temporal.read_bytes().decode("utf-8")
+    for comando, prefijos in seccion.get("omitidos", []):
+        texto = texto.replace("\n- duración:", f"\n- Omitido (no toca {', '.join(prefijos)}): `{comando}`\n- duración:", 1)
     fuera = [r for c in seccion.get("criterios", []) for r in c.get("fuera", [])]
     if fuera:
         texto = texto.replace("\n- duración:", f"\n- Fuera de alcance (informativo): {'; '.join(fuera)}\n- duración:", 1)
@@ -557,8 +593,19 @@ def correr_plan(modo: str, raiz: Path, valor_plan: str, pedidas: list[int], ruta
     base_registro, motivo_base, base = base_del_plan(raiz, disco, slug)
 
     seleccion = [c for n in pedidas for c in datos.criterios[n]]
+    omitidos: list[tuple[str, tuple[str, ...]]] = []
     if modo == "todo":
-        seleccion += datos.cierre_global or comandos_de_cierre(raiz, cierre_json)
+        if datos.cierre_global:
+            seleccion += datos.cierre_global
+        else:
+            condiciones = condiciones_de_cierre(raiz, cierre_json)
+            cambiados = archivos_cambiados(raiz, base, versionados_modificados(raiz, True)) if condiciones else None
+            for c in comandos_de_cierre(raiz, cierre_json):
+                prefijos = condiciones.get(c.comando)
+                if prefijos and cambiados is not None and not any(a.startswith(prefijos) for a in cambiados):
+                    omitidos.append((c.comando, prefijos))
+                else:
+                    seleccion.append(c)
     head = recibo.head(raiz) or ""
     excluidas = {r for r in (relativa(raiz, plan), relativa(raiz, ruta_recibo)) if r}
     # Estado del árbol antes de los criterios (que pueden crear archivos): solo con el árbol limpio
@@ -589,6 +636,7 @@ def correr_plan(modo: str, raiz: Path, valor_plan: str, pedidas: list[int], ruta
         resultados.append(versionados_limpios(raiz, "todo", excluidas, (), antes))
         alcance = f"todo {plan.name}"
     seccion = armar_seccion(alcance, raiz, contrato, aceptado, resultados, inicio)
+    seccion["omitidos"] = omitidos
     emitir_recibo(ruta_recibo, seccion)
     registrar_si_pasa(raiz, seccion, head_completo, alcance if modo == "todo" else None)
     return 0 if seccion["veredicto"] == "PASA" else 1
