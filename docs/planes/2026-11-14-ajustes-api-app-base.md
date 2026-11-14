@@ -140,6 +140,7 @@ commit_base: eb1dbda
 | 2026-11-14 18:27 | plan | 3 | 2 | 5 |
 | 2026-11-14 18:31 | plan | 1 | 0 | 0 |
 | 2026-11-14 19:05 | cierre | 0 | 0 | 4 |
+| 2026-11-14 19:20 | plan | 0 | 0 | 3 |
 
 Auditoría: hecha 2026-11-14 — 0 bloqueantes, 1 necesita decisión (BAJA: contacto del sitio con el cliente dado de baja), 0 menores nuevos.
 Hallazgos: revisor de cierre, 4 menores → pendiente P-ajustes-api-app-base-2 a -5; auditoría, contacto con cliente de baja → espera decisión (P-ajustes-api-app-base-6, "Esperan tu decisión" de `docs/estado.md`); P-ajustes-api-app-base-1 sigue igual.
@@ -154,11 +155,11 @@ Hallazgos: revisor de cierre, 4 menores → pendiente P-ajustes-api-app-base-2 a
 
 ### Problemas
 
-- P-ajustes-api-app-base-1 [menor] `SesionAutenticacionEmpresa` (`apps/api/autenticacion.py:15-18`) usa `code="empresa_inactiva"` también para la sesión de `plataforma`, que no tiene empresa; con `code` público, el esquema servido por sesión lo afirmaría. No afecta a la app (entra por JWT). Revisión de plan del 2026-11-14.
-- P-ajustes-api-app-base-2 [menor] `test_consultas_iguales_con_5_y_50_items` (`apps/visitas/tests/test_api_turno_app.py:53`) mide `me/visitas/<pk>/` y no la lista; hoy comparten queryset y serializer, pero falta la misma medición sobre `/api/v1/me/visitas/`.
-- P-ajustes-api-app-base-3 [menor] `test_detalle_de_otra_empresa_da_404` (y `config/tests/test_ajustes_api_app_base.py:41`) pasaría sin `de_empresa`, porque el turno de B es de otro empleado; falta el caso de un usuario que cambió de empresa con turnos activos en la anterior.
-- P-ajustes-api-app-base-4 [menor] Ningún test comprueba `sitio.contacto`, `estado` y `proximo_vencimiento` en la respuesta de `visitas/abrir/` (`apps/visitas/api_views.py:174`); hoy se cumple por usar el mismo serializer.
-- P-ajustes-api-app-base-5 [observación] `apps/api/tests/test_auth.py:50` pasó de comparar el cuerpo exacto de la raíz a dos comprobaciones sueltas; el cuerpo exacto lo compara `test_raiz_y_codigos.py:125`.
+- P-ajustes-api-app-base-1 [menor] [despues] `SesionAutenticacionEmpresa` (`apps/api/autenticacion.py:15-18`) usa `code="empresa_inactiva"` también para la sesión de `plataforma`, que no tiene empresa; con `code` público, el esquema servido por sesión lo afirmaría. No afecta a la app (entra por JWT). Revisión de plan del 2026-11-14.
+- P-ajustes-api-app-base-2 [menor] [despues] `test_consultas_iguales_con_5_y_50_items` (`apps/visitas/tests/test_api_turno_app.py:53`) mide `me/visitas/<pk>/` y no la lista; hoy comparten queryset y serializer, pero falta la misma medición sobre `/api/v1/me/visitas/`.
+- P-ajustes-api-app-base-3 [menor] [despues] `test_detalle_de_otra_empresa_da_404` (y `config/tests/test_ajustes_api_app_base.py:41`) pasaría sin `de_empresa`, porque el turno de B es de otro empleado; falta el caso de un usuario que cambió de empresa con turnos activos en la anterior.
+- P-ajustes-api-app-base-4 [menor] [despues] Ningún test comprueba `sitio.contacto`, `estado` y `proximo_vencimiento` en la respuesta de `visitas/abrir/` (`apps/visitas/api_views.py:174`); hoy se cumple por usar el mismo serializer.
+- P-ajustes-api-app-base-5 [observación] [despues] `apps/api/tests/test_auth.py:50` pasó de comparar el cuerpo exacto de la raíz a dos comprobaciones sueltas; el cuerpo exacto lo compara `test_raiz_y_codigos.py:125`.
 - P-ajustes-api-app-base-6 [menor] Espera decisión del usuario (auditoría, BAJA): con el cliente o el sitio dados de baja, un turno pendiente sigue en `me/visitas/` y entrega `sitio.contacto` sin plazo (`apps/visitas/serializers.py:241-247`, `apps/clientes/panel_views.py:85-90`). Opciones: (a) `contacto: null` si el sitio o el cliente están inactivos; (b) cancelar o quitar los turnos pendientes al dar de baja.
 
 ### Decisiones
