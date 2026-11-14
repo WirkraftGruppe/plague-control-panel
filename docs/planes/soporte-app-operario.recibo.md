@@ -44,3 +44,22 @@
 - duración: 37.0 s
 - Veredicto: PASA
 
+## 2026-11-14 16:08 — tarea T3 de 2026-11-14-soporte-app-operario.md
+
+- HEAD verificado: 0e588c8
+- Contrato: intacto (congelado en 2229493)
+- Criterios:
+  - PASA (exit 0, nuevo: —) `T3 [cmd] git log --oneline plan/soporte-app-operario | grep -q "T1: integra soporte-app-operario-T1"`
+  - PASA (exit 0, nuevo: —) `T3 [cmd] git log --oneline plan/soporte-app-operario | grep -q "T2: integra soporte-app-operario-T2"`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test config.tests.test_soporte_app_operario.IntegracionSoporteAppTests.test_reporte_no_revisado_por_url_da_201 --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test config.tests.test_soporte_app_operario.IntegracionSoporteAppTests.test_me_empresa_por_url --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test config.tests.test_soporte_app_operario.IntegracionSoporteAppTests.test_logo_de_otra_empresa_por_url_da_404 --keepdb`
+  - PASA (exit 0, nuevo: —) `T3 [grep-1] grep -n "no-revisados" docs/contrato-api.md`
+  - PASA (exit 0, nuevo: —) `T3 [grep-1] grep -n "me/empresa" docs/contrato-api.md`
+  - PASA (exit 0, nuevo: —) `T3 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.api apps.empresas apps.visitas config --keepdb`
+  - PASA (exit 0, nuevo: —) `T3 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 250 --subtarea T3`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 31.8 s
+- Veredicto: PASA
+

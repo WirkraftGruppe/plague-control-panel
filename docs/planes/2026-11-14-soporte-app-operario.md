@@ -204,7 +204,7 @@ commit_base: 2229493
 |---|---|---|---|
 | T1 | hecha | b93939c | PASA 2026-11-14 |
 | T2 | hecha | 2fc1214 | PASA 2026-11-14 |
-| T3 | pendiente | | |
+| T3 | hecha | 0e588c8 | PASA 2026-11-14 |
 | T4 | pendiente | | |
 | T5 | pendiente | | |
 | T6 | pendiente | | |
