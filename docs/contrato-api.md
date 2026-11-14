@@ -1,6 +1,6 @@
 # Contrato de la API v1
 
-Actualizado: 2026-11-13
+Actualizado: 2026-11-14
 
 Resumen legible para la app móvil de Detach. La fuente completa (cuerpos, campos,
 códigos de error) es `docs/api/openapi-v1.yaml`; este archivo agrega, por ruta, el
@@ -37,7 +37,24 @@ límite de pedidos (throttle) y el rol que la puede usar. Todas las rutas cuelga
   el turno pendiente más antiguo del empleado en el sitio de ese punto o crea una visita
   sin ítems; no hay `sitio` ni otro id en el pedido. `GET /api/v1/me/visitas/` trae en cada
   turno `sitio{id, nombre, direccion, localidad}` e `items[]` con `punto{id, nombre,
-  sector}`, `servicio{id, nombre}` y `revisado`.
+  sector}`, `servicio{id, nombre}`, `revisado` y `no_revisado` (el motivo si el punto se
+  reportó como no revisado en el turno, o `null`); `visitas/abrir/` devuelve los mismos ítems.
+- **Puntos no revisados** (`POST /api/v1/visitas/<pk>/no-revisados/`, multipart): registra una
+  estación que no se pudo revisar en una visita abierta propia. Lleva `punto` (id de un punto
+  activo del sitio de la visita), `motivo` (`falta_estacion`, `codigo_ilegible`, `sin_acceso`
+  u `otro`), `cliente_uuid` (obligatorio) y, opcionales, `detalle`, `latitud`, `longitud`,
+  `precision_m` y una `foto` (hasta 8 MB). Responde 201 con `{id, visita, punto{id, nombre,
+  sector}, motivo, detalle, creado}`, sin coordenadas ni foto. No es una revisión: no mueve
+  el vencimiento del punto ni habilita el cierre de la visita. Un punto por visita: un segundo
+  reporte del mismo punto, un punto de otro sitio o inactivo dan 400 en `campos.punto`; una
+  visita propia que no está abierta, 400 "La visita no está abierta."; una visita ajena, de
+  otra empresa o inexistente, 404, aun con el cuerpo vacío. Un `cliente_uuid` ya registrado
+  responde 409; los ids del reporte existente (`reporte`, `visita`) vienen solo si es del
+  mismo empleado.
+- **Empresa** (`GET /api/v1/me/empresa/`): `{nombre, logo}`, con `logo` como URL absoluta de
+  `GET /api/v1/empresas/<pk>/logo/` o `null` si la empresa no tiene logo. El logo es un PNG
+  con `Cache-Control: private, no-store`; un `<pk>` que no es la empresa del usuario o una
+  empresa sin logo dan 404.
 - **Resolver un QR** (`POST /api/v1/qr/<codigo>/resolver/`): el `punto` trae `estado`
   (`al_dia`, `proxima`, `vencida` o `sin_programar`), `proximo_vencimiento`, `en_turno` y
   `servicio` (`{id, nombre, slug, esquema_punto, esquema_visita}` o `null`). `visita_destino`
@@ -90,6 +107,9 @@ límite de pedidos (throttle) y el rol que la puede usar. Todas las rutas cuelga
 | GET | `/api/v1/me/visitas/` | Empleado o administrador | - | 200 con los turnos del usuario y sus ítems |
 | POST | `/api/v1/visitas/abrir/` | Empleado o administrador | crear_visita, 120/hora | 201 con el turno; 200 si ya estaba abierto; 400 |
 | POST | `/api/v1/visitas/<pk>/cerrar/` | Empleado o administrador | crear_visita, 120/hora | 200 con la visita; 400, 404, 409 |
+| POST | `/api/v1/visitas/<pk>/no-revisados/` | Empleado o administrador | crear_visita, 120/hora | 201 con el reporte; 400, 404, 409, 413 |
 | POST | `/api/v1/revisiones/` | Empleado o administrador | crear_visita, 120/hora | 201 con la revisión y su servicio; 400, 404, 409, 413 |
 | GET | `/api/v1/me/historial/` | Empleado | - | 200 con el historial paginado |
 | GET | `/api/v1/fotos/<codigo>/` | Empleado o administrador | - | 200 con la imagen; 403, 404 |
+| GET | `/api/v1/me/empresa/` | Empleado o administrador | - | 200 con el nombre y la URL del logo |
+| GET | `/api/v1/empresas/<pk>/logo/` | Empleado o administrador | - | 200 con la imagen; 404 |

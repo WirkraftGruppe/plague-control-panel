@@ -29,6 +29,8 @@ OBJETO_POR_RUTA = (
     (r"^/api/v1/sitios/@PK@/puntos/", "sitio"),
     (r"^/api/v1/puntos/@PK@/ubicacion/", "punto"),
     (r"^/api/v1/visitas/@PK@/cerrar/", "visita"),
+    (r"^/api/v1/visitas/@PK@/no-revisados/", "visita"),
+    (r"^/api/v1/empresas/@PK@/logo/", "empresa"),
     (r"^/api/v1/fotos/@UUID@/", "foto"),
 )
 
@@ -81,6 +83,7 @@ class AislamientoApiTests(TestCase):
             "punto": cls.a.punto.pk,
             "visita": cls.a.visita.pk,
             "plano": plano.pk,
+            "empresa": cls.a.empresa.pk,
         }
         cls.codigos = {
             "qr": str(cls.a.punto.qr_codigo),

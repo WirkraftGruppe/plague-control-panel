@@ -12,6 +12,11 @@ urlpatterns = [
     path(
         "visitas/<int:pk>/cerrar/", api_views.CerrarVisitaView.as_view(), name="cerrar"
     ),
+    path(
+        "visitas/<int:pk>/no-revisados/",
+        api_views.ReportarNoRevisadoView.as_view(),
+        name="no-revisados",
+    ),
     path("revisiones/", api_views.CrearRevisionView.as_view(), name="revision"),
     path("me/historial/", api_views.HistorialView.as_view(), name="historial"),
     path("fotos/<uuid:codigo>/", api_views.FotoView.as_view(), name="foto"),

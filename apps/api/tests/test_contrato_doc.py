@@ -43,7 +43,7 @@ class ContratoDocTests(SimpleTestCase):
         en_documento = [fila[1].strip("`") for fila in _filas_del_documento()]
         self.assertEqual(len(en_documento), len(set(en_documento)))
         self.assertEqual(set(en_documento), _rutas_de_la_api())
-        self.assertEqual(len(en_documento), 18)
+        self.assertEqual(len(en_documento), 21)
 
     def test_cada_ruta_declara_metodo_auth_throttle_y_respuesta(self):
         filas = _filas_del_documento()
