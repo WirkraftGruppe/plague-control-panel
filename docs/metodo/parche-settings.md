@@ -199,3 +199,32 @@ y a `PERMITIDOS` (no deben confundirse con abreviaturas):
 
 Después: `py -3 .claude\hooks\permisos.py`, `py -3 .claude\hooks\permisos.py --comprobar` y
 `py -3 -m pytest .claude\hooks\test_guardia_bash.py .claude\hooks\test_permisos.py -q`.
+
+---
+
+# Parche — guarda del `cd` a los worktrees (2026-11-14)
+
+Autorizado por el usuario el 2026-11-14 (`docs/decisiones.md`). Claude no pudo editar
+`.claude/hooks/guardia_bash.py`: la lista `deny` de los permisos lo rechaza. El parche está en
+`docs/metodo/guarda-cd-worktrees.patch` y cambia dos archivos a la vez:
+
+- `guardia_bash.py`: `cd` y `pushd` hacia una ruta con una carpeta `worktrees` (relativa o absoluta,
+  con `/` o `\`, también dentro de `( … )`, `bash -c` o con envoltorios) salen con 2 y el mensaje
+  "usa `git -C worktrees/<w>` para git, rutas absolutas para leer y escribir, y
+  `verificar.py --raiz worktrees/<w>` para verificar", sin el texto de "queda en manos del usuario".
+  `cd mis-worktrees-viejos`, `cd docs` y `git -C worktrees/<w> …` siguen pasando.
+- `test_guardia_bash.py`: 3 tests nuevos (`test_bloquea_cd_y_pushd_hacia_worktrees`,
+  `test_deja_pasar_cd_fuera_de_worktrees`, `test_main_explica_la_alternativa_al_cd_sin_derivar_al_usuario`).
+
+Probado sobre una copia fuera del repo: `test_guardia_bash.py` da 9 passed, 176 subtests passed, y
+`git apply --check` pasa sobre `main` @ 7f785a8. Desde la raíz, en la rama `guardia-cd-worktrees` o
+en `main` ya fusionada:
+
+```powershell
+git apply docs/metodo/guarda-cd-worktrees.patch
+py -3 -m pytest .claude/hooks/test_guardia_bash.py -q
+git add .claude/hooks/guardia_bash.py .claude/hooks/test_guardia_bash.py
+git commit -m "metodo: guardia_bash bloquea cd y pushd a los worktrees"
+```
+
+No hace falta tocar `.claude/settings.json`: el hook PreToolUse ya invoca `guardia_bash.py`.

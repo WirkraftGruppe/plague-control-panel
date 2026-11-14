@@ -128,9 +128,9 @@ Medición previa (2026-11-14, `main` @ 667ce36, `manage.py test --keepdb`): `Ran
 
 ### Problemas
 
-- P-acelerar-tests-1 [menor] `.claude/hooks/verificar.py` `archivos_cambiados`: `git diff --name-only base..HEAD` va sin `--no-renames` ni `-z`; mover un archivo fuera de `.claude/` o una ruta no ASCII dentro de `.claude/` (entre comillas por `core.quotePath`) haría omitir `pytest .claude/hooks` aunque el plan toque el método.
-- P-acelerar-tests-2 [menor] `.claude/hooks/test_verificar.py`: los tests de `si_toca` solo cubren cambios commiteados bajo `.claude/`; faltan un cambio sin commitear o sin seguimiento, el prefijo `docs/plantilla-plan.md` y un renombre.
-- P-acelerar-tests-3 [observación] `.claude/hooks/revisar_plan.py` `FLAGS_CON_VALOR` no incluye `--durations`, `--shuffle`, `--settings`, `--testrunner`, `--pythonpath` ni `-t`: `manage.py test --keepdb --durations 10` corre la suite completa sin aviso (nunca da un aviso falso).
+- P-acelerar-tests-1 [menor] [despues] `.claude/hooks/verificar.py` `archivos_cambiados`: `git diff --name-only base..HEAD` va sin `--no-renames` ni `-z`; mover un archivo fuera de `.claude/` o una ruta no ASCII dentro de `.claude/` (entre comillas por `core.quotePath`) haría omitir `pytest .claude/hooks` aunque el plan toque el método.
+- P-acelerar-tests-2 [menor] [despues] `.claude/hooks/test_verificar.py`: los tests de `si_toca` solo cubren cambios commiteados bajo `.claude/`; faltan un cambio sin commitear o sin seguimiento, el prefijo `docs/plantilla-plan.md` y un renombre.
+- P-acelerar-tests-3 [observación] [despues] `.claude/hooks/revisar_plan.py` `FLAGS_CON_VALOR` no incluye `--durations`, `--shuffle`, `--settings`, `--testrunner`, `--pythonpath` ni `-t`: `manage.py test --keepdb --durations 10` corre la suite completa sin aviso (nunca da un aviso falso).
 
 ### Decisiones
 
