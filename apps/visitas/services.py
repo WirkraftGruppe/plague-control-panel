@@ -1,6 +1,7 @@
 import logging
 from contextlib import contextmanager
 from datetime import timedelta
+from types import SimpleNamespace
 from uuid import UUID
 
 from django.conf import settings
@@ -15,7 +16,15 @@ from apps.productos.models import Producto
 from apps.productos.services import registrar_consumo
 from apps.servicios.models import TipoServicio
 from apps.sitios.models import PuntoControl, Sitio
-from apps.visitas.models import Foto, ItemTurno, ProductoAplicado, Revision, Visita
+from apps.visitas.imagenes import procesar_imagen
+from apps.visitas.models import (
+    Foto,
+    ItemTurno,
+    ProductoAplicado,
+    PuntoNoRevisado,
+    Revision,
+    Visita,
+)
 from apps.visitas.planillas import validar_datos
 from apps.visitas.ubicacion import verificar
 
@@ -26,6 +35,7 @@ TOLERANCIA_FUTURO = timedelta(minutes=10)
 MENSAJE_QR_INVALIDO = "El código QR no corresponde a este sitio."
 MENSAJE_SIN_SERVICIO = "El punto no tiene servicio asignado."
 MENSAJE_SERVICIO_DE_BAJA = "El servicio de este punto está dado de baja."
+MENSAJE_PUNTO_NO_REPORTABLE = "El punto no corresponde a este sitio."
 MOTIVO_UBICACION_FIJADA = "Ubicación fijada por el primer escaneo"
 
 logger = logging.getLogger(__name__)
@@ -724,6 +734,135 @@ def registrar_revision(
         raise
 
 
+class NoRevisadoDuplicado(Exception):
+    """El `cliente_uuid` ya fue registrado; `reporte` es el reporte existente."""
+
+    def __init__(self, reporte):
+        super().__init__("El reporte ya fue registrado.")
+        self.reporte = reporte
+
+
+def _no_revisado_duplicado(cliente_uuid, empresa_id):
+    """Reporte de la empresa con ese `cliente_uuid` (el de otra empresa no cuenta)."""
+    return (
+        PuntoNoRevisado.objects.de_empresa(empresa_id)
+        .select_related("visita")
+        .filter(cliente_uuid=cliente_uuid)
+        .first()
+    )
+
+
+def _punto_a_reportar(visita, punto):
+    """Punto activo del sitio de la visita que aún no fue reportado en ella."""
+    encontrado = (
+        PuntoControl.objects.de_empresa(visita.empresa_id)
+        .filter(pk=getattr(punto, "pk", punto), sitio_id=visita.sitio_id, activo=True)
+        .first()
+    )
+    if encontrado is None:
+        raise ValidationError({"punto": MENSAJE_PUNTO_NO_REPORTABLE})
+    if visita.no_revisados.filter(punto=encontrado).exists():
+        raise ValidationError({"punto": "El punto ya fue reportado en esta visita."})
+    return encontrado
+
+
+def registrar_no_revisado(
+    *,
+    empleado,
+    visita_pk,
+    punto,
+    motivo,
+    detalle="",
+    latitud=None,
+    longitud=None,
+    precision_m=None,
+    foto=None,
+    cliente_uuid,
+):
+    """Registra que un punto de la visita abierta no se pudo revisar.
+
+    `punto` es la instancia o el id. No crea una `Revision`, no actualiza el
+    vencimiento ni cambia `cerrar_visita`. Bloquea en el orden Sitio -> Visita,
+    acotando por la empresa y el empleado: una visita ajena o de otra empresa da
+    `VisitaNoEncontrada`. La foto se reduce con `procesar_imagen`. Levanta
+    `NoRevisadoDuplicado` si el `cliente_uuid` ya existe (también en la carrera) y
+    `ValidationError` si la visita no está abierta o el punto no se puede reportar.
+    No debe llamarse dentro de otro `atomic`.
+    """
+    if cliente_uuid is None:
+        raise ValidationError({"cliente_uuid": "Este campo es obligatorio."})
+    empresa_id = empleado.empresa_id
+    try:
+        with _transaccion_con_archivos() as guardadas:
+            existente = _no_revisado_duplicado(cliente_uuid, empresa_id)
+            if existente:
+                raise NoRevisadoDuplicado(existente)
+            try:
+                sitio_id = (
+                    Visita.objects.de_empresa(empresa_id)
+                    .filter(pk=visita_pk, empleado=empleado)
+                    .values_list("sitio_id", flat=True)
+                    .get()
+                )
+                Sitio.objects.de_empresa(empresa_id).select_for_update(
+                    of=("self",)
+                ).get(pk=sitio_id)
+                visita = (
+                    Visita.objects.de_empresa(empresa_id)
+                    .select_for_update()
+                    .get(pk=visita_pk, empleado=empleado)
+                )
+            except (Visita.DoesNotExist, TypeError, ValueError):
+                raise VisitaNoEncontrada()
+            if visita.estado != Visita.Estado.ABIERTA:
+                raise ValidationError({"visita": "La visita no está abierta."})
+            errores = _validar_coordenadas(latitud, longitud)
+            if motivo not in PuntoNoRevisado.Motivo.values:
+                errores["motivo"] = ["Motivo inválido."]
+            if errores:
+                raise ValidationError(errores)
+            punto = _punto_a_reportar(visita, punto)
+            distancia, _ = verificar(punto, latitud, longitud)
+            reporte = PuntoNoRevisado(
+                visita=visita,
+                punto=punto,
+                motivo=motivo,
+                detalle=detalle,
+                latitud=latitud,
+                longitud=longitud,
+                precision_m=precision_m,
+                distancia_m=distancia,
+                cliente_uuid=cliente_uuid,
+            )
+            if foto:
+                try:
+                    contenido = procesar_imagen(foto)
+                except ValidationError as error:
+                    raise ValidationError({"foto": error.messages})
+                reporte.foto.save("foto.jpg", contenido, save=False)
+                # `_borrar_archivos` espera objetos con `imagen`.
+                guardadas.append(SimpleNamespace(imagen=reporte.foto))
+            reporte.save()
+            return reporte
+    except IntegrityError:
+        # Carrera: otro pedido con el mismo `cliente_uuid` ganó.
+        existente = _no_revisado_duplicado(cliente_uuid, empresa_id)
+        if existente:
+            raise NoRevisadoDuplicado(existente)
+        raise
+
+
+def condicion_incidencia_sin_revisar():
+    """`Q` sobre `Visita`: incidencia pendiente de revisar.
+
+    Cuenta la incidencia declarada y la visita realizada con puntos no revisados.
+    """
+    con_reportes = Exists(PuntoNoRevisado.objects.filter(visita=OuterRef("pk")))
+    return Q(incidencia_revisada_en__isnull=True) & (
+        Q(incidencia=True) | (Q(estado=Visita.Estado.REALIZADA) & Q(con_reportes))
+    )
+
+
 def _cerrar_sin_revisiones(visita):
     """Cierre por sistema de una visita sin revisiones.
 
@@ -1042,7 +1181,8 @@ def marcar_incidencia_revisada(visita, administrador):
     """Registra quién y cuándo revisó la incidencia de una visita; devuelve la copia.
 
     Vale para la incidencia declarada y para la de ubicación (en la visita o en
-    alguna de sus revisiones): comparten la marca de revisión. Bloquea la fila para
+    alguna de sus revisiones) y para los puntos no revisados: comparten la marca de
+    revisión. Bloquea la fila para
     que dos administradores no la revisen a la vez.
     """
     with transaction.atomic():
@@ -1057,7 +1197,8 @@ def marcar_incidencia_revisada(visita, administrador):
             visita.incidencia_ubicacion
             or visita.revisiones.filter(incidencia_ubicacion=True).exists()
         )
-        if not (visita.incidencia or con_ubicacion):
+        con_reportes = visita.no_revisados.exists()
+        if not (visita.incidencia or con_ubicacion or con_reportes):
             raise ValidationError("La visita no tiene incidencia para revisar.")
         if visita.incidencia_revisada_en is not None:
             raise ValidationError("La incidencia ya fue revisada.")

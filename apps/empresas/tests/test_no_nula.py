@@ -70,8 +70,8 @@ def _crear(modelo, contador, **extra):
 
 
 class EmpresaObligatoriaTests(TestCase):
-    def test_hay_trece_modelos_de_empresa(self):
-        self.assertEqual(len(_modelos_de_empresa()), 13)
+    def test_hay_catorce_modelos_de_empresa(self):
+        self.assertEqual(len(_modelos_de_empresa()), 14)
 
     def test_guardar_sin_empresa_falla_en_cada_modelo(self):
         contador = [0]
