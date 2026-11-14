@@ -418,6 +418,52 @@ def test_cierre_usa_cierre_global_json(repo):
     assert codigo == 1 and "- Veredicto: FALLA" in salida
 
 
+def cierre_con_si_toca(repo: Repo) -> Path:
+    """`cierre_global.json` de prueba: un comando que solo corre si se toca `.claude/` y otro incondicional."""
+    ruta = repo.raiz.parent / f"{repo.raiz.name}-condicional.json"
+    comandos = [{"cmd": "echo hooks > hooks.txt", "si_toca": [".claude/"]}, "echo otro > otro.txt"]
+    ruta.write_text(json.dumps({"comandos": comandos}), encoding="utf-8")
+    return ruta
+
+
+OMITIDO = "- Omitido (no toca .claude/): `echo hooks > hooks.txt`"
+
+
+def test_todo_omite_pytest_de_hooks_si_el_plan_no_toca_el_metodo(repo):
+    repo.congelar(plan_texto(tarea(1, "cmd true")))
+    repo.commit("T1: codigo", "app/modelo.py")
+    codigo, salida = repo.correr("todo", PLAN, cierre_json=cierre_con_si_toca(repo))
+    assert codigo == 0, salida
+    assert not (repo.raiz / "hooks.txt").exists() and (repo.raiz / "otro.txt").exists()
+    assert OMITIDO in salida and OMITIDO in repo.recibo()
+    assert "`cierre global [cmd] echo hooks" not in salida, "lo omitido no es un criterio del recibo"
+
+
+def test_todo_corre_pytest_de_hooks_si_el_plan_toca_settings_json(repo):
+    repo.congelar(plan_texto(tarea(1, "cmd true")))
+    repo.commit("T1: método", ".claude/settings.json", "{}\n")
+    codigo, salida = repo.correr("todo", PLAN, cierre_json=cierre_con_si_toca(repo))
+    assert codigo == 0, salida
+    assert (repo.raiz / "hooks.txt").exists()
+    assert "Omitido" not in salida and "PASA (exit 0, nuevo: —) `cierre global [cmd] echo hooks" in salida
+
+
+def test_todo_corre_pytest_de_hooks_sin_base_resoluble(repo, monkeypatch):
+    repo.congelar(plan_texto(tarea(1, "cmd true")))
+    repo.commit("T1: codigo", "app/modelo.py")
+    monkeypatch.setattr(verificar, "base_del_plan", lambda raiz, texto, slug: (None, "sin base", None))
+    codigo, salida = repo.correr("todo", PLAN, cierre_json=cierre_con_si_toca(repo))
+    assert (repo.raiz / "hooks.txt").exists() and "Omitido" not in salida, salida
+
+
+def test_cierre_sin_plan_corre_los_comandos_con_si_toca(repo):
+    repo.congelar(plan_texto(tarea(1, "cmd true")))
+    codigo, salida = repo.correr("cierre", cierre_json=cierre_con_si_toca(repo))
+    assert codigo == 0, salida
+    assert (repo.raiz / "hooks.txt").exists() and (repo.raiz / "otro.txt").exists()
+    assert "Omitido" not in salida
+
+
 def test_cierre_global_json_del_repo_trae_los_cinco_comandos_de_detach():
     criterios = verificar.criterios_de_cierre(verificar.CIERRE_JSON)
     comandos = [c.comando for c in criterios]
@@ -430,6 +476,8 @@ def test_cierre_global_json_del_repo_trae_los_cinco_comandos_de_detach():
         "py -3 -m pytest .claude/hooks -q",
     ]
     assert {c.tipo for c in criterios} == {"cmd"}
+    condiciones = verificar.condiciones_de_cierre(Path("."), verificar.CIERRE_JSON)
+    assert condiciones == {"py -3 -m pytest .claude/hooks -q": (".claude/", "docs/plantilla-plan.md")}
 
 
 # ---------------------------------------------------------------------------
