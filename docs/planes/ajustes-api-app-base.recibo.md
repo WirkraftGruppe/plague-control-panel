@@ -402,3 +402,24 @@
 - duración: 24.3 s
 - Veredicto: FALLA
 
+## 2026-11-14 18:46 — tarea T1 de 2026-11-14-ajustes-api-app-base.md
+
+- HEAD verificado: cb46ec0
+- Contrato: intacto (congelado en eb1dbda)
+- Criterios:
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_turno_app.TurnoAppTests.test_item_vencido_ayer_trae_estado_vencida --keepdb`
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_turno_app.TurnoAppTests.test_estado_coincide_con_el_resolver_de_qr --keepdb`
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_turno_app.TurnoAppTests.test_consultas_iguales_con_5_y_50_items --keepdb`
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_turno_app.TurnoAppTests.test_sitio_trae_contacto_o_null --keepdb`
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_turno_app.TurnoAppTests.test_historial_y_cierre_no_traen_contacto --keepdb`
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_turno_app.TurnoAppTests.test_detalle_de_turno_propio_da_200_con_la_forma_de_la_lista --keepdb`
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_turno_app.TurnoAppTests.test_detalle_de_otro_empleado_da_404 --keepdb`
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_turno_app.TurnoAppTests.test_detalle_de_otra_empresa_da_404 --keepdb`
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_turno_app.TurnoAppTests.test_detalle_de_turno_realizado_da_404 --keepdb`
+  - PASA (exit 0, nuevo: —) `T1 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas --keepdb`
+  - PASA (exit 0, nuevo: —) `T1 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 400 --subtarea T1`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 29.3 s
+- Veredicto: PASA
+
