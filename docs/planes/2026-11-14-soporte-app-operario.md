@@ -275,7 +275,7 @@ commit_base: 2229493
 | T7 | hecha | 762f104 | PASA 2026-11-14 |
 | T8 | hecha | 9c7e74b | PASA 2026-11-14 |
 | T9 | hecha | 371872e | PASA 2026-11-14 |
-| T10 | pendiente | | |
+| T10 | hecha | dd7a7b2 | PASA 2026-11-14 |
 
 ### Revisiones
 
@@ -283,6 +283,7 @@ commit_base: 2229493
 |---|---|---|---|---|
 | 2026-11-14 15:53 | plan | 5 | 1 | 4 |
 | 2026-11-14 16:30 | cierre | 2 | 1 | 5 |
+| 2026-11-14 17:40 | cierre (acotada: migración y openapi frente al contrato) | 1 | 0 | 4 |
 
 <!-- Plan: test_no_nula (14 modelos y cliente_uuid nulo), test_api_mis_turnos, test_routers, test_aislamiento de la API (y 404 antes de validar el cuerpo) y test_acceso del panel asignados a T1, T3 y T5; decisión del código de una visita cerrada, del usuario (400); menores incorporados: tres usos en ListadoVisitas, orden y sitio activo en el alta múltiple, no_revisado en visitas/abrir, tests de cobertura sumados; el throttle queda como P-soporte-app-operario-1. -->
 
@@ -294,6 +295,8 @@ Hallazgos:
 - Revisor de cierre, menores: filtro `incidencia=todas`, incidencia sin detalle, POST de la hoja que vuelve a filtrar, nombre de más de 100 caracteres, duplicados — pendientes P-soporte-app-operario-3 a -7.
 - Auditoría [BAJA → informativo], tope de 17 MB para un endpoint de una foto — pendiente P-soporte-app-operario-2.
 - `verificar.py todo` tras la ronda de corrección: PASA en 762f104 (248 s).
+- Contrato modificado (c9bc222, usuario): T8 (cierre con solo reportes), T9 (botón Imprimir con script estático, nombre largo como error de formulario) y T10 (docs y openapi), cada una en PASA.
+- Revisor, pasada acotada a la migración y al openapi frente al contrato: migración sin hallazgos (comparada con el modelo, sin ejecutar `makemigrations`); bloqueante: la descripción de `no-revisados` decía que el reporte no sirve para cerrar la visita — corregido (eb5afa7, dd7a7b2), junto con el 409 que ahora nombra `reporte` y `visita`; tres menores a pendientes P-soporte-app-operario-14 a -16.
 
 ### Decisiones del plan
 
@@ -320,6 +323,9 @@ Hallazgos:
 - P-soporte-app-operario-11 [importante] Espera decisión del usuario: qué pasa con los reportes de una visita que solo tiene reportes (no se puede cerrar; el cierre nocturno la deja pendiente o cancelada; nunca llega al contador; al reabrirla trae los reportes del día anterior y el mismo punto no se puede volver a reportar). Opciones: permitir cerrar con solo reportes, contar también las visitas pendientes o canceladas con reportes, o mover los reportes al reabrir. Origen: revisor de cierre.
 - P-soporte-app-operario-12 [menor] [despues] Método: el `revisor` en modo cierre se quedó sin turnos (límite de 40) en un plan de 7 subtareas (~2400 líneas) y entregó el informe solo cuando se le pidió, sin revisar la migración ni el openapi. Conviene acotarle el alcance por partes o subir el límite según el tamaño del diff.
 - P-soporte-app-operario-13 [menor] [despues] Método: `guardia_bash.py` mira el texto literal del comando; un `( cd $W && … )` con la ruta del worktree en una variable pasó la guardia del `cd` (sin intención de rodearla). Conviene que la guardia resuelva variables o bloquee `cd` con argumento variable cuando el comando también nombra `worktrees/`.
+- P-soporte-app-operario-14 [observación] El docstring de `PuntoNoRevisado` (`apps/visitas/models.py:326`) todavía dice que el reporte no sirve para cerrar la visita. Origen: revisor (pasada acotada).
+- P-soporte-app-operario-15 [observación] `ItemTurno.no_revisado` figura en el openapi como `string` libre; convendría `MotivoEnum` con `null` para que la app conozca los valores. Origen: revisor (pasada acotada).
+- P-soporte-app-operario-16 [observación] La descripción de `POST visitas/{id}/cerrar/` en el openapi no explica el cierre con solo reportes; solo lo dice el campo `sin_revisiones`. Origen: revisor (pasada acotada).
 
 ### Decisiones
 
