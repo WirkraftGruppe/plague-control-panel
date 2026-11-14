@@ -25,7 +25,7 @@ La regla rol ⇔ empresa la hace cumplir un `CheckConstraint` en `User`: `plataf
 
 ## 3. Entidades
 
-Todo modelo de dominio (3.1 a 3.10) lleva `empresa` (FK a `Empresa`, no nula, `PROTECT`) y hereda de `ModeloDeEmpresa`. Las raíces (`Cliente`, `TipoServicio`, `Producto`) reciben la empresa en el alta; los hijos la copian de su padre y un hijo con otra empresa que su padre se rechaza. `User` lleva la suya (3.11).
+Todo modelo de dominio (3.1 a 3.10, y 3.6.2) lleva `empresa` (FK a `Empresa`, no nula, `PROTECT`) y hereda de `ModeloDeEmpresa`. Las raíces (`Cliente`, `TipoServicio`, `Producto`) reciben la empresa en el alta; los hijos la copian de su padre y un hijo con otra empresa que su padre se rechaza. `User` lleva la suya (3.11).
 
 ```
 Empresa 1──n (todo lo que sigue)
@@ -37,8 +37,9 @@ Cliente 1──n Sitio 1──n PuntoControl (qr_codigo, servicio, frecuencia_di
               └──n Visita (turno) n──1 Empleado
                     │
                     ├──n ItemTurno n──1 PuntoControl, n──1 TipoServicio
-                    └──n Revision n──1 PuntoControl, n──1 TipoServicio
-                            └── n Foto, n ProductoAplicado
+                    ├──n Revision n──1 PuntoControl, n──1 TipoServicio
+                    │       └── n Foto, n ProductoAplicado
+                    └──n PuntoNoRevisado n──1 PuntoControl
 PuntoControl n──1 TipoServicio 1──n CampoPlanilla (ámbito punto | visita)
 ```
 
@@ -118,6 +119,14 @@ Coherencia: una `realizada` lleva `cerrada_en`; una `cancelada` no; una `abierta
 
 Reglas: la visita debe estar abierta y ser del empleado; el QR debe ser de un punto activo del sitio de la visita; coordenadas obligatorias; de 0 a 2 fotos (`MAX_FOTOS = 2`, sin mínimo); `realizada_en` no puede ser futura ni tener más de `ATRASO_MAXIMO_HORAS` (168 por defecto) de atraso: pasado ese límite el administrador la carga como visita manual. Si el punto no tiene ubicación, la revisión propone la suya (ver 3.2.1).
 
+### 3.6.2 `visitas.PuntoNoRevisado` — el punto que el empleado no pudo revisar
+- `visita` (FK, `CASCADE`), `punto` (FK a `PuntoControl`, `PROTECT`): un reporte por `(visita, punto)` (`UniqueConstraint`)
+- `motivo` (choices: `falta_estacion`, `codigo_ilegible`, `sin_acceso`, `otro`) y `detalle` (texto, opcional)
+- `latitud`, `longitud`, `precision_m` (opcionales, del teléfono) y `distancia_m` (calculada por el servidor respecto del punto); `foto` (opcional, reducida al guardarla) y `foto_codigo` (UUID único). Coordenadas y foto son datos personales: la API no las devuelve
+- `cliente_uuid` (UUID, obligatorio en la API, único por empresa: `UniqueConstraint(empresa, cliente_uuid)`): permite reintentar sin duplicar; un reintento recibe 409. `creado`
+
+Reglas: `registrar_no_revisado` (`apps/visitas/services.py`) solo acepta una visita **abierta y propia** del empleado, y un punto activo del sitio de la visita que no haya sido reportado antes en ella; una visita ajena, de otra empresa o inexistente da 404. **No es una revisión**: no crea `Revision`, no llama a `actualizar_vencimiento` (no mueve el `proximo_vencimiento` del punto) y no habilita `cerrar_visita`, que sigue exigiendo al menos una revisión. El reporte se da por visto con la marca de incidencia de la visita: `condicion_incidencia_sin_revisar()` cuenta como incidencia pendiente la declarada y también la de una visita `realizada` con algún `PuntoNoRevisado`, hasta que `incidencia_revisada_en` se completa; mientras la visita no esté realizada el reporte no cuenta.
+
 ### 3.7 `visitas.Foto`
 `revision` (FK), `codigo` (UUID, usado en la URL de descarga), `imagen`, `tomada_en`, `orden`. De 0 a 2 fotos por revisión (validación en el servicio); no hay mínimo.
 
@@ -150,8 +159,10 @@ Extiende `AbstractUser`: `rol` (plataforma/administrador/empleado), `empresa` (F
 3. Abre la jornada: `POST /api/v1/visitas/abrir/` con `qr_codigo` (el UUID del punto escaneado, de un punto activo) y su ubicación opcional. Si tiene una visita abierta en el sitio del punto la devuelve (200, idempotente); si tiene un turno pendiente, abre el más antiguo; si no, crea una nueva con `origen=app` y sin ítems (201). Un QR inexistente o inactivo da 400 genérico.
 4. En cada punto que revisa: completa la planilla de ámbito `punto`, agrega los productos utilizados eligiendo del catálogo (lote, dosis, cantidad usada y su unidad, entre las `unidades_permitidas` del producto), saca de 0 a 2 fotos (la app redimensiona a 1600 px de lado mayor antes de subir: el servidor rechaza JPEG progresivos de más de 16 MP y WebP de más de 8 MP) y opcionalmente marca incidencia. `POST /api/v1/revisiones/` con multipart (`visita`, `qr_codigo` del punto, `cliente_uuid`, `realizada_en`, geolocalización, `datos`, `productos_aplicados`, con `cantidad` y `unidad` por producto, y `fotos`). El servidor convierte cada cantidad a la unidad base del producto, calcula `cantidad_base` y descuenta el stock con un `MovimientoStock` de consumo, todo en la misma transacción que la revisión: si algo falla no queda nada a medias. Los errores de cada producto vuelven anidados como `productos_aplicados.<i>.<campo>` (por ejemplo `productos_aplicados.0.unidad`). Sin conexión: se guarda local y se reintenta con el mismo `cliente_uuid`; el servidor acepta `realizada_en` del cliente y guarda además `recibida_en`. El servicio de la revisión lo decide el servidor (3.6.1). Puede revisar tantos puntos como quiera en la misma visita, estén o no en su turno: los que no están quedan `fuera_de_turno`. Cada revisión recalcula el vencimiento del punto (3.5).
 5. Cierra la jornada: `POST /api/v1/visitas/{id}/cerrar/` con la planilla de ámbito `visita`, observaciones e incidencia (todo opcional). Exige al menos una revisión; la visita queda `realizada` con `cierre=empleado` y la planilla de visita se guarda por servicio (3.6). Una visita abierta que se olvida se cierra por sistema (comando `cerrar_visitas_abiertas`).
+5 bis. Si un punto no se puede revisar (falta la estación, código ilegible, sin acceso u otro motivo), lo reporta con `POST /api/v1/visitas/{id}/no-revisados/` (multipart: `punto`, `motivo`, `cliente_uuid`, y opcionalmente `detalle`, ubicación y `foto`); solo en una visita abierta propia. Responde 201 sin coordenadas ni foto; un `cliente_uuid` repetido, 409 (3.6.2). No cuenta como revisión.
 6. Planos: `GET /api/v1/planos/{id}/imagen/` sirve el PNG del plano. Exige una visita propia abierta o pendiente en ese sitio, con el sitio y el cliente activos; si no, 404 (el mismo que un plano inexistente o inactivo). Los administradores acceden siempre. La respuesta no se cachea (`private, no-store`).
-7. `GET /api/v1/me/historial/` para consultar su propio historial de visitas realizadas (`GET /api/v1/me/historial.pdf` para descargarlo está previsto en `informes` y aún no existe); `GET /api/v1/fotos/{codigo}/` descarga una foto propia.
+7. Empresa: `GET /api/v1/me/empresa/` devuelve `{nombre, logo}` de la empresa del usuario, con `logo` como URL de `GET /api/v1/empresas/{id}/logo/` (PNG, `private, no-store`) o `null`; la ruta del logo da 404 para una empresa que no es la propia o que no tiene logo.
+8. `GET /api/v1/me/historial/` para consultar su propio historial de visitas realizadas (`GET /api/v1/me/historial.pdf` para descargarlo está previsto en `informes` y aún no existe); `GET /api/v1/fotos/{codigo}/` descarga una foto propia.
 
 ### 4.2 Administrador (panel) y alta de empresas
 

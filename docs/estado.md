@@ -1,22 +1,23 @@
 # Estado de Detach
 <!-- Se reescribe: 25 líneas y 3000 bytes como máximo. Lo histórico, en git y en el registro de sesiones. -->
 Actualizado: 2026-11-14
-Plan activo: (ninguno)
-Mergeado: acelerar-tests (PR #4), robustez-listados (PR #1), el ancho del panel de nuevo turno (PR #2) y el estado (PR #3) en `main` (2026-11-14). Antes: multiempresa, metodo-v2, protocolo-decisiones, diseno-panel y ajustes-flujo. Desplegado: nada todavía (lo confirma el usuario).
+Plan activo: ninguno. soporte-app-operario cerrado (`plan/soporte-app-operario`, PR abierto a `main`, lo fusiona el usuario).
+Mergeado: recibo-tras-cierre (PR #7), guardia-cd-worktrees (PR #6), acelerar-tests (PR #4), robustez-listados (PR #1), PR #2 y #3 en `main` (2026-11-14). Desplegado: nada todavía (lo confirma el usuario).
 
 ## Carriles
 | Plan | Rama | Worktree | Sesión |
 |---|---|---|---|
-| recibo tras el cierre (directo) | recibo-tras-cierre | raíz | PR pendiente |
+| soporte-app-operario | plan/soporte-app-operario | raíz (sin worktrees de subtareas) | libre: espera la fusión del PR |
 
 ## Pendiente inmediato
-- Siguiente: preparación del despliegue en Railway (pendientes con etiqueta `despliegue`) → app móvil (`expo`).
-- Fusionar `recibo-tras-cierre` (PR #7: `recibo_pendiente.py` no pide verificar tras un cierre que solo toca docs de proceso). La guarda del `cd` ya está en `main` (PR #6).
+- Fusionar el PR de soporte-app-operario (usuario); después, `git fetch` y `git merge --ff-only` de `main`.
+- Probar en el navegador la hoja de QR (`/panel/sitios/<pk>/qr/`) e imprimirla, el alta múltiple y la ficha del turno con reportes (usuario; tras `manage.py migrate`).
+- Después: preparación del despliegue en Railway (pendientes `despliegue`) → app móvil (`expo`).
 - Antes del despliegue: `showmigrations` contra producción (P-flujo-sitio-15), lo corre el usuario.
 - Prueba en navegador del primer clic en un marcador y de los filtros de turnos (P-robustez-listados-7), la hace el usuario.
-- GitHub: `gh` usa la cuenta activa `WirkraftGruppe` (admin del repo) y Claude abre los PR con `gh pr create`; git fija la misma cuenta con `credential.https://github.com.username` en `.git/config` (sin selector de cuentas).
+- GitHub: cuenta `WirkraftGruppe` en `gh` y en `.git/config`; Claude abre los PR con `gh pr create`.
 - La base de desarrollo de la raíz es anterior a la demo actual: `manage.py cargar_demo` antes de probar.
-- Suite de Django: 981 tests en ~101 s (MD5 solo en tests); `--parallel` descartado.
+- Suite de Django: 1024 tests (987 al integrar T2, en 105 s); `--parallel` descartado.
 
 ## Esperan tu decisión
-- Ninguna.
+- P-soporte-app-operario-11: una visita con solo reportes de puntos no revisados no se cierra, nunca llega al contador de incidencias y al reabrirse trae los reportes del día anterior. ¿Se permite cerrarla con solo reportes, se cuentan también las pendientes o canceladas, o se mueven los reportes al reabrir?

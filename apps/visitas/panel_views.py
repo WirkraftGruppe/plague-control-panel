@@ -30,7 +30,7 @@ from apps.panel.listados import ListadoPanelMixin
 from apps.sitios.estado import EstadoVencimiento
 from apps.sitios.models import Sitio
 
-from .models import Foto, Revision, Visita
+from .models import Foto, PuntoNoRevisado, Revision, Visita
 from .panel_forms import (
     FormSetProductos,
     FormularioManual,
@@ -38,7 +38,12 @@ from .panel_forms import (
     empleados_de_empresa,
 )
 from .planillas import filas_planilla
-from .services import crear_turno, marcar_incidencia_revisada, registrar_visita_manual
+from .services import (
+    condicion_incidencia_sin_revisar,
+    crear_turno,
+    marcar_incidencia_revisada,
+    registrar_visita_manual,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -119,9 +124,10 @@ class ListadoVisitas(
         if filtros.get("estado") in Visita.Estado.values:
             queryset = queryset.filter(estado=filtros["estado"])
         if filtros.get("incidencia") in ("sin_revisar", "todas"):
-            queryset = queryset.filter(incidencia=True)
             if filtros["incidencia"] == "sin_revisar":
-                queryset = queryset.filter(incidencia_revisada_en__isnull=True)
+                queryset = queryset.filter(condicion_incidencia_sin_revisar())
+            else:
+                queryset = queryset.filter(incidencia=True)
         elif filtros.get("incidencia") in ("ubicacion", "ubicacion_revisadas"):
             # Igual que el tablero: solo visitas realizadas que cuentan como servicio.
             queryset = queryset.filter(
@@ -183,10 +189,9 @@ class ListadoVisitas(
 
         # Las incidencias sin revisar van arriba y no se repiten en los grupos.
         queryset = self.object_list
-        sin_revisar = queryset.filter(
-            incidencia=True, incidencia_revisada_en__isnull=True
-        )
-        resto = queryset.exclude(incidencia=True, incidencia_revisada_en__isnull=True)
+        condicion = condicion_incidencia_sin_revisar()
+        sin_revisar = queryset.filter(condicion)
+        resto = queryset.exclude(condicion)
         grupos = self.agrupar(resto, timezone.localdate())
         realizados = resto.filter(
             estado__in=(Visita.Estado.REALIZADA, Visita.Estado.CANCELADA)
@@ -245,6 +250,7 @@ class FichaVisita(VistaDeEmpresaMixin, AdministradorRequeridoMixin, DetailView):
         "revisiones__productos__producto",
         "items__punto",
         "items__servicio",
+        "no_revisados__punto",
     )
 
     def get_context_data(self, **kwargs):
@@ -256,6 +262,7 @@ class FichaVisita(VistaDeEmpresaMixin, AdministradorRequeridoMixin, DetailView):
             if esquema
         ]
         contexto["revisiones"] = list(visita.revisiones.all())
+        contexto["no_revisados"] = list(visita.no_revisados.all())
         revisados = {r.punto_id for r in contexto["revisiones"]}
         contexto["items"] = list(visita.items.all())
         for item in contexto["items"]:
@@ -296,6 +303,32 @@ class FotoVisita(AdministradorRequeridoMixin, View):
             archivo = foto.imagen.storage.open(nombre, "rb")
         except (FileNotFoundError, ValueError, OSError):
             logger.warning("Falta el archivo de la foto %s.", foto.pk)
+            raise Http404("La foto no está disponible.") from None
+        respuesta = FileResponse(
+            archivo, content_type=TIPOS_IMAGEN.get(extension, "image/jpeg")
+        )
+        respuesta["Cache-Control"] = "private, no-store"
+        respuesta["X-Content-Type-Options"] = "nosniff"
+        return respuesta
+
+
+class FotoNoRevisado(AdministradorRequeridoMixin, View):
+    """Foto de un punto no revisado, solo para el administrador de su empresa."""
+
+    http_method_names = ["get"]
+
+    def get(self, request, codigo):
+        reporte = get_object_or_404(
+            PuntoNoRevisado.objects.de_empresa(request.empresa), foto_codigo=codigo
+        )
+        nombre = reporte.foto.name
+        if not nombre:
+            raise Http404("El reporte no tiene foto.")
+        extension = "." + nombre.rsplit(".", 1)[-1].lower() if "." in nombre else ""
+        try:
+            archivo = reporte.foto.storage.open(nombre, "rb")
+        except (FileNotFoundError, ValueError, OSError):
+            logger.warning("Falta el archivo de la foto del reporte %s.", reporte.pk)
             raise Http404("La foto no está disponible.") from None
         respuesta = FileResponse(
             archivo, content_type=TIPOS_IMAGEN.get(extension, "image/jpeg")

@@ -3,6 +3,7 @@
 from django import template
 
 from apps.visitas.models import Visita
+from apps.visitas.services import condicion_incidencia_sin_revisar
 
 register = template.Library()
 
@@ -22,6 +23,6 @@ def incidencias_sin_revisar(context):
         return 0
     return (
         Visita.objects.de_empresa(empresa)
-        .filter(incidencia=True, incidencia_revisada_en__isnull=True)
+        .filter(condicion_incidencia_sin_revisar())
         .count()
     )

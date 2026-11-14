@@ -1,6 +1,8 @@
 <section>
   <h2>Puntos de control</h2>
-  <p><a class="boton boton-primario" href="{% url 'panel:sitios:punto_alta' object.pk %}">Nuevo punto</a></p>
+  <p><a class="boton boton-primario" href="{% url 'panel:sitios:punto_alta' object.pk %}">Nuevo punto</a>
+    <a class="boton boton-secundario" href="{% url 'panel:sitios:puntos_alta_multiple' object.pk %}">Alta múltiple</a>
+    <a class="boton boton-secundario" href="{% url 'panel:sitios:hoja_qr' object.pk %}">Hoja de QR</a></p>
   <table class="tabla">
     <thead>
       <tr><th>Punto</th><th>Sector</th><th>Servicio</th><th>Frecuencia (días)</th><th>Próximo vencimiento</th><th>QR impreso</th><th>Acciones</th></tr>
@@ -11,3 +13,23 @@
     </tbody>
   </table>
 </section>
+{% if no_revisados %}
+<section aria-labelledby="titulo-no-revisados">
+  <h2 id="titulo-no-revisados">Puntos no revisados</h2>
+  <table class="tabla">
+    <thead>
+      <tr><th>Punto</th><th>Motivo</th><th>Fecha</th><th>Turno</th></tr>
+    </thead>
+    <tbody>
+      {% for reporte in no_revisados %}
+      <tr>
+        <td>{{ reporte.punto.nombre }}</td>
+        <td>{{ reporte.get_motivo_display }}</td>
+        <td>{{ reporte.creado|date:"d/m/Y H:i" }}</td>
+        <td><a href="{% url 'panel:visitas:ficha' reporte.visita_id %}">Ver turno</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}

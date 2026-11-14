@@ -18,7 +18,7 @@ from apps.panel import urls
 from apps.productos.models import Producto
 from apps.servicios.models import CampoPlanilla, TipoServicio
 from apps.sitios.models import Plano, PuntoControl, Sitio
-from apps.visitas.models import Foto, Revision, Visita
+from apps.visitas.models import Foto, PuntoNoRevisado, Revision, Visita
 
 CLAVE = "clave-segura-123"
 SENTINELA = "@PK@"
@@ -26,7 +26,10 @@ SENTINELA_UUID = "@UUID@"
 UUID_VALIDO = "00000000-0000-0000-0000-000000000001"
 
 # Igual para las rutas con uuid: prefijo de ruta -> clave del código real.
-UUID_POR_RUTA = ((r"^/panel/visitas/fotos/@UUID@/", "foto"),)
+UUID_POR_RUTA = (
+    (r"^/panel/visitas/fotos/@UUID@/", "foto"),
+    (r"^/panel/visitas/no-revisados/@UUID@/foto/", "foto_no_revisado"),
+)
 
 # Prefijo de ruta (con `@PK@` donde va el id) -> clave del objeto real. El orden
 # importa: gana la primera coincidencia, por eso van antes las más específicas.
@@ -180,6 +183,12 @@ class AccesoTests(TestCase):
             recibida_en=visita.creado,
         )
         foto = Foto.objects.create(revision=revision, imagen=_imagen("foto.png"))
+        no_revisado = PuntoNoRevisado.objects.create(
+            visita=visita,
+            punto=punto,
+            motivo=PuntoNoRevisado.Motivo.SIN_ACCESO,
+            foto=_imagen("no-revisado.png"),
+        )
         cls.ids = {
             "cliente": cls.cliente.pk,
             "sitio": cls.sitio.pk,
@@ -201,7 +210,10 @@ class AccesoTests(TestCase):
                 nombre_comercial="Producto", empresa=una_empresa()
             ).pk,
         }
-        cls.codigos = {"foto": str(foto.codigo)}
+        cls.codigos = {
+            "foto": str(foto.codigo),
+            "foto_no_revisado": str(no_revisado.foto_codigo),
+        }
 
     def test_empleado_no_ve_ninguna_ruta_del_panel(self):
         self.client.login(username="emp", password=CLAVE)

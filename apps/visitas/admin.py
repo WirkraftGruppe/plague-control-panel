@@ -5,7 +5,7 @@ from simple_history.admin import SimpleHistoryAdmin
 from apps.accounts.models import User
 from apps.clientes.empresa import AdminHijoMixin
 
-from .models import Foto, ProductoAplicado, Revision, Visita
+from .models import Foto, ProductoAplicado, PuntoNoRevisado, Revision, Visita
 
 CAMPOS_EVIDENCIA = (
     "sitio",
@@ -194,6 +194,13 @@ class RevisionAdmin(AdminHijoMixin, SoloLectura, SimpleHistoryAdmin):
 @admin.register(Foto)
 class FotoAdmin(AdminHijoMixin, SoloLectura, admin.ModelAdmin):
     list_display = ("id", "revision", "tomada_en", "orden")
+
+
+@admin.register(PuntoNoRevisado)
+class PuntoNoRevisadoAdmin(AdminHijoMixin, SoloLectura, admin.ModelAdmin):
+    list_display = ("id", "visita", "punto", "motivo", "creado")
+    list_filter = ("motivo",)
+    search_fields = ("visita__sitio__nombre", "punto__nombre")
 
 
 @admin.register(ProductoAplicado)

@@ -1,0 +1,7 @@
+{% extends "panel/base.html" %}
+{% block title %}Alta múltiple de puntos · Detach{% endblock %}
+{% block panel_contenido %}
+<h1>Alta múltiple de puntos</h1>
+<p class="ayuda">Crea puntos numerados en {{ sitio.nombre }}, por ejemplo «Cebadero 1» a «Cebadero 12». Cada uno tendrá su propio QR.</p>
+{% include "panel/partials/formulario.html" with enviar="Crear puntos" cancelar_url=cancelar_url %}
+{% endblock %}

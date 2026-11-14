@@ -80,6 +80,38 @@ paths:
           description: El cuerpo no es JSON (`Content-Type`).
         '429':
           description: Demasiados intentos; reintentar más tarde.
+  /api/v1/empresas/{id}/logo/:
+    get:
+      operationId: empresas_logo_retrieve
+      description: Devuelve el PNG; 404 si `pk` no es la empresa del usuario o no
+        hay logo.
+      summary: Descargar el logo de mi empresa
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - empresas
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+          description: ''
+        '404':
+          description: Sin logo o de otra empresa.
+        '401':
+          description: Falta autenticación o es inválida.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/v1/fotos/{codigo}/:
     get:
       operationId: fotos_retrieve
@@ -110,6 +142,28 @@ paths:
           description: La foto es de otro empleado.
         '404':
           description: La foto no existe o es de otra empresa.
+        '401':
+          description: Falta autenticación o es inválida.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/me/empresa/:
+    get:
+      operationId: me_empresa_retrieve
+      description: Devuelve el nombre y la URL absoluta del logo (`null` si no hay).
+      summary: Datos de mi empresa
+      tags:
+      - me
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Empresa'
+          description: ''
         '401':
           description: Falta autenticación o es inválida.
           content:
@@ -627,6 +681,64 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /api/v1/visitas/{id}/no-revisados/:
+    post:
+      operationId: visitas_no_revisados_create
+      description: 'Multipart. `punto` es el id de un punto activo del sitio de la
+        visita y `motivo` uno de `falta_estacion`, `codigo_ilegible`, `sin_acceso`
+        u `otro`. `foto` es opcional (hasta 8 MB). No es una revisión: no cuenta para
+        el vencimiento ni para cerrar la visita. Un `cliente_uuid` ya registrado responde
+        409; `reporte` solo viene si es del mismo empleado.'
+      summary: Reportar un punto no revisado
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - visitas
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReportarNoRevisadoRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NoRevisado'
+          description: ''
+        '400':
+          description: Visita no abierta, punto de otro sitio, inactivo o ya reportado,
+            o campos inválidos.
+        '404':
+          description: La visita no existe o es de otro usuario.
+        '409':
+          description: El `cliente_uuid` ya fue registrado.
+        '413':
+          description: El pedido supera el tamaño permitido.
+        '401':
+          description: Falta autenticación o es inválida.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Demasiados pedidos; reintentar tras `Retry-After`.
+          headers:
+            Retry-After:
+              description: Segundos de espera antes de reintentar.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/v1/visitas/abrir/:
     post:
       operationId: visitas_abrir_create
@@ -910,6 +1022,21 @@ components:
       - qr_codigo
       - realizada_en
       - visita
+    Empresa:
+      type: object
+      description: 'Datos de la empresa para la app: nombre y URL absoluta del logo.'
+      properties:
+        nombre:
+          type: string
+          readOnly: true
+        logo:
+          type: string
+          format: uri
+          readOnly: true
+          nullable: true
+      required:
+      - logo
+      - nombre
     EstadoEnum:
       enum:
       - pendiente
@@ -924,7 +1051,9 @@ components:
         * `cancelada` - Cancelada
     ItemTurno:
       type: object
-      description: Punto del turno con su servicio; `revisado` si ya tiene una revisión.
+      description: |-
+        Punto del turno con su servicio; `revisado` si ya tiene una revisión y
+        `no_revisado` con el motivo si se lo reportó como no revisado.
       properties:
         punto:
           $ref: '#/components/schemas/PuntoItem'
@@ -932,7 +1061,11 @@ components:
           $ref: '#/components/schemas/ServicioResumen'
         revisado:
           type: boolean
+        no_revisado:
+          type: string
+          nullable: true
       required:
+      - no_revisado
       - punto
       - revisado
       - servicio
@@ -989,6 +1122,50 @@ components:
       description: |-
         * `unica` - Solo la unidad base
         * `equivalentes` - Unidades equivalentes
+    MotivoEnum:
+      enum:
+      - falta_estacion
+      - codigo_ilegible
+      - sin_acceso
+      - otro
+      type: string
+      description: |-
+        * `falta_estacion` - Falta la estación
+        * `codigo_ilegible` - Código ilegible
+        * `sin_acceso` - Sin acceso
+        * `otro` - Otro
+    NoRevisado:
+      type: object
+      description: Reporte de punto no revisado sin coordenadas ni foto.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        visita:
+          type: integer
+          readOnly: true
+        punto:
+          allOf:
+          - $ref: '#/components/schemas/PuntoResumen'
+          readOnly: true
+        motivo:
+          allOf:
+          - $ref: '#/components/schemas/MotivoEnum'
+          readOnly: true
+        detalle:
+          type: string
+          readOnly: true
+        creado:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - creado
+      - detalle
+      - id
+      - motivo
+      - punto
+      - visita
     PaginatedVisitaActivaList:
       type: object
       required:
@@ -1288,6 +1465,45 @@ components:
           minLength: 1
       required:
       - refresh
+    ReportarNoRevisadoRequest:
+      type: object
+      description: |-
+        Forma y límites del reporte de un punto no revisado; las reglas de negocio
+        las aplica el servicio.
+      properties:
+        punto:
+          type: integer
+        motivo:
+          $ref: '#/components/schemas/MotivoEnum'
+        detalle:
+          type: string
+          default: ''
+          maxLength: 2000
+        latitud:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          nullable: true
+        longitud:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          nullable: true
+        precision_m:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,1})?$
+          nullable: true
+        foto:
+          type: string
+          format: binary
+        cliente_uuid:
+          type: string
+          format: uuid
+      required:
+      - cliente_uuid
+      - motivo
+      - punto
     ResolverQR:
       type: object
       properties:

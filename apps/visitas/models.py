@@ -320,6 +320,79 @@ def borrar_archivo_de_foto(sender, instance, **kwargs):
         _borrar_archivo_al_confirmar(instance.imagen.storage, instance.imagen.name)
 
 
+class PuntoNoRevisado(ModeloDeEmpresa):
+    """Reporte de un punto que el empleado no pudo revisar en una visita.
+
+    No es una revisión: no cuenta para el vencimiento ni para cerrar la visita.
+    """
+
+    padre_de_empresa = "visita"
+    referencias_de_empresa = ("punto",)
+
+    class Motivo(models.TextChoices):
+        FALTA_ESTACION = "falta_estacion", "Falta la estación"
+        CODIGO_ILEGIBLE = "codigo_ilegible", "Código ilegible"
+        SIN_ACCESO = "sin_acceso", "Sin acceso"
+        OTRO = "otro", "Otro"
+
+    visita = models.ForeignKey(
+        Visita,
+        on_delete=models.CASCADE,
+        related_name="no_revisados",
+        verbose_name="visita",
+    )
+    punto = models.ForeignKey(
+        "sitios.PuntoControl",
+        on_delete=models.PROTECT,
+        related_name="no_revisados",
+        verbose_name="punto de control",
+    )
+    motivo = models.CharField("motivo", max_length=20, choices=Motivo.choices)
+    detalle = models.TextField("detalle", blank=True)
+    latitud = models.DecimalField(
+        "latitud", max_digits=9, decimal_places=6, null=True, blank=True
+    )
+    longitud = models.DecimalField(
+        "longitud", max_digits=9, decimal_places=6, null=True, blank=True
+    )
+    precision_m = models.DecimalField(
+        "precisión (m)", max_digits=7, decimal_places=1, null=True, blank=True
+    )
+    distancia_m = models.PositiveIntegerField(
+        "distancia al punto (m)", null=True, blank=True
+    )
+    foto = models.ImageField("foto", upload_to=ruta_foto, blank=True)
+    foto_codigo = models.UUIDField(
+        "código de la foto", default=uuid4, unique=True, editable=False
+    )
+    cliente_uuid = models.UUIDField("identificador del cliente", null=True, blank=True)
+    creado = models.DateTimeField("creado", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "punto no revisado"
+        verbose_name_plural = "puntos no revisados"
+        ordering = ["visita_id", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["empresa", "cliente_uuid"],
+                name="no_revisado_cliente_uuid_unico_por_empresa",
+            ),
+            models.UniqueConstraint(
+                fields=["visita", "punto"], name="no_revisado_punto_unico_por_visita"
+            ),
+        ]
+
+    def __str__(self):
+        return f"Punto {self.punto_id} no revisado en visita {self.visita_id}"
+
+
+@receiver(post_delete, sender=PuntoNoRevisado)
+def borrar_archivo_de_no_revisado(sender, instance, **kwargs):
+    """Al borrar un reporte (también en cascada) no queda la foto en disco."""
+    if instance.foto:
+        _borrar_archivo_al_confirmar(instance.foto.storage, instance.foto.name)
+
+
 class ProductoAplicado(ModeloDeEmpresa):
     padre_de_empresa = "revision"
     referencias_de_empresa = ("producto", "movimiento")

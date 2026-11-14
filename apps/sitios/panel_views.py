@@ -27,7 +27,7 @@ from django.utils.decorators import method_decorator
 from django.utils.functional import cached_property
 from django.utils.text import slugify
 from django.views import View
-from django.views.generic import CreateView, DetailView, UpdateView
+from django.views.generic import CreateView, DetailView, FormView, UpdateView
 from django.views.generic.detail import SingleObjectMixin
 
 from apps.accounts.mixins import AdministradorRequeridoMixin
@@ -36,7 +36,8 @@ from apps.clientes.models import Cliente
 from apps.panel.listados import ListadoPanelMixin
 from apps.panel.mapa import ORIGEN_TESELAS
 from apps.servicios.models import TipoServicio
-from apps.visitas.models import Visita
+from apps.visitas.models import PuntoNoRevisado, Visita
+from apps.visitas.services import condicion_incidencia_sin_revisar
 
 from . import geocodificacion, qr, services
 from .estado import (
@@ -55,12 +56,14 @@ from .panel_forms import (
     ProgramacionForm,
     PuntoAltaForm,
     PuntoForm,
+    PuntosAltaMultipleForm,
     SitioForm,
 )
 
 PESTANAS = ("turnos", "planos", "datos")
 TURNOS_REALIZADOS_MAXIMO = 10
 ATENCION_MAXIMO = 10
+NO_REVISADOS_MAXIMO = 20
 CLASE_VENCIMIENTO = {
     EstadoVencimiento.AL_DIA: "ok",
     EstadoVencimiento.PROXIMA: "warn",
@@ -197,7 +200,7 @@ class SitioListado(AdministradorRequeridoMixin, ListadoPanelMixin):
     def _incidencias(self):
         return list(
             Visita.objects.de_empresa(self.request.empresa)
-            .filter(incidencia=True, incidencia_revisada_en__isnull=True)
+            .filter(condicion_incidencia_sin_revisar())
             .select_related("sitio", "empleado")
             .order_by("-cerrada_en", "-pk")[:ATENCION_MAXIMO]
         )
@@ -314,6 +317,12 @@ class SitioFicha(VistaDeEmpresaMixin, AdministradorRequeridoMixin, DetailView):
             and any(p.estado == EstadoVencimiento.VENCIDA for p in activos),
         )
         if pestana == "datos":
+            contexto["no_revisados"] = (
+                PuntoNoRevisado.objects.de_empresa(self.request.empresa)
+                .filter(punto__sitio=sitio)
+                .select_related("punto", "visita")
+                .order_by("-creado", "-pk")[:NO_REVISADOS_MAXIMO]
+            )
             contexto["datos_mapa"] = self._datos_mapa(sitio)
             contexto["servicios"] = (
                 TipoServicio.objects.de_empresa(self.request.empresa)
@@ -453,6 +462,92 @@ class PuntoAlta(AdministradorRequeridoMixin, CreateView):
         if punto.plano_id:
             return _url_ficha(self.sitio.pk, "planos", punto.plano_id)
         return _url_ficha(self.sitio.pk, "datos")
+
+
+class _SitioDeEmpresaMixin(AdministradorRequeridoMixin):
+    """Sitio de la URL acotado a la empresa; se busca tras la autorización."""
+
+    @cached_property
+    def sitio(self):
+        return get_object_or_404(
+            Sitio.objects.de_empresa(self.request.empresa), pk=self.kwargs["pk"]
+        )
+
+
+class PuntosAltaMultiple(_SitioDeEmpresaMixin, FormView):
+    """Alta de N puntos numerados con servicio y frecuencia comunes."""
+
+    form_class = PuntosAltaMultipleForm
+    template_name = "sitios/panel/puntos_alta_multiple.html"
+
+    def get_form_kwargs(self):
+        return {**super().get_form_kwargs(), "empresa": self.request.empresa}
+
+    def get_context_data(self, **kwargs):
+        contexto = super().get_context_data(**kwargs)
+        contexto.update(
+            sitio=self.sitio, cancelar_url=_url_ficha(self.sitio.pk, "datos")
+        )
+        return contexto
+
+    def form_valid(self, form):
+        try:
+            puntos = services.crear_puntos_numerados(self.sitio, **form.cleaned_data)
+        except ValidationError as error:
+            form.add_error(None, error)
+            return self.form_invalid(form)
+        messages.success(self.request, f"Se crearon {len(puntos)} puntos.")
+        return redirect(_url_ficha(self.sitio.pk, "datos"))
+
+
+class HojaQR(_SitioDeEmpresaMixin, View):
+    """Hoja imprimible con los QR de los puntos activos; el POST los marca impresos."""
+
+    def _activos(self, request):
+        return PuntoControl.objects.de_empresa(request.empresa).filter(
+            sitio=self.sitio, activo=True
+        )
+
+    def _puntos(self, request):
+        puntos = self._activos(request)
+        sector = request.GET.get("sector", "")
+        if sector:
+            puntos = puntos.filter(sector=sector)
+        if request.GET.get("sin_imprimir") == "1":
+            puntos = puntos.filter(qr_impreso_el__isnull=True)
+        return puntos.order_by("orden", "pk")
+
+    def get(self, request, pk):
+        sectores = (
+            self._activos(request)
+            .exclude(sector="")
+            .order_by("sector")
+            .values_list("sector", flat=True)
+            .distinct()
+        )
+        return render(
+            request,
+            "sitios/panel/hoja_qr.html",
+            {
+                "sitio": self.sitio,
+                "puntos": self._puntos(request),
+                "sectores": sectores,
+                "sector": request.GET.get("sector", ""),
+                "sin_imprimir": request.GET.get("sin_imprimir") == "1",
+                "querystring": request.GET.urlencode(),
+            },
+        )
+
+    def post(self, request, pk):
+        hoy = timezone.localdate()
+        with transaction.atomic():
+            for punto in self._puntos(request):
+                punto.qr_impreso_el = hoy
+                punto.save(update_fields=["qr_impreso_el"])
+        messages.success(request, "Se marcaron como impresos los QR de la hoja.")
+        consulta = request.GET.urlencode()
+        url = reverse("panel:sitios:hoja_qr", args=[self.sitio.pk])
+        return redirect(f"{url}?{consulta}" if consulta else url)
 
 
 class PuntoEdicion(_PuntoMixin, UpdateView):
