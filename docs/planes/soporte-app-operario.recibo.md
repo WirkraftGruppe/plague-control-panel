@@ -272,3 +272,18 @@
 - duración: 248.5 s
 - Veredicto: PASA
 
+## 2026-11-14 17:07 — tarea T9 de 2026-11-14-soporte-app-operario.md
+
+- HEAD verificado: cd35f99
+- Contrato: modificado y aceptado (c9bc222, decisión del usuario)
+- Criterios:
+  - PASA (exit 0, nuevo: sí) `T9 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_hoja_qr.HojaQRTests.test_boton_imprimir_usa_script_estatico --keepdb`
+  - PASA (exit 0, nuevo: sí) `T9 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_alta_multiple.AltaMultiplePuntosTests.test_nombre_de_mas_de_cien_da_error_de_formulario --keepdb`
+  - PASA (exit 0, nuevo: —) `T9 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py findstatic sitios/hoja_qr.js`
+  - PASA (exit 0, nuevo: —) `T9 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios --keepdb`
+  - PASA (exit 0, nuevo: —) `T9 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 150 --subtarea T9`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 20.0 s
+- Veredicto: PASA
+

@@ -274,7 +274,7 @@ commit_base: 2229493
 | T6 | hecha | fc2fa51 | PASA 2026-11-14 |
 | T7 | hecha | 762f104 | PASA 2026-11-14 |
 | T8 | pendiente | | |
-| T9 | pendiente | | |
+| T9 | hecha | 371872e | PASA 2026-11-14 |
 | T10 | pendiente | | |
 
 ### Revisiones
