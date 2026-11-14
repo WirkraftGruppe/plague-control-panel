@@ -134,3 +134,36 @@ class TurnoAppTests(ApiVisitasBase):
         r = self.api.get(f"/api/v1/me/visitas/{visita.id}/")
         self.assertEqual(r.status_code, 404)
         self.assertEqual(self.api.get("/api/v1/me/visitas/99999/").status_code, 404)
+
+    def _contacto_en_lista_y_detalle(self, turno):
+        """`sitio.contacto` del turno en `me/visitas/` y en `me/visitas/<pk>/`."""
+        lista = self.api.get("/api/v1/me/visitas/").json()["results"]
+        (de_la_lista,) = [v for v in lista if v["id"] == turno.id]
+        detalle = self.api.get(f"/api/v1/me/visitas/{turno.id}/")
+        self.assertEqual(detalle.status_code, 200)
+        return de_la_lista["sitio"]["contacto"], detalle.json()["sitio"]["contacto"]
+
+    def _con_contacto(self):
+        self.sitio.contacto_en_sitio = "Marta"
+        self.sitio.telefono_en_sitio = "221-555"
+        self.sitio.save()
+        turno = self._turno()
+        esperado = {"nombre": "Marta", "telefono": "221-555"}
+        self.assertEqual(self._contacto_en_lista_y_detalle(turno), (esperado, esperado))
+        return turno
+
+    def test_contacto_null_con_cliente_dado_de_baja(self):
+        turno = self._con_contacto()
+        cliente = self.sitio.cliente
+        cliente.activo = False
+        cliente.save()
+        self.sitio.refresh_from_db()
+        self.assertTrue(self.sitio.activo)
+        self.assertEqual(self._contacto_en_lista_y_detalle(turno), (None, None))
+
+    def test_contacto_null_con_sitio_dado_de_baja(self):
+        turno = self._con_contacto()
+        self.sitio.activo = False
+        self.sitio.save()
+        self.assertTrue(self.sitio.cliente.activo)
+        self.assertEqual(self._contacto_en_lista_y_detalle(turno), (None, None))

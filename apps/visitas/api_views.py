@@ -81,7 +81,7 @@ def visitas_activas_del_usuario(request):
             empleado=request.user,
             estado__in=[Visita.Estado.ABIERTA, Visita.Estado.PENDIENTE],
         )
-        .select_related("sitio")
+        .select_related("sitio__cliente")
         .prefetch_related(*PRECARGA_TURNO)
     )
 
@@ -166,7 +166,7 @@ class AbrirVisitaView(APIView):
         )
         visita = (
             Visita.objects.de_empresa(empresa_de(request))
-            .select_related("sitio")
+            .select_related("sitio__cliente")
             .prefetch_related(*PRECARGA_TURNO)
             .get(pk=visita.pk)
         )
