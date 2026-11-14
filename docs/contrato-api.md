@@ -40,7 +40,7 @@ límite de pedidos (throttle) y el rol que la puede usar. Todas las rutas cuelga
   sector, estado, proximo_vencimiento}`, `servicio{id, nombre}`, `revisado` y `no_revisado` (el
   motivo si el punto se reportó como no revisado en el turno, o `null`); `visitas/abrir/`
   devuelve la misma forma. `contacto` es `{nombre, telefono}` del contacto en el sitio, o `null`
-  si no hay ninguno de los dos; solo viene en los turnos activos propios (no en `me/historial/`
+  si no hay ninguno de los dos o si el sitio o su cliente están dados de baja; solo viene en los turnos activos propios (no en `me/historial/`
   ni en el cierre). `estado` del punto (`al_dia`, `proxima`, `vencida`, `sin_programar`) usa la
   misma regla que el resolver de QR. `GET /api/v1/me/visitas/<pk>/` devuelve un turno con la
   forma de un elemento de la lista; uno ajeno, de otra empresa, realizado o inexistente da 404.

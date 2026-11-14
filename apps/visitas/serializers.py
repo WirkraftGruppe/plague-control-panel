@@ -239,6 +239,9 @@ class SitioTurnoSerializer(SitioResumenSerializer):
 
     @extend_schema_field(ContactoSitioSerializer(allow_null=True))
     def get_contacto(self, sitio):
+        # Con el sitio o el cliente dados de baja, el turno ya no lleva al sitio.
+        if not (sitio.activo and sitio.cliente.activo):
+            return None
         if not (sitio.contacto_en_sitio or sitio.telefono_en_sitio):
             return None
         return {
