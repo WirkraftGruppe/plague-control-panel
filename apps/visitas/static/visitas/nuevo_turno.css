@@ -16,3 +16,11 @@
 .nuevo-turno .tabla td:nth-child(3) .etiqueta-estado, .nuevo-turno .tabla td:nth-child(3) > * { display: inline-block; margin: 4px 0; max-width: 100%; }
 .nuevo-turno .tabla td:nth-child(4) { padding-left: 12px; }
 .nuevo-turno .tabla td select { width: 100%; max-width: 100%; min-width: 0; text-overflow: clip; }
+/* Ancho ajustable por el usuario: solo en el panel lateral y solo con un nuevo turno. */
+#panel-lateral:has(.nuevo-turno) { width: var(--ancho-nuevo-turno, 520px); }
+#panel-lateral.redimensionando { user-select: none; }
+.tirador-ancho { position: absolute; top: 0; bottom: 0; left: -4px; width: 8px; cursor: ew-resize; z-index: 1; }
+.tirador-ancho:hover, .tirador-ancho:focus-visible, .redimensionando .tirador-ancho { background: var(--border-strong); outline: none; }
+/* El contenido sigue al ancho del panel: el formulario sin tope y el plano en proporción. */
+#panel-lateral .nuevo-turno .formulario { max-width: none; }
+#panel-lateral .nuevo-turno .mapa-leaflet { height: auto; aspect-ratio: 16 / 10; min-height: 280px; max-height: 60vh; }

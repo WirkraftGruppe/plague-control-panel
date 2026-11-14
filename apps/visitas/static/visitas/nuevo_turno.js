@@ -88,6 +88,50 @@
     }
     filas.forEach(function (fila) { sincronizar(fila.dataset.punto); });
     actualizarResumen();
+    iniciarTirador(raiz);
+  }
+
+  // Ancho del panel lateral: un tirador en el borde izquierdo, con puntero o flechas.
+  // Solo cambia el ancho; el valor vive en --ancho-nuevo-turno de #panel-lateral, que
+  // solo se aplica mientras contiene un nuevo turno (los demás paneles siguen en 520 px).
+  var ANCHO_MINIMO = 420;
+  var PASO_TECLADO = 32;
+
+  function iniciarTirador(raiz) {
+    var panel = raiz.closest("#panel-lateral");
+    if (!panel) { return; }
+    var tirador = document.createElement("div");
+    tirador.className = "tirador-ancho";
+    tirador.setAttribute("role", "separator");
+    tirador.setAttribute("aria-orientation", "vertical");
+    tirador.setAttribute("aria-label", "Ancho del panel");
+    tirador.tabIndex = 0;
+    raiz.prepend(tirador);
+
+    function fijar(ancho) {
+      var maximo = Math.max(ANCHO_MINIMO, window.innerWidth - 120);
+      var valor = Math.round(Math.min(Math.max(ancho, ANCHO_MINIMO), maximo));
+      panel.style.setProperty("--ancho-nuevo-turno", valor + "px");
+      tirador.setAttribute("aria-valuenow", String(valor));
+    }
+
+    tirador.addEventListener("pointerdown", function (evento) {
+      evento.preventDefault();
+      tirador.setPointerCapture(evento.pointerId);
+      panel.classList.add("redimensionando");
+    });
+    tirador.addEventListener("pointermove", function (evento) {
+      if (tirador.hasPointerCapture(evento.pointerId)) { fijar(window.innerWidth - evento.clientX); }
+    });
+    function soltar() { panel.classList.remove("redimensionando"); }
+    tirador.addEventListener("pointerup", soltar);
+    tirador.addEventListener("pointercancel", soltar);
+    tirador.addEventListener("keydown", function (evento) {
+      var delta = { ArrowLeft: PASO_TECLADO, ArrowRight: -PASO_TECLADO }[evento.key];
+      if (!delta) { return; }
+      evento.preventDefault();
+      fijar(panel.getBoundingClientRect().width + delta);
+    });
   }
 
   function iniciarPlano(contenedor, planos, raiz, porPunto, marcar, sincronizar) {
@@ -127,6 +171,10 @@
       selector.addEventListener("change", function () { mostrar(elegido()); });
     }
     mostrar(elegido());
+    // Al cambiar el ancho del panel, el mapa recalcula su tamaño.
+    if (typeof ResizeObserver !== "undefined") {
+      new ResizeObserver(function () { mapa.invalidateSize(); }).observe(contenedor);
+    }
     // El panel lateral se muestra justo después de insertar el contenido.
     setTimeout(function () { mapa.invalidateSize(); mapa.fitBounds([[0, 0], [elegido().alto, elegido().ancho]]); }, 50);
   }
