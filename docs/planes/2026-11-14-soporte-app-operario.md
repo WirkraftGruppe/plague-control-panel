@@ -198,7 +198,7 @@ Solo T1 crea migraciones (`visitas`). `apps/api/tests/test_contrato_doc.py` exig
 
 ## Registro de verificación
 
-commit_base: (pendiente)
+commit_base: 2229493
 
 | Tarea | Estado | Commit | Recibo |
 |---|---|---|---|
