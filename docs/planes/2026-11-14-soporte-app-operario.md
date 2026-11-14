@@ -203,7 +203,7 @@ commit_base: 2229493
 | Tarea | Estado | Commit | Recibo |
 |---|---|---|---|
 | T1 | pendiente | | |
-| T2 | pendiente | | |
+| T2 | hecha | 2fc1214 | PASA 2026-11-14 |
 | T3 | pendiente | | |
 | T4 | pendiente | | |
 | T5 | pendiente | | |
