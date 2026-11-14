@@ -7,11 +7,12 @@ Mergeado: acelerar-tests (PR #4), robustez-listados (PR #1), el ancho del panel 
 ## Carriles
 | Plan | Rama | Worktree | Sesión |
 |---|---|---|---|
-| guarda del `cd` (directo) | guardia-cd-worktrees | raíz | PR pendiente |
+| guarda del `cd` (parche aplicado por el usuario) | guardia-cd-worktrees | — | PR pendiente (a9af573) |
+| recibo tras el cierre (directo) | recibo-tras-cierre | raíz | PR pendiente |
 
 ## Pendiente inmediato
 - Siguiente: preparación del despliegue en Railway (pendientes con etiqueta `despliegue`) → app móvil (`expo`).
-- Aplicar `docs/metodo/guarda-cd-worktrees.patch` (instrucciones en `docs/metodo/parche-settings.md`): la lista `deny` impide que Claude edite `guardia_bash.py`; lo aplica el usuario.
+- Fusionar `guardia-cd-worktrees` (a9af573, el parche de la guarda del `cd` aplicado) y `recibo-tras-cierre` (`recibo_pendiente.py` no pide verificar tras un cierre que solo toca docs de proceso).
 - Antes del despliegue: `showmigrations` contra producción (P-flujo-sitio-15), lo corre el usuario.
 - Prueba en navegador del primer clic en un marcador y de los filtros de turnos (P-robustez-listados-7), la hace el usuario.
 - `gh pr create` falla en `WirkraftGruppe` ("must be a collaborator"): los PR se abren desde la web hasta que el usuario habilite GitHub CLI en la organización.
@@ -19,4 +20,4 @@ Mergeado: acelerar-tests (PR #4), robustez-listados (PR #1), el ancho del panel 
 - Suite de Django: 981 tests en ~101 s (MD5 solo en tests); `--parallel` descartado.
 
 ## Esperan tu decisión
-- `recibo_pendiente.py` pide `verificar.py todo` después del commit `cierre:` aunque solo cambien docs (`docs/metodo/incidentes.md`, 2026-11-14): ¿se ajusta el hook?
+- Ninguna.
