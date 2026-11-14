@@ -21,3 +21,6 @@
 #panel-lateral.redimensionando { user-select: none; }
 .tirador-ancho { position: absolute; top: 0; bottom: 0; left: -4px; width: 8px; cursor: ew-resize; z-index: 1; }
 .tirador-ancho:hover, .tirador-ancho:focus-visible, .redimensionando .tirador-ancho { background: var(--border-strong); outline: none; }
+/* El contenido sigue al ancho del panel: el formulario sin tope y el plano en proporción. */
+#panel-lateral .nuevo-turno .formulario { max-width: none; }
+#panel-lateral .nuevo-turno .mapa-leaflet { height: auto; aspect-ratio: 16 / 10; min-height: 280px; max-height: 60vh; }

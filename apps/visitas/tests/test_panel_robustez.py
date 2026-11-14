@@ -49,6 +49,10 @@ class AnchoPanelNuevoTurnoTests(TestCase):
             estilos,
         )
         self.assertIn("cursor: ew-resize", estilos)
+        # El contenido sigue al ancho: el formulario del panel no tiene tope propio.
+        self.assertIn(
+            "#panel-lateral .nuevo-turno .formulario { max-width: none; }", estilos
+        )
 
 
 class FiltrosTurnosTests(TestCase):
