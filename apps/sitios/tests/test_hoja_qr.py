@@ -51,6 +51,13 @@ class HojaQRTests(DatosDeDosEmpresas, TestCase):
         self.assertNotContains(respuesta, "onclick=")
         self.assertNotContains(respuesta, 'loading="lazy"')
 
+    def test_boton_imprimir_usa_script_estatico(self):
+        respuesta = self.client.get(self.url)
+        self.assertContains(respuesta, 'id="imprimir-hoja"')
+        self.assertContains(respuesta, 'src="/static/sitios/hoja_qr.js" defer')
+        self.assertNotContains(respuesta, "window.print")
+        self.assertNotContains(respuesta, "onclick=")
+
     def test_sitio_de_otra_empresa_da_404(self):
         url = reverse("panel:sitios:hoja_qr", args=[self.sitio_b.pk])
         self.assertEqual(self.client.get(url).status_code, 404)

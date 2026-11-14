@@ -122,6 +122,23 @@ class PuntosAltaMultipleForm(forms.Form):
             empresa
         ).filter(activo=True)
 
+    def clean(self):
+        datos = super().clean()
+        prefijo = datos.get("prefijo")
+        inicial = datos.get("numero_inicial")
+        cantidad = datos.get("cantidad")
+        if prefijo is None or inicial is None or cantidad is None:
+            return datos
+        maximo = PuntoControl._meta.get_field("nombre").max_length
+        ultimo = f"{prefijo} {inicial + cantidad - 1}"
+        if len(ultimo) > maximo:
+            self.add_error(
+                "prefijo",
+                f"El último nombre ({ultimo!r}) supera los {maximo} caracteres: "
+                "acorte el prefijo.",
+            )
+        return datos
+
 
 def _en_rango(valor, limite, nombre):
     if valor is not None and abs(valor) > limite:
