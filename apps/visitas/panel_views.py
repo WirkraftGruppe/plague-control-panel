@@ -101,12 +101,25 @@ class ListadoVisitas(
         en_revision = Revision.objects.de_empresa(self.request.empresa).filter(
             visita=OuterRef("pk"), incidencia_ubicacion=True
         )
+        revisiones = Revision.objects.de_empresa(self.request.empresa).filter(
+            visita=OuterRef("pk")
+        )
+        reportes = PuntoNoRevisado.objects.de_empresa(self.request.empresa).filter(
+            visita=OuterRef("pk")
+        )
         queryset = (
             super()
             .get_queryset()
             .select_related("sitio", "empleado")
             .annotate(
                 n_puntos=Count("items", distinct=True),
+                # Realizada con reportes y sin revisiones: "Cerrado sin revisiones".
+                sin_revisiones=ExpressionWrapper(
+                    Q(estado=Visita.Estado.REALIZADA)
+                    & ~Exists(revisiones)
+                    & Exists(reportes),
+                    output_field=BooleanField(),
+                ),
                 con_ubicacion=ExpressionWrapper(
                     Q(incidencia_ubicacion=True) | Exists(en_revision),
                     output_field=BooleanField(),
@@ -263,6 +276,11 @@ class FichaVisita(VistaDeEmpresaMixin, AdministradorRequeridoMixin, DetailView):
         ]
         contexto["revisiones"] = list(visita.revisiones.all())
         contexto["no_revisados"] = list(visita.no_revisados.all())
+        contexto["sin_revisiones"] = (
+            visita.estado == Visita.Estado.REALIZADA
+            and not contexto["revisiones"]
+            and bool(contexto["no_revisados"])
+        )
         revisados = {r.punto_id for r in contexto["revisiones"]}
         contexto["items"] = list(visita.items.all())
         for item in contexto["items"]:

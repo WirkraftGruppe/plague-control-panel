@@ -299,7 +299,8 @@ class ReportarNoRevisadoView(APIView):
 
 
 class CerrarVisitaView(APIView):
-    """Cierra una visita abierta propia, con al menos una revisión."""
+    """Cierra una visita abierta propia, con al menos una revisión o un reporte de
+    punto no revisado."""
 
     permission_classes = [EsEmpleado | EsAdministrador]
     throttle_classes = [ScopedRateThrottle]
@@ -317,8 +318,8 @@ class CerrarVisitaView(APIView):
         responses={
             200: VisitaRealizadaSerializer,
             400: OpenApiResponse(
-                description="No está abierta, no tiene revisiones o la planilla "
-                "es inválida."
+                description="No está abierta, no tiene al menos una revisión o un "
+                "reporte de punto no revisado, o la planilla es inválida."
             ),
             404: OpenApiResponse(
                 description="La visita no existe o es de otro usuario."

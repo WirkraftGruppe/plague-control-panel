@@ -914,10 +914,12 @@ def cerrar_visita(
     """Cierra la visita abierta; devuelve la copia cerrada.
 
     La instancia recibida no se modifica: todo ocurre sobre una copia bloqueada.
-    Exige al menos una revisión, salvo en el cierre por sistema (ver
-    `_cerrar_sin_revisiones`). `datos` es la planilla de ámbito `visita` (se valida,
-    salvo en el cierre por sistema). `datos` va por servicio, `{slug: {clave: valor}}`,
-    con un servicio por cada uno de los ítems y las revisiones de la visita; el
+    Exige al menos una revisión o un reporte de punto no revisado; sin ninguno de
+    los dos, el cierre por sistema aplica `_cerrar_sin_revisiones`. Con solo
+    reportes la visita queda realizada y no toca ningún vencimiento. `datos` es la
+    planilla de ámbito `visita` (se valida, salvo en el cierre por sistema). `datos`
+    va por servicio, `{slug: {clave: valor}}`, con un servicio por cada uno de los
+    ítems y las revisiones de la visita; el
     esquema de cada uno queda copiado en `esquema_planilla`. `cerrada_en` es la hora
     de cierre: por defecto ahora, o la de la última revisión en el cierre por
     sistema. Bloquea en el orden Sitio -> Visita. Cerrar de nuevo por el mismo
@@ -962,10 +964,17 @@ def cerrar_visita(
             # del teléfono): la evidencia heredada de una migración no.
             revisiones = revisiones.filter(recibida_en__gte=visita_bd.abierta_en)
         ultima = revisiones.order_by("-realizada_en", "-id").first()
+        ultimo_reporte = None
         if ultima is None:
-            if cierre != Visita.Cierre.SISTEMA:
-                raise ValidationError("La visita necesita al menos una revisión.")
-            return _cerrar_sin_revisiones(visita_bd)
+            # Sin revisiones, los reportes de puntos no revisados bastan para cerrar.
+            ultimo_reporte = visita_bd.no_revisados.order_by("-creado", "-id").first()
+            if ultimo_reporte is None:
+                if cierre != Visita.Cierre.SISTEMA:
+                    raise ValidationError(
+                        "La visita necesita al menos una revisión o un punto "
+                        "reportado como no revisado."
+                    )
+                return _cerrar_sin_revisiones(visita_bd)
         if (
             visita_bd.origen == Visita.Origen.MANUAL
             and not (visita_bd.motivo_manual or "").strip()
@@ -974,7 +983,10 @@ def cerrar_visita(
 
         if cerrada_en is None:
             sistema = cierre == Visita.Cierre.SISTEMA
-            cerrada_en = ultima.realizada_en if sistema else timezone.now()
+            if not sistema:
+                cerrada_en = timezone.now()
+            else:
+                cerrada_en = ultima.realizada_en if ultima else ultimo_reporte.creado
         if cerrada_en > timezone.now() + TOLERANCIA_FUTURO:
             raise ValidationError("La fecha de cierre no puede ser futura.")
         servicios = (
