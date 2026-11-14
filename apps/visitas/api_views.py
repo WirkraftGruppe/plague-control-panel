@@ -32,21 +32,27 @@ from .serializers import (
     AbrirVisitaSerializer,
     CerrarVisitaSerializer,
     CrearRevisionSerializer,
+    NoRevisadoSerializer,
+    ReportarNoRevisadoSerializer,
     RevisionSerializer,
     VisitaActivaSerializer,
     VisitaRealizadaSerializer,
 )
 from .services import (
+    NoRevisadoDuplicado,
     RevisionDuplicada,
     VisitaNoEncontrada,
     VisitaYaCerrada,
     abrir_visita,
     cerrar_visita,
+    registrar_no_revisado,
     registrar_revision,
 )
 
 MENSAJE_DUPLICADA = "La revisión ya fue registrada."
+MENSAJE_NO_REVISADO_DUPLICADO = "El reporte ya fue registrado."
 MAX_BYTES_PEDIDO = MAX_FOTOS * MAX_BYTES_FOTO + 1024 * 1024
+PRECARGA_TURNO = ("items__punto", "items__servicio", "revisiones", "no_revisados")
 PRECARGA_REVISIONES = (
     "revisiones__punto",
     "revisiones__servicio",
@@ -81,7 +87,7 @@ class MisVisitasView(generics.ListAPIView):
                 estado__in=[Visita.Estado.ABIERTA, Visita.Estado.PENDIENTE],
             )
             .select_related("sitio")
-            .prefetch_related("items__punto", "items__servicio", "revisiones")
+            .prefetch_related(*PRECARGA_TURNO)
             .order_by("estado", F("programada_para").asc(nulls_last=True), "id")
         )
 
@@ -128,6 +134,12 @@ class AbrirVisitaView(APIView):
             latitud=entrada.validated_data["latitud"],
             longitud=entrada.validated_data["longitud"],
             precision_m=entrada.validated_data["precision_m"],
+        )
+        visita = (
+            Visita.objects.de_empresa(empresa_de(request))
+            .select_related("sitio")
+            .prefetch_related(*PRECARGA_TURNO)
+            .get(pk=visita.pk)
         )
         return Response(
             VisitaActivaSerializer(visita).data,
@@ -210,6 +222,79 @@ class CrearRevisionView(APIView):
             return Response(cuerpo, status=status.HTTP_409_CONFLICT)
         return Response(
             RevisionSerializer(revision).data, status=status.HTTP_201_CREATED
+        )
+
+
+class ReportarNoRevisadoView(APIView):
+    """Reporta un punto que no se pudo revisar en una visita abierta (multipart)."""
+
+    permission_classes = [EsEmpleado | EsAdministrador]
+    parser_classes = [MultiPartParser]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "crear_visita"
+
+    @extend_schema(
+        summary="Reportar un punto no revisado",
+        description=(
+            "Multipart. `punto` es el id de un punto activo del sitio de la visita "
+            "y `motivo` uno de `falta_estacion`, `codigo_ilegible`, `sin_acceso` u "
+            "`otro`. `foto` es opcional (hasta 8 MB). No es una revisión: no cuenta "
+            "para el vencimiento ni para cerrar la visita. Un `cliente_uuid` ya "
+            "registrado responde 409; `reporte` solo viene si es del mismo empleado."
+        ),
+        request={"multipart/form-data": ReportarNoRevisadoSerializer},
+        responses={
+            201: NoRevisadoSerializer,
+            400: OpenApiResponse(
+                description=(
+                    "Visita no abierta, punto de otro sitio, inactivo o ya "
+                    "reportado, o campos inválidos."
+                )
+            ),
+            404: OpenApiResponse(
+                description="La visita no existe o es de otro usuario."
+            ),
+            409: OpenApiResponse(description="El `cliente_uuid` ya fue registrado."),
+            413: OpenApiResponse(description="El pedido supera el tamaño permitido."),
+        },
+    )
+    def post(self, request, pk):
+        """Busca la visita propia antes de leer el cuerpo; delega en el servicio."""
+        try:
+            largo = int(request.META.get("CONTENT_LENGTH") or 0)
+        except ValueError:
+            largo = 0
+        # Se corta antes de leer el cuerpo: Django escribe los archivos a disco.
+        if largo > MAX_BYTES_PEDIDO:
+            raise PedidoDemasiadoGrande()
+        visita = (
+            Visita.objects.de_empresa(empresa_de(request))
+            .filter(pk=pk, empleado=request.user)
+            .first()
+        )
+        if visita is None:
+            raise NotFound("La visita no existe.")
+        try:
+            datos_pedido = request.data
+        except (RequestDataTooBig, TooManyFieldsSent, TooManyFilesSent):
+            raise PedidoDemasiadoGrande()
+        entrada = ReportarNoRevisadoSerializer(data=datos_pedido)
+        entrada.is_valid(raise_exception=True)
+        try:
+            reporte = registrar_no_revisado(
+                empleado=request.user, visita_pk=visita.pk, **entrada.validated_data
+            )
+        except VisitaNoEncontrada:
+            raise NotFound("La visita no existe.")
+        except NoRevisadoDuplicado as duplicado:
+            cuerpo = {"detalle": MENSAJE_NO_REVISADO_DUPLICADO, "campos": {}}
+            # Solo el dueño recibe los ids: no se expone lo de otro empleado.
+            if duplicado.reporte.visita.empleado_id == request.user.id:
+                cuerpo["reporte"] = duplicado.reporte.id
+                cuerpo["visita"] = duplicado.reporte.visita_id
+            return Response(cuerpo, status=status.HTTP_409_CONFLICT)
+        return Response(
+            NoRevisadoSerializer(reporte).data, status=status.HTTP_201_CREATED
         )
 
 

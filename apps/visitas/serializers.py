@@ -7,7 +7,7 @@ from django.urls import reverse
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
-from .models import ProductoAplicado, Revision, Visita
+from .models import ProductoAplicado, PuntoNoRevisado, Revision, Visita
 from .planillas import MAX_LARGO_TEXTO
 from .services import MAX_FOTOS, MAX_PRODUCTOS
 
@@ -171,6 +171,50 @@ class CrearRevisionSerializer(serializers.Serializer):
         return valor
 
 
+class ReportarNoRevisadoSerializer(serializers.Serializer):
+    """Forma y límites del reporte de un punto no revisado; las reglas de negocio
+    las aplica el servicio."""
+
+    punto = serializers.IntegerField()
+    motivo = serializers.ChoiceField(choices=PuntoNoRevisado.Motivo.choices)
+    detalle = serializers.CharField(
+        required=False, allow_blank=True, default="", max_length=MAX_LARGO_TEXTO
+    )
+    latitud = serializers.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        min_value=Decimal("-90"),
+        max_value=Decimal("90"),
+        required=False,
+        allow_null=True,
+        default=None,
+    )
+    longitud = serializers.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        min_value=Decimal("-180"),
+        max_value=Decimal("180"),
+        required=False,
+        allow_null=True,
+        default=None,
+    )
+    precision_m = serializers.DecimalField(
+        max_digits=7,
+        decimal_places=1,
+        min_value=Decimal("0"),
+        required=False,
+        allow_null=True,
+        default=None,
+    )
+    foto = serializers.FileField(
+        allow_empty_file=False,
+        validators=[validar_tamano_foto],
+        required=False,
+        default=None,
+    )
+    cliente_uuid = serializers.UUIDField(allow_null=False)
+
+
 class SitioResumenSerializer(serializers.Serializer):
     """Sitio sin coordenadas, contactos ni notas."""
 
@@ -192,11 +236,13 @@ class PuntoItemSerializer(serializers.Serializer):
 
 
 class ItemTurnoSerializer(serializers.Serializer):
-    """Punto del turno con su servicio; `revisado` si ya tiene una revisión."""
+    """Punto del turno con su servicio; `revisado` si ya tiene una revisión y
+    `no_revisado` con el motivo si se lo reportó como no revisado."""
 
     punto = PuntoItemSerializer()
     servicio = ServicioResumenSerializer()
     revisado = serializers.BooleanField()
+    no_revisado = serializers.CharField(allow_null=True)
 
 
 class VisitaActivaSerializer(serializers.ModelSerializer):
@@ -213,9 +259,11 @@ class VisitaActivaSerializer(serializers.ModelSerializer):
     @extend_schema_field(ItemTurnoSerializer(many=True))
     def get_items(self, visita):
         revisados = {r.punto_id for r in visita.revisiones.all()}
+        reportados = {n.punto_id: n.motivo for n in visita.no_revisados.all()}
         items = list(visita.items.all())
         for item in items:
             item.revisado = item.punto_id in revisados
+            item.no_revisado = reportados.get(item.punto_id)
         return ItemTurnoSerializer(items, many=True).data
 
 
@@ -270,6 +318,17 @@ class RevisionSerializer(serializers.ModelSerializer):
         return [
             reverse("api:visitas:foto", args=[f.codigo]) for f in revision.fotos.all()
         ]
+
+
+class NoRevisadoSerializer(serializers.ModelSerializer):
+    """Reporte de punto no revisado sin coordenadas ni foto."""
+
+    punto = PuntoResumenSerializer(read_only=True)
+
+    class Meta:
+        model = PuntoNoRevisado
+        fields = ["id", "visita", "punto", "motivo", "detalle", "creado"]
+        read_only_fields = fields
 
 
 class CerrarVisitaSerializer(serializers.Serializer):
