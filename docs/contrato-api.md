@@ -45,12 +45,18 @@ límite de pedidos (throttle) y el rol que la puede usar. Todas las rutas cuelga
   u `otro`), `cliente_uuid` (obligatorio) y, opcionales, `detalle`, `latitud`, `longitud`,
   `precision_m` y una `foto` (hasta 8 MB). Responde 201 con `{id, visita, punto{id, nombre},
   motivo, detalle, creado}`, sin coordenadas ni foto. No es una revisión: no mueve
-  el vencimiento del punto ni habilita el cierre de la visita. Un punto por visita: un segundo
+  el vencimiento del punto; sí permite cerrar una visita que no tiene revisiones (ver Cierre). Un punto por visita: un segundo
   reporte del mismo punto, un punto de otro sitio o inactivo dan 400 en `campos.punto`; una
   visita propia que no está abierta, 400 "La visita no está abierta."; una visita ajena, de
   otra empresa o inexistente, 404, aun con el cuerpo vacío. Un `cliente_uuid` ya registrado
   responde 409; los ids del reporte existente (`reporte`, `visita`) vienen solo si es del
   mismo empleado.
+- **Cierre** (`POST /api/v1/visitas/<pk>/cerrar/`): la visita abierta propia necesita al menos
+  una revisión o un punto reportado como no revisado; sin ninguno de los dos responde 400. Una
+  visita cerrada con solo reportes queda `realizada` con `sin_revisiones: true`, no mueve el
+  vencimiento de ningún punto y sus reportes cuentan como incidencia sin revisar en el panel. El
+  cierre nocturno del sistema aplica la misma regla. La respuesta del cierre y cada visita de
+  `GET /api/v1/me/historial/` traen `sin_revisiones` (booleano); `me/visitas/` no cambia.
 - **Empresa** (`GET /api/v1/me/empresa/`): `{nombre, logo}`, con `logo` como URL absoluta de
   `GET /api/v1/empresas/<pk>/logo/` o `null` si la empresa no tiene logo. El logo es un PNG
   con `Cache-Control: private, no-store`; un `<pk>` que no es la empresa del usuario o una

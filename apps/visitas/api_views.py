@@ -239,8 +239,10 @@ class ReportarNoRevisadoView(APIView):
             "Multipart. `punto` es el id de un punto activo del sitio de la visita "
             "y `motivo` uno de `falta_estacion`, `codigo_ilegible`, `sin_acceso` u "
             "`otro`. `foto` es opcional (hasta 8 MB). No es una revisión: no cuenta "
-            "para el vencimiento ni para cerrar la visita. Un `cliente_uuid` ya "
-            "registrado responde 409; `reporte` solo viene si es del mismo empleado."
+            "para el vencimiento, pero una visita sin revisiones y con al menos un "
+            "reporte se puede cerrar (`sin_revisiones`). Un `cliente_uuid` ya "
+            "registrado responde 409; `reporte` y `visita` solo vienen si es del "
+            "mismo empleado."
         ),
         request={"multipart/form-data": ReportarNoRevisadoSerializer},
         responses={
@@ -299,7 +301,8 @@ class ReportarNoRevisadoView(APIView):
 
 
 class CerrarVisitaView(APIView):
-    """Cierra una visita abierta propia, con al menos una revisión."""
+    """Cierra una visita abierta propia, con al menos una revisión o un reporte de
+    punto no revisado."""
 
     permission_classes = [EsEmpleado | EsAdministrador]
     throttle_classes = [ScopedRateThrottle]
@@ -317,8 +320,8 @@ class CerrarVisitaView(APIView):
         responses={
             200: VisitaRealizadaSerializer,
             400: OpenApiResponse(
-                description="No está abierta, no tiene revisiones o la planilla "
-                "es inválida."
+                description="No está abierta, no tiene al menos una revisión o un "
+                "reporte de punto no revisado, o la planilla es inválida."
             ),
             404: OpenApiResponse(
                 description="La visita no existe o es de otro usuario."

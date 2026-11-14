@@ -659,7 +659,8 @@ paths:
                 $ref: '#/components/schemas/VisitaRealizada'
           description: ''
         '400':
-          description: No está abierta, no tiene revisiones o la planilla es inválida.
+          description: No está abierta, no tiene al menos una revisión o un reporte
+            de punto no revisado, o la planilla es inválida.
         '404':
           description: La visita no existe o es de otro usuario.
         '409':
@@ -687,8 +688,9 @@ paths:
       description: 'Multipart. `punto` es el id de un punto activo del sitio de la
         visita y `motivo` uno de `falta_estacion`, `codigo_ilegible`, `sin_acceso`
         u `otro`. `foto` es opcional (hasta 8 MB). No es una revisión: no cuenta para
-        el vencimiento ni para cerrar la visita. Un `cliente_uuid` ya registrado responde
-        409; `reporte` solo viene si es del mismo empleado.'
+        el vencimiento, pero una visita sin revisiones y con al menos un reporte se
+        puede cerrar (`sin_revisiones`). Un `cliente_uuid` ya registrado responde
+        409; `reporte` y `visita` solo vienen si es del mismo empleado.'
       summary: Reportar un punto no revisado
       parameters:
       - in: path
@@ -1851,6 +1853,10 @@ components:
           type: string
           readOnly: true
           title: Detalle de la incidencia
+        sin_revisiones:
+          type: boolean
+          description: Realizada sin ninguna revisión (cerrada con solo reportes).
+          readOnly: true
         revisiones:
           type: array
           items:
@@ -1864,6 +1870,7 @@ components:
       - observaciones
       - realizada_en
       - revisiones
+      - sin_revisiones
       - sitio
     Error:
       type: object

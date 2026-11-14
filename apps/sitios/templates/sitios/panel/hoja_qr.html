@@ -1,4 +1,5 @@
 {% extends "panel/base.html" %}
+{% load static %}
 {% block title %}Hoja de QR · {{ sitio.nombre }}{% endblock %}
 {% block panel_contenido %}
 <style nonce="{{ request.csp_nonce }}">
@@ -22,7 +23,7 @@
     <label><input type="checkbox" name="sin_imprimir" value="1"{% if sin_imprimir %} checked{% endif %}> Solo sin imprimir</label>
     <button class="boton boton-secundario" type="submit">Filtrar</button>
   </form>
-  <p>Para imprimir la hoja, use la opción Imprimir del navegador (Ctrl+P).</p>
+  <p><button class="boton" type="button" id="imprimir-hoja">Imprimir</button></p>
   <p>
     <a class="boton boton-secundario" href="{% url 'panel:sitios:ficha' sitio.pk %}?pestana=datos">Volver al sitio</a>
   </p>
@@ -44,3 +45,4 @@
 <p class="texto-secundario">No hay puntos para mostrar con estos filtros.</p>
 {% endif %}
 {% endblock %}
+{% block scripts %}<script src="{% static 'sitios/hoja_qr.js' %}" defer></script>{% endblock %}
