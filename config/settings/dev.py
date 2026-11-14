@@ -2,6 +2,7 @@
 
 import ipaddress
 import os
+import sys
 
 from django.core.exceptions import ImproperlyConfigured
 
@@ -53,3 +54,9 @@ if _hosts_publicos:
 DATABASES = {
     "default": env.db("DATABASE_URL", default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}")
 }
+
+# Solo con `manage.py test`: MD5 en lugar de PBKDF2 para crear rápido los usuarios
+# de prueba. Producción no importa este módulo y el servidor de desarrollo sigue
+# con PBKDF2.
+if sys.argv[1:2] == ["test"]:
+    PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
