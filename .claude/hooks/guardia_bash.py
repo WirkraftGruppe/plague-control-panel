@@ -49,6 +49,13 @@ RUTAS_PROTEGIDAS = (
 )
 ENV_DE_EJEMPLO = {".env.example", ".env.sample", ".env.template", ".env.dist"}
 EXTENSIONES_SECRETAS = (".pem", ".key", ".jks", ".keystore")
+# `cd`/`pushd` a un worktree deja el cwd del principal dentro de él (docs/metodo/incidentes.md):
+# una carpeta `worktrees` en cualquier punto de la ruta, relativa o absoluta.
+RE_WORKTREES = re.compile(r"(^|/)worktrees(/|$)")
+MOTIVO_CD_WORKTREE = (
+    "`cd`/`pushd` a un worktree deja el cwd del principal dentro de él: usa `git -C worktrees/<w>` "
+    "para git, rutas absolutas para leer y escribir, y `verificar.py --raiz worktrees/<w>` para verificar"
+)
 RE_ASIGNACION = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 RE_SUSTITUCION = re.compile(r"\$\((.*)\)", re.DOTALL)
 RE_INVERTIDAS = re.compile(r"`([^`]*)`")
@@ -328,6 +335,10 @@ def revisar_simple(tokens: list[str], nivel: int) -> str | None:
         return None
     programa, args = nombre_base(tokens[0]), tokens[1:]
 
+    if programa in {"cd", "pushd"}:
+        destino = next((a for a in args if not a.startswith("-")), "")
+        if RE_WORKTREES.search(destino.replace("\\", "/")):
+            return MOTIVO_CD_WORKTREE
     if programa in SHELLS:
         for i, a in enumerate(args):
             if re.fullmatch(r"-[A-Za-z]*c", a) and i + 1 < len(args):
@@ -416,6 +427,10 @@ def main(entrada: str, err=sys.stderr) -> int:
         return 0
     if motivo is None:
         return 0
+    if MOTIVO_CD_WORKTREE in motivo:
+        # Regla de trabajo, no algo del usuario: la alternativa la hace Claude.
+        print(f"guardia_bash: bloqueado: {motivo}.", file=err)
+        return 2
     print(
         f"guardia_bash: bloqueado: {motivo}. Esto queda en manos del usuario: déjale el comando "
         "listo y sigue con lo demás. No lo intentes escrito de otra forma.",
