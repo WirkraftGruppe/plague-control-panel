@@ -90,7 +90,7 @@ Ninguna subtarea crea migraciones ni comparte archivos.
 
 ## Registro de verificación
 
-commit_base: (pendiente)
+commit_base: 49cfb0b
 
 | Tarea | Estado | Commit | Recibo |
 |---|---|---|---|
