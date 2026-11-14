@@ -104,7 +104,7 @@
 
 ## Registro de verificación
 
-commit_base:
+commit_base: eb1dbda
 
 | Tarea | Estado | Commit | Recibo |
 |---|---|---|---|
