@@ -94,7 +94,7 @@ commit_base: 49cfb0b
 
 | Tarea | Estado | Commit | Recibo |
 |---|---|---|---|
-| T1 | pendiente | | |
+| T1 | hecha | 79226e3 | PASA 2026-11-14 |
 | T2 | pendiente | | |
 | T3 | pendiente | | |
 
