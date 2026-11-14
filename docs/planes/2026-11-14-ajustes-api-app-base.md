@@ -22,6 +22,7 @@
 | Ola | Subtareas | Apps (migraciones) |
 |---|---|---|
 | 1 | T1, T2, T3 (integración) | ninguna |
+| 2 (modificado 2026-11-14) | T4 (y cierre) | ninguna |
 
 ## Subtareas
 
@@ -102,6 +103,25 @@
   - `[cmd]` `T=$(mktemp) && PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py spectacular --validate --file "$(cygpath -w "$T")" && diff -q --strip-trailing-cr "$T" docs/api/openapi-v1.yaml; r=$?; rm -f "$T"; exit $r`
   - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 300 --subtarea T3`
 
+### T4 — Contacto `null` con el sitio o el cliente dados de baja (modificado 2026-11-14, decisión del usuario)
+
+- **Ola**: 2
+- **Depende de**: T3
+- **Puede tocar**: `apps/visitas/serializers.py`, `apps/visitas/api_views.py`, `apps/visitas/tests/test_api_turno_app.py`, `docs/contrato-api.md`
+- **No puede tocar**: `docs/planes/`, `config/`, `apps/api/`, `apps/sitios/`, `apps/clientes/`, modelos y migraciones, archivos de otras apps
+- **Skill a leer antes**: `.agents/skills/django-rest-framework/SKILL.md` § Serializers
+- **Worktree**: sí
+- **Presupuesto**: 120 líneas agregadas
+- **Qué hacer**:
+  - `SitioTurnoSerializer.get_contacto` devuelve `null` si `sitio.activo` o `sitio.cliente.activo` es falso (P-ajustes-api-app-base-6, opción a). Los turnos no cambian: siguen listados, solo pierden el contacto.
+  - `visitas_activas_del_usuario` y `AbrirVisitaView` cargan `sitio__cliente` con `select_related`, para que el número de consultas siga sin depender de los ítems.
+  - `docs/contrato-api.md`: `contacto` también es `null` con el sitio o el cliente dados de baja.
+- **Criterios**:
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_turno_app.TurnoAppTests.test_contacto_null_con_cliente_dado_de_baja --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_turno_app.TurnoAppTests.test_contacto_null_con_sitio_dado_de_baja --keepdb`
+  - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_turno_app apps.api --keepdb`
+  - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 120 --subtarea T4`
+
 ## Registro de verificación
 
 commit_base: eb1dbda
@@ -111,6 +131,7 @@ commit_base: eb1dbda
 | T1 | hecha | c6186b2 | PASA 2026-11-14 |
 | T2 | hecha | 50d255d | PASA 2026-11-14 |
 | T3 | hecha | c2fd363 | PASA 2026-11-14 |
+| T4 | pendiente | | |
 
 ### Revisiones
 
