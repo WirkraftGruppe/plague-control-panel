@@ -8,6 +8,11 @@ app_name = "visitas"
 
 urlpatterns = [
     path("me/visitas/", api_views.MisVisitasView.as_view(), name="mis-visitas"),
+    path(
+        "me/visitas/<int:pk>/",
+        api_views.MiVisitaDetalleView.as_view(),
+        name="mi-visita",
+    ),
     path("visitas/abrir/", api_views.AbrirVisitaView.as_view(), name="abrir"),
     path(
         "visitas/<int:pk>/cerrar/", api_views.CerrarVisitaView.as_view(), name="cerrar"

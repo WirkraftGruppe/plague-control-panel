@@ -620,6 +620,7 @@ class MisVisitasTests(BaseApiTests):
                 "nombre": "Planta 1",
                 "direccion": "Calle 1",
                 "localidad": "Castelli",
+                "contacto": None,
             },
         )
         self.assertEqual(item["programada_para"], "2026-09-01")
