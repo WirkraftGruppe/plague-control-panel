@@ -136,6 +136,7 @@ Comportamiento (`panel_lateral.js`, cargado con `defer` desde el panel):
 - `Escape` cierra el panel.
 - `Tab` y `Shift+Tab` circulan solo dentro del panel mientras está abierto.
 - Al cerrar se vacía el contenedor y el foco vuelve al elemento que lo abrió.
+- Nuevo turno: el usuario ajusta el ancho del panel (solo el ancho) con el tirador `.tirador-ancho` del borde izquierdo, arrastrándolo o con las flechas (`role="separator"`); va de 420 px al ancho de la ventana menos 120 px, se guarda en `--ancho-nuevo-turno` y el mapa se reajusta. Los demás paneles siguen en 520 px.
 
 ## Textos de interfaz
 

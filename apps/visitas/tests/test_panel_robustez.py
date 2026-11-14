@@ -31,6 +31,26 @@ class MapaPanelLateralTests(TestCase):
         self.assertRegex(opciones.group(1), r"keyboard:\s*false")
 
 
+class AnchoPanelNuevoTurnoTests(TestCase):
+    def test_panel_de_nuevo_turno_tiene_ancho_ajustable(self):
+        codigo = RUTA_JS.read_text(encoding="utf-8")
+        estilos = RUTA_JS.with_suffix(".css").read_text(encoding="utf-8")
+        # El tirador solo se crea dentro del panel lateral y solo cambia el ancho.
+        self.assertIn('raiz.closest("#panel-lateral")', codigo)
+        self.assertIn('setAttribute("role", "separator")', codigo)
+        self.assertIn('"--ancho-nuevo-turno"', codigo)
+        self.assertNotRegex(codigo, r"style\.height|--alto")
+        self.assertRegex(codigo, r"ArrowLeft|ArrowRight")
+        self.assertIn("invalidateSize", codigo)
+        # El ancho propio se aplica solo con un nuevo turno; los demás paneles, 520 px.
+        self.assertIn(
+            "#panel-lateral:has(.nuevo-turno) "
+            "{ width: var(--ancho-nuevo-turno, 520px); }",
+            estilos,
+        )
+        self.assertIn("cursor: ew-resize", estilos)
+
+
 class FiltrosTurnosTests(TestCase):
     @classmethod
     def setUpTestData(cls):
