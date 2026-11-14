@@ -286,3 +286,21 @@ def test_archivos_de_grep():
     assert revisar_plan.archivos_de_grep("grep -n x src/*.py") == []
     assert revisar_plan.archivos_de_grep("grep -n x a.py | wc -l") == []
     assert revisar_plan.archivos_de_grep("echo hola") == []
+
+
+def test_avisa_criterio_que_corre_la_suite_completa(raiz):
+    for flags in ("", " --keepdb", " --keepdb --parallel", " -v 2 --noinput --keepdb"):
+        comando = f"PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test{flags}"
+        codigo, salida = revisar(raiz, tarea(1, criterios=(f"`[cmd]` `{comando}`",)))
+        assert codigo == 0, salida
+        assert "AVISO: T1: corre la suite completa; usa sus tests nombrados o las apps que toca" in salida, flags
+
+
+def test_no_avisa_criterio_con_apps_nombradas(raiz):
+    for etiquetas in ("apps.uno --keepdb", "--keepdb apps.uno apps.dos", "apps.uno.tests.test_a --keepdb -v 2"):
+        comando = f"PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test {etiquetas}"
+        codigo, salida = revisar(raiz, tarea(1, criterios=(f"`[cmd]` `{comando}`",)))
+        assert codigo == 0, salida
+        assert "suite completa" not in salida, etiquetas
+    codigo, salida = revisar(raiz, tarea(1, criterios=("`[cmd]` `echo hola`",)))
+    assert "suite completa" not in salida
