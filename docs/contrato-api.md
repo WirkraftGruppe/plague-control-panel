@@ -36,9 +36,20 @@ límite de pedidos (throttle) y el rol que la puede usar. Todas las rutas cuelga
   `POST /api/v1/visitas/abrir/` recibe solo `qr_codigo` (más coordenadas opcionales): abre
   el turno pendiente más antiguo del empleado en el sitio de ese punto o crea una visita
   sin ítems; no hay `sitio` ni otro id en el pedido. `GET /api/v1/me/visitas/` trae en cada
-  turno `sitio{id, nombre, direccion, localidad}` e `items[]` con `punto{id, nombre,
-  sector}`, `servicio{id, nombre}`, `revisado` y `no_revisado` (el motivo si el punto se
-  reportó como no revisado en el turno, o `null`); `visitas/abrir/` devuelve los mismos ítems.
+  turno `sitio{id, nombre, direccion, localidad, contacto}` e `items[]` con `punto{id, nombre,
+  sector, estado, proximo_vencimiento}`, `servicio{id, nombre}`, `revisado` y `no_revisado` (el
+  motivo si el punto se reportó como no revisado en el turno, o `null`); `visitas/abrir/`
+  devuelve la misma forma. `contacto` es `{nombre, telefono}` del contacto en el sitio, o `null`
+  si no hay ninguno de los dos; solo viene en los turnos activos propios (no en `me/historial/`
+  ni en el cierre). `estado` del punto (`al_dia`, `proxima`, `vencida`, `sin_programar`) usa la
+  misma regla que el resolver de QR. `GET /api/v1/me/visitas/<pk>/` devuelve un turno con la
+  forma de un elemento de la lista; uno ajeno, de otra empresa, realizado o inexistente da 404.
+- **Raíz** (`GET /api/v1/`): `{usuario{id, nombre_completo, username}, empresa{id, nombre},
+  rol}`; `nombre_completo` cae en `username` si el usuario no tiene nombre cargado y `empresa`
+  es `null` para un usuario sin empresa. `usuario` era antes el username como texto.
+- **Empresa inactiva**: el 401 de `auth/token/`, de `auth/token/refresh/` y de cualquier ruta
+  con un token vigente lleva, además de `detalle` y `campos`, `code: "empresa_inactiva"`.
+  Ningún otro error trae `code`.
 - **Puntos no revisados** (`POST /api/v1/visitas/<pk>/no-revisados/`, multipart): registra una
   estación que no se pudo revisar en una visita abierta propia. Lleva `punto` (id de un punto
   activo del sitio de la visita), `motivo` (`falta_estacion`, `codigo_ilegible`, `sin_acceso`
@@ -98,7 +109,7 @@ límite de pedidos (throttle) y el rol que la puede usar. Todas las rutas cuelga
 
 | Método | Ruta | Auth | Throttle | Respuesta |
 |---|---|---|---|---|
-| GET | `/api/v1/` | JWT | - | 200 con el rol del usuario |
+| GET | `/api/v1/` | JWT | - | 200 con el usuario, su empresa y su rol |
 | POST | `/api/v1/auth/token/` | Pública | token, 10/min por IP | 200 con `access` y `refresh`; 400, 401, 415, 429 |
 | POST | `/api/v1/auth/token/refresh/` | Pública | renovación, 30/min por IP | 200 con un `access` nuevo; 401, 415, 429 |
 | GET | `/api/v1/schema/` | JWT de empresa activa | - | 200 con el esquema OpenAPI; 401 |
@@ -111,6 +122,7 @@ límite de pedidos (throttle) y el rol que la puede usar. Todas las rutas cuelga
 | GET | `/api/v1/me/puntos/` | Empleado o administrador | - | 200 con los puntos del usuario |
 | GET | `/api/v1/productos/` | Empleado o administrador | - | 200 con el catálogo; 304 |
 | GET | `/api/v1/me/visitas/` | Empleado o administrador | - | 200 con los turnos del usuario y sus ítems |
+| GET | `/api/v1/me/visitas/<pk>/` | Empleado o administrador | - | 200 con el turno; 404 |
 | POST | `/api/v1/visitas/abrir/` | Empleado o administrador | crear_visita, 120/hora | 201 con el turno; 200 si ya estaba abierto; 400 |
 | POST | `/api/v1/visitas/<pk>/cerrar/` | Empleado o administrador | crear_visita, 120/hora | 200 con la visita; 400, 404, 409 |
 | POST | `/api/v1/visitas/<pk>/no-revisados/` | Empleado o administrador | crear_visita, 120/hora | 201 con el reporte; 400, 404, 409, 413 |

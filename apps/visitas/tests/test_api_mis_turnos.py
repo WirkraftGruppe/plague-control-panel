@@ -53,7 +53,13 @@ class MisTurnosApiTests(ApiVisitasBase):
             cuerpo["items"],
             [
                 {
-                    "punto": {"id": self.punto.id, "nombre": "General", "sector": ""},
+                    "punto": {
+                        "id": self.punto.id,
+                        "nombre": "General",
+                        "sector": "",
+                        "estado": "sin_programar",
+                        "proximo_vencimiento": None,
+                    },
                     "servicio": {"id": self.tipo.id, "nombre": "Desratización"},
                     "revisado": False,
                     "no_revisado": None,
@@ -63,6 +69,8 @@ class MisTurnosApiTests(ApiVisitasBase):
                         "id": self.deposito.id,
                         "nombre": "Depósito",
                         "sector": "Fondo",
+                        "estado": "sin_programar",
+                        "proximo_vencimiento": None,
                     },
                     "servicio": {"id": self.fumiga.id, "nombre": "Fumigación"},
                     "revisado": True,

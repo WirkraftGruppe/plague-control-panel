@@ -4,8 +4,11 @@ import json
 from decimal import Decimal
 
 from django.urls import reverse
+from django.utils import timezone
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
+
+from apps.sitios.estado import estado_por_vencimiento
 
 from .models import ProductoAplicado, PuntoNoRevisado, Revision, Visita
 from .planillas import MAX_LARGO_TEXTO
@@ -224,6 +227,26 @@ class SitioResumenSerializer(serializers.Serializer):
     localidad = serializers.CharField()
 
 
+class ContactoSitioSerializer(serializers.Serializer):
+    nombre = serializers.CharField()
+    telefono = serializers.CharField()
+
+
+class SitioTurnoSerializer(SitioResumenSerializer):
+    """Sitio de un turno activo del propio empleado: suma el contacto en el sitio."""
+
+    contacto = serializers.SerializerMethodField()
+
+    @extend_schema_field(ContactoSitioSerializer(allow_null=True))
+    def get_contacto(self, sitio):
+        if not (sitio.contacto_en_sitio or sitio.telefono_en_sitio):
+            return None
+        return {
+            "nombre": sitio.contacto_en_sitio,
+            "telefono": sitio.telefono_en_sitio,
+        }
+
+
 class ServicioResumenSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     nombre = serializers.CharField()
@@ -233,6 +256,14 @@ class PuntoItemSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     nombre = serializers.CharField()
     sector = serializers.CharField()
+    estado = serializers.SerializerMethodField()
+    proximo_vencimiento = serializers.DateField(allow_null=True)
+
+    @extend_schema_field(serializers.CharField())
+    def get_estado(self, punto):
+        """Estado por vencimiento, con la misma fecha para toda la respuesta."""
+        hoy = self.context.setdefault("hoy", timezone.localdate())
+        return estado_por_vencimiento(punto.proximo_vencimiento, hoy)
 
 
 class ItemTurnoSerializer(serializers.Serializer):
@@ -248,7 +279,7 @@ class ItemTurnoSerializer(serializers.Serializer):
 class VisitaActivaSerializer(serializers.ModelSerializer):
     """Visita pendiente o abierta, sin coordenadas: lista propia y apertura."""
 
-    sitio = SitioResumenSerializer(read_only=True)
+    sitio = SitioTurnoSerializer(read_only=True)
     items = serializers.SerializerMethodField()
 
     class Meta:
@@ -264,7 +295,8 @@ class VisitaActivaSerializer(serializers.ModelSerializer):
         for item in items:
             item.revisado = item.punto_id in revisados
             item.no_revisado = reportados.get(item.punto_id)
-        return ItemTurnoSerializer(items, many=True).data
+        contexto = {"hoy": self.context.setdefault("hoy", timezone.localdate())}
+        return ItemTurnoSerializer(items, many=True, context=contexto).data
 
 
 class ProductoAplicadoSerializer(serializers.ModelSerializer):
