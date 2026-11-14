@@ -1,0 +1,16 @@
+{% if no_revisados %}
+  <h2>Puntos no revisados</h2>
+  <table class="tabla">
+    <thead><tr><th scope="col">Punto</th><th scope="col">Motivo</th><th scope="col">Detalle</th><th scope="col">Foto</th></tr></thead>
+    <tbody>
+      {% for reporte in no_revisados %}
+      <tr>
+        <td>{{ reporte.punto.nombre }}</td>
+        <td>{{ reporte.get_motivo_display }}</td>
+        <td>{{ reporte.detalle|default:"—" }}</td>
+        <td>{% if reporte.foto %}<a href="{% url 'panel:visitas:foto_no_revisado' reporte.foto_codigo %}">Ver foto</a>{% else %}—{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endif %}
