@@ -104,11 +104,17 @@ commit_base: 49cfb0b
 |---|---|---|---|---|
 | 2026-11-14 09:46 | plan | 3 | 0 | 3 |
 | 2026-11-14 09:46 | plan | 0 | 0 | 3 |
+| 2026-11-14 10:13 | cierre | 0 | 0 | 4 |
 
 <!-- Primera pasada: override de método que no cubre setUpTestData, dev.py en una subtarea paralela, si_toca demasiado estrecho; menores: línea Omitido, reutilizar es_suite, caso dev fuera de tests. Segunda pasada: Puede tocar de T3, flags además de --keepdb, test sin base. Todo corregido en el texto antes de congelar. Hora: la de registro. -->
 
-Auditoría: (pendiente)
-Hallazgos: (pendiente)
+Auditoría: `auditor-seguridad`, sin hallazgos explotables; (a) a (d) confirmados; una observación [BAJA]: la guarda de producción miraba solo el primer hasher.
+Hallazgos:
+- Auditoría [BAJA], la guarda miraba solo `PASSWORD_HASHERS[0]` — corregido (4eb038b): `test_prod_primer_hasher_no_es_md5` y `test_dev_fuera_de_tests_no_usa_md5` revisan la lista entera.
+- Revisor de cierre, menor: `git diff --name-only` sin `--no-renames` ni `-z` en `archivos_cambiados` — pendiente P-acelerar-tests-1.
+- Revisor de cierre, menor: tests de `si_toca` sin los caminos sin commitear, `docs/plantilla-plan.md` y renombres — pendiente P-acelerar-tests-2.
+- Revisor de cierre, menor: `FLAGS_CON_VALOR` sin `--durations`, `--shuffle`, `--settings`, `--testrunner`, `--pythonpath`, `-t` — pendiente P-acelerar-tests-3.
+- Revisor de cierre, menor: faltaba el tiempo de `verificar.py todo` en `metricas.md` — corregido (4eb038b).
 
 ### Decisiones del plan
 
@@ -122,6 +128,14 @@ Medición previa (2026-11-14, `main` @ 667ce36, `manage.py test --keepdb`): `Ran
 
 ### Problemas
 
+- P-acelerar-tests-1 [menor] `.claude/hooks/verificar.py` `archivos_cambiados`: `git diff --name-only base..HEAD` va sin `--no-renames` ni `-z`; mover un archivo fuera de `.claude/` o una ruta no ASCII dentro de `.claude/` (entre comillas por `core.quotePath`) haría omitir `pytest .claude/hooks` aunque el plan toque el método.
+- P-acelerar-tests-2 [menor] `.claude/hooks/test_verificar.py`: los tests de `si_toca` solo cubren cambios commiteados bajo `.claude/`; faltan un cambio sin commitear o sin seguimiento, el prefijo `docs/plantilla-plan.md` y un renombre.
+- P-acelerar-tests-3 [observación] `.claude/hooks/revisar_plan.py` `FLAGS_CON_VALOR` no incluye `--durations`, `--shuffle`, `--settings`, `--testrunner`, `--pythonpath` ni `-t`: `manage.py test --keepdb --durations 10` corre la suite completa sin aviso (nunca da un aviso falso).
+
 ### Decisiones
+
+- 2026-11-14 — los tests usan `MD5PasswordHasher` solo con `manage.py test` (`sys.argv` en `config/settings/dev.py`); producción no cambia — la suite pasa de 551 s a 101 s — (agente) — reemplaza a: (nada)
+- 2026-11-14 — `verificar.py todo` omite `pytest .claude/hooks` si el plan no toca `.claude/` ni `docs/plantilla-plan.md` (`si_toca` en `cierre_global.json`); `verificar.py cierre` sin plan lo corre siempre — sin base no hay forma fiable de saber qué se tocó — (agente) — reemplaza a: (nada)
+- 2026-11-14 — los criterios de una subtarea corren sus tests nombrados y, como mucho, los de sus apps; la suite completa, solo en el cierre global (`revisar_plan.py` avisa) — `verificar.py todo` de robustez-listados tardó 2788 s — (agente) — reemplaza a: (nada)
 
 ### Cierra
