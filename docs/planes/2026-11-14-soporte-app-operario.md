@@ -208,18 +208,25 @@ commit_base: 2229493
 | T4 | hecha | 3c9fd0a | PASA 2026-11-14 |
 | T5 | hecha | 778dea9 | PASA 2026-11-14 |
 | T6 | hecha | fc2fa51 | PASA 2026-11-14 |
-| T7 | pendiente | | |
+| T7 | hecha | 762f104 | PASA 2026-11-14 |
 
 ### Revisiones
 
 | Fecha | Modo | Bloqueantes | Decisiones | Menores |
 |---|---|---|---|---|
 | 2026-11-14 15:53 | plan | 5 | 1 | 4 |
+| 2026-11-14 16:30 | cierre | 2 | 1 | 5 |
 
 <!-- Plan: test_no_nula (14 modelos y cliente_uuid nulo), test_api_mis_turnos, test_routers, test_aislamiento de la API (y 404 antes de validar el cuerpo) y test_acceso del panel asignados a T1, T3 y T5; decisión del código de una visita cerrada, del usuario (400); menores incorporados: tres usos en ListadoVisitas, orden y sitio activo en el alta múltiple, no_revisado en visitas/abrir, tests de cobertura sumados; el throttle queda como P-soporte-app-operario-1. -->
 
-Auditoría: pendiente
-Hallazgos: —
+Auditoría: `auditor-seguridad`, sin hallazgos bloqueantes ni de severidad crítica, alta o media; dos de severidad baja o informativa (pendientes P-soporte-app-operario-2 y -3) y la retención de coordenadas y fotos, que se suma a la decisión legal ya abierta (P-soporte-app-operario-10).
+Hallazgos:
+- Revisor de cierre, bloqueante: `hoja_qr.html` con `<style>` sin nonce y `onclick`, bloqueados por la CSP (la hoja quedaba sin grilla ni `@media print`) — corregido (62b3cb0): nonce en el estilo, indicación de imprimir con el navegador en lugar del botón, sin `loading="lazy"`; test `test_hoja_respeta_la_csp`.
+- Revisor de cierre, bloqueante: `docs/contrato-api.md` decía `punto{id, nombre, sector}` en el 201 de `no-revisados` — corregido (762f104): `punto{id, nombre}`, como `PuntoResumenSerializer`.
+- Revisor de cierre, necesita decisión: una visita con solo reportes (p. ej. sin acceso a todo el sitio) no se puede cerrar; el cierre nocturno la deja pendiente o cancelada, así que sus reportes nunca llegan al contador (solo cuenta con la visita realizada) y, si vuelve a pendiente, `abrir_visita` reutiliza la fila con los reportes del día anterior — en "Esperan tu decisión" de `docs/estado.md` (P-soporte-app-operario-11).
+- Revisor de cierre, menores: filtro `incidencia=todas`, incidencia sin detalle, POST de la hoja que vuelve a filtrar, nombre de más de 100 caracteres, duplicados — pendientes P-soporte-app-operario-3 a -7.
+- Auditoría [BAJA → informativo], tope de 17 MB para un endpoint de una foto — pendiente P-soporte-app-operario-2.
+- `verificar.py todo` tras la ronda de corrección: PASA en 762f104 (248 s).
 
 ### Decisiones del plan
 
@@ -234,6 +241,16 @@ Hallazgos: —
 ### Problemas
 
 - P-soporte-app-operario-1 [menor] El scope `crear_visita` (120/hora, `config/settings/base.py:225`) lo comparten abrir, revisiones, cierre y reportes; con sitios de decenas de puntos puede quedar corto para un operario en un día largo. Revisar con datos reales antes del despliegue.
+- P-soporte-app-operario-2 [menor] `ReportarNoRevisadoView` (`apps/visitas/api_views.py`) corta con `MAX_BYTES_PEDIDO` (2 fotos + 1 MB, ~17 MB) aunque admite una sola foto de 8 MB: un pedido de ~16,9 MB se escribe a disco antes del 400. Corrección: tope propio `MAX_BYTES_FOTO + 1 MB`. Origen: auditor-seguridad.
+- P-soporte-app-operario-3 [menor] `PuntosAltaMultipleForm` (`apps/sitios/panel_forms.py:104-106`): prefijo de 90 caracteres más un `numero_inicial` de 10 dígitos supera `PuntoControl.nombre` (100) y en PostgreSQL da 500 (SQLite no lo detecta). Corrección: validar el largo del último nombre en `clean()`. Origen: auditor-seguridad y revisor de cierre.
+- P-soporte-app-operario-4 [menor] `ListadoVisitas` (`apps/visitas/panel_views.py:130`): el filtro `incidencia=todas` sigue en `incidencia=True`, así que una visita con solo reportes aparece en "sin revisar" y desaparece de "todas" al marcarla revisada. Origen: revisor de cierre.
+- P-soporte-app-operario-5 [menor] Una visita con solo reportes aparece como incidencia con detalle "—" (`apps/sitios/templates/sitios/panel/listado.html:71`) y la ficha muestra el título "Incidencia" sin texto (`apps/visitas/templates/visitas/panel/ficha.html:24-27`). Origen: revisor de cierre.
+- P-soporte-app-operario-6 [menor] El POST de `HojaQR` (`apps/sitios/panel_views.py:541-546`) vuelve a aplicar los filtros: con `sin_imprimir=1`, un punto creado entre el GET y el POST queda marcado como impreso. Corrección: enviar los pk mostrados. Origen: revisor de cierre.
+- P-soporte-app-operario-7 [observación] Duplicados: `IgnorarAccept` tiene tres copias (`apps/sitios/api_views.py`, `apps/visitas/api_views.py`, `apps/empresas/api_views.py`); `FotoNoRevisado` repite el cuerpo de `FotoVisita` (`apps/visitas/panel_views.py`). Unificar en `apps/api` y en una función común.
+- P-soporte-app-operario-8 [observación] La hoja de QR no pagina: con cientos de puntos son cientos de pedidos de PNG con `no-store`. Revisar con sitios reales.
+- P-soporte-app-operario-9 [observación] `test_reporte_no_crea_revision_ni_cambia_vencimiento` compara `None == None` (el punto no tiene servicio) y lo que prueba es el `assert_not_called`; la carrera por `IntegrityError` de `registrar_no_revisado` no tiene test. Origen: revisor de cierre.
+- P-soporte-app-operario-10 [observación] [despliegue] `PuntoNoRevisado` guarda latitud, longitud, distancia y foto del empleado (hoy solo visibles en `/admin/`); su retención se suma a la decisión legal ya abierta para `Revision` y `Foto` (P-pendientes-heredados-7). Origen: auditor-seguridad.
+- P-soporte-app-operario-11 [importante] Espera decisión del usuario: qué pasa con los reportes de una visita que solo tiene reportes (no se puede cerrar; el cierre nocturno la deja pendiente o cancelada; nunca llega al contador; al reabrirla trae los reportes del día anterior y el mismo punto no se puede volver a reportar). Opciones: permitir cerrar con solo reportes, contar también las visitas pendientes o canceladas con reportes, o mover los reportes al reabrir. Origen: revisor de cierre.
 
 ### Decisiones
 
