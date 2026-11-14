@@ -55,7 +55,7 @@ class EsquemaRobustezTests(TestCase):
         )
         self.assertEqual(
             set(resultado["components"]["schemas"]["Error"]["properties"]),
-            {"detalle", "campos"},
+            {"detalle", "campos", "code"},
         )
         token = resultado["paths"]["/api/v1/auth/token/"]["post"]["responses"]
         self.assertIn("400", token)

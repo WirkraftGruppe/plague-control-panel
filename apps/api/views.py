@@ -7,7 +7,6 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.http import JsonResponse
 from django.views.defaults import page_not_found
-from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import (
     OpenApiResponse,
     extend_schema,
@@ -32,6 +31,7 @@ from apps.accounts.limites import (
     registrar_fallo,
 )
 from apps.accounts.red import ip_del_cliente
+from apps.empresas.consultas import empresa_de
 
 from .serializers import TokenNormalizadoSerializer
 
@@ -105,12 +105,49 @@ def no_encontrado(request, exception):
     return page_not_found(request, exception)
 
 
-class RaizView(APIView):
-    """Con los permisos por defecto: anónimo 401, autenticado ve su rol."""
+RAIZ = inline_serializer(
+    "Raiz",
+    {
+        "usuario": inline_serializer(
+            "RaizUsuario",
+            {
+                "id": serializers.IntegerField(),
+                "nombre_completo": serializers.CharField(),
+                "username": serializers.CharField(),
+            },
+        ),
+        "empresa": inline_serializer(
+            "RaizEmpresa",
+            {"id": serializers.IntegerField(), "nombre": serializers.CharField()},
+            allow_null=True,
+        ),
+        "rol": serializers.CharField(),
+    },
+)
 
-    @extend_schema(responses=OpenApiTypes.OBJECT)
+
+class RaizView(APIView):
+    """Con los permisos por defecto: anónimo 401, autenticado ve quién es."""
+
+    @extend_schema(responses=RAIZ)
     def get(self, request):
-        return Response({"usuario": request.user.username, "rol": request.user.rol})
+        usuario = request.user
+        empresa = empresa_de(request)
+        return Response(
+            {
+                "usuario": {
+                    "id": usuario.pk,
+                    "nombre_completo": usuario.get_full_name() or usuario.username,
+                    "username": usuario.username,
+                },
+                "empresa": (
+                    {"id": empresa.pk, "nombre": empresa.nombre}
+                    if empresa is not None
+                    else None
+                ),
+                "rol": usuario.rol,
+            }
+        )
 
 
 TOKENS = inline_serializer(
