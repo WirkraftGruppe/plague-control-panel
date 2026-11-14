@@ -7,7 +7,8 @@ paths:
   /api/v1/:
     get:
       operationId: root_retrieve
-      description: 'Con los permisos por defecto: anónimo 401, autenticado ve su rol.'
+      description: 'Con los permisos por defecto: anónimo 401, autenticado ve quién
+        es.'
       security:
       - jwtAuth: []
       responses:
@@ -15,8 +16,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: {}
+                $ref: '#/components/schemas/Raiz'
           description: ''
         '401':
           description: Falta autenticación o es inválida.
@@ -280,6 +280,37 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedVisitaActivaList'
           description: ''
+        '401':
+          description: Falta autenticación o es inválida.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/me/visitas/{id}/:
+    get:
+      operationId: me_visitas_retrieve
+      description: Un turno pendiente o abierto del usuario, con la forma de la lista.
+      summary: Detalle de uno de mis turnos
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - me
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisitaActiva'
+          description: ''
+        '404':
+          description: No existe, es de otro empleado o de otra empresa, o ya está
+            realizada.
         '401':
           description: Falta autenticación o es inválida.
           content:
@@ -939,6 +970,16 @@ components:
           type: string
       required:
       - razon_social
+    ContactoSitio:
+      type: object
+      properties:
+        nombre:
+          type: string
+        telefono:
+          type: string
+      required:
+      - nombre
+      - telefono
     CrearRevisionRequest:
       type: object
       description: |-
@@ -1388,9 +1429,18 @@ components:
           type: string
         sector:
           type: string
+        estado:
+          type: string
+          readOnly: true
+        proximo_vencimiento:
+          type: string
+          format: date
+          nullable: true
       required:
+      - estado
       - id
       - nombre
+      - proximo_vencimiento
       - sector
     PuntoPlano:
       type: object
@@ -1458,6 +1508,44 @@ components:
       required:
       - id
       - nombre
+    Raiz:
+      type: object
+      properties:
+        usuario:
+          $ref: '#/components/schemas/RaizUsuario'
+        empresa:
+          allOf:
+          - $ref: '#/components/schemas/RaizEmpresa'
+          nullable: true
+        rol:
+          type: string
+      required:
+      - empresa
+      - rol
+      - usuario
+    RaizEmpresa:
+      type: object
+      properties:
+        id:
+          type: integer
+        nombre:
+          type: string
+      required:
+      - id
+      - nombre
+    RaizUsuario:
+      type: object
+      properties:
+        id:
+          type: integer
+        nombre_completo:
+          type: string
+        username:
+          type: string
+      required:
+      - id
+      - nombre_completo
+      - username
     RenovacionRequest:
       type: object
       description: Rechaza renovar si el usuario no existe o cambió su contraseña.
@@ -1706,6 +1794,30 @@ components:
       - id
       - localidad
       - nombre
+    SitioTurno:
+      type: object
+      description: 'Sitio de un turno activo del propio empleado: suma el contacto
+        en el sitio.'
+      properties:
+        id:
+          type: integer
+        nombre:
+          type: string
+        direccion:
+          type: string
+        localidad:
+          type: string
+        contacto:
+          allOf:
+          - $ref: '#/components/schemas/ContactoSitio'
+          nullable: true
+          readOnly: true
+      required:
+      - contacto
+      - direccion
+      - id
+      - localidad
+      - nombre
     TokenNormalizadoRequest:
       type: object
       description: Normaliza el usuario igual que el panel antes de autenticar.
@@ -1800,7 +1912,7 @@ components:
           readOnly: true
         sitio:
           allOf:
-          - $ref: '#/components/schemas/SitioResumen'
+          - $ref: '#/components/schemas/SitioTurno'
           readOnly: true
         programada_para:
           type: string
@@ -1883,6 +1995,10 @@ components:
             type: array
             items:
               type: string
+        code:
+          type: string
+          enum:
+          - empresa_inactiva
       required:
       - detalle
       - campos
