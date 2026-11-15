@@ -8,6 +8,7 @@ ESQUEMA_ERROR = {
             "type": "object",
             "additionalProperties": {"type": "array", "items": {"type": "string"}},
         },
+        "code": {"type": "string", "enum": ["empresa_inactiva"]},
     },
     "required": ["detalle", "campos"],
 }

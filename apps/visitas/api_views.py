@@ -73,6 +73,19 @@ class VisitaYaCerradaError(APIException):
     default_code = "visita_ya_cerrada"
 
 
+def visitas_activas_del_usuario(request):
+    """Turnos pendientes y abiertos del usuario, en su empresa."""
+    return (
+        Visita.objects.de_empresa(empresa_de(request))
+        .filter(
+            empleado=request.user,
+            estado__in=[Visita.Estado.ABIERTA, Visita.Estado.PENDIENTE],
+        )
+        .select_related("sitio__cliente")
+        .prefetch_related(*PRECARGA_TURNO)
+    )
+
+
 class MisVisitasView(generics.ListAPIView):
     """Visitas pendientes y abiertas del usuario autenticado."""
 
@@ -80,21 +93,37 @@ class MisVisitasView(generics.ListAPIView):
     serializer_class = VisitaActivaSerializer
 
     def get_queryset(self):
-        return (
-            Visita.objects.de_empresa(empresa_de(self.request))
-            .filter(
-                empleado=self.request.user,
-                estado__in=[Visita.Estado.ABIERTA, Visita.Estado.PENDIENTE],
-            )
-            .select_related("sitio")
-            .prefetch_related(*PRECARGA_TURNO)
-            .order_by("estado", F("programada_para").asc(nulls_last=True), "id")
+        return visitas_activas_del_usuario(self.request).order_by(
+            "estado", F("programada_para").asc(nulls_last=True), "id"
         )
 
     @extend_schema(summary="Mis visitas pendientes y abiertas")
     def get(self, request, *args, **kwargs):
         """Lista paginada; las abiertas van primero y cada una trae su `estado` y
         los `items` (punto y servicio) del turno."""
+        return super().get(request, *args, **kwargs)
+
+
+class MiVisitaDetalleView(generics.RetrieveAPIView):
+    """Un turno pendiente o abierto del usuario, con la forma de la lista."""
+
+    permission_classes = [EsEmpleado | EsAdministrador]
+    serializer_class = VisitaActivaSerializer
+
+    def get_queryset(self):
+        return visitas_activas_del_usuario(self.request)
+
+    @extend_schema(
+        summary="Detalle de uno de mis turnos",
+        responses={
+            200: VisitaActivaSerializer,
+            404: OpenApiResponse(
+                description="No existe, es de otro empleado o de otra empresa, "
+                "o ya está realizada."
+            ),
+        },
+    )
+    def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
 
 
@@ -137,7 +166,7 @@ class AbrirVisitaView(APIView):
         )
         visita = (
             Visita.objects.de_empresa(empresa_de(request))
-            .select_related("sitio")
+            .select_related("sitio__cliente")
             .prefetch_related(*PRECARGA_TURNO)
             .get(pk=visita.pk)
         )

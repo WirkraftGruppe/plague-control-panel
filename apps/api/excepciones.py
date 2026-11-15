@@ -13,6 +13,8 @@ logger = logging.getLogger(__name__)
 
 DETALLE_VALIDACION = "Hay datos inválidos."
 DETALLE_INTERNO = "Error interno del servidor."
+# Códigos de excepción que el cliente puede ver en `code`; el resto no se expone.
+CODIGOS_PUBLICOS = {"empresa_inactiva"}
 
 
 def _como_lista(valor):
@@ -83,5 +85,9 @@ def manejar_excepcion(exc, contexto):
         detalle = " ".join(generales) or DETALLE_VALIDACION
     else:
         detalle = _detalle_legible(exc, respuesta)
-    respuesta.data = {"detalle": detalle, "campos": campos}
+    cuerpo = {"detalle": detalle, "campos": campos}
+    codigo = exc.get_codes() if hasattr(exc, "get_codes") else None
+    if isinstance(codigo, str) and codigo in CODIGOS_PUBLICOS:
+        cuerpo["code"] = codigo
+    respuesta.data = cuerpo
     return respuesta

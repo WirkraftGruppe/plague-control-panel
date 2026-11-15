@@ -47,7 +47,9 @@ class AuthApiTests(TestCase):
         acceso = self._tokens()["access"]
         respuesta = self.client.get("/api/v1/", HTTP_AUTHORIZATION=f"Bearer {acceso}")
         self.assertEqual(respuesta.status_code, 200)
-        self.assertEqual(respuesta.json(), {"usuario": "emp", "rol": "empleado"})
+        cuerpo = respuesta.json()
+        self.assertEqual(cuerpo["usuario"]["username"], "emp")
+        self.assertEqual(cuerpo["rol"], "empleado")
 
     def test_token_y_refresh_funcionan(self):
         tokens = self._tokens()
