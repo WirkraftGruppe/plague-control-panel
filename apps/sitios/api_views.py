@@ -1,5 +1,7 @@
 """Vistas de la API de Sitios: resolver QR, imagen del plano y puntos del empleado."""
 
+import hashlib
+import json
 from uuid import UUID
 
 from django.core.exceptions import (
@@ -8,7 +10,7 @@ from django.core.exceptions import (
     TooManyFilesSent,
 )
 from django.core.exceptions import ValidationError as ErrorDeValidacion
-from django.db.models import F
+from django.db.models import F, OuterRef, Subquery
 from django.http import FileResponse
 from django.urls import reverse
 from django.utils import timezone
@@ -24,7 +26,8 @@ from rest_framework.views import APIView
 
 from apps.accounts.permisos import EsAdministrador, EsEmpleado
 from apps.empresas.consultas import empresa_de
-from apps.visitas.models import Visita
+from apps.servicios.models import TipoServicio
+from apps.visitas.models import Revision, Visita
 from apps.visitas.serializers import MAX_BYTES_FOTO
 from apps.visitas.services import servicio_para_punto, visita_destino
 
@@ -34,6 +37,7 @@ from .models import Plano, PuntoControl, Sitio
 from .serializers import (
     AltaPuntoSerializer,
     AltaSitioSerializer,
+    DatosSinConexionSerializer,
     MiPuntoSerializer,
     MisPuntosParametrosSerializer,
     PuntoCampoSerializer,
@@ -283,6 +287,69 @@ class MisPuntosView(APIView):
         for punto in puntos:
             punto.estado = estados[punto.id]
         return Response(MiPuntoSerializer(puntos, many=True).data)
+
+
+class DatosSinConexionView(APIView):
+    """Puntos activos y servicios de la empresa para trabajar sin conexión."""
+
+    permission_classes = [EsEmpleado | EsAdministrador]
+
+    @extend_schema(
+        summary="Datos para trabajar sin conexión",
+        description=(
+            "Todos los puntos activos (de sitios y clientes activos) y los "
+            "servicios activos de la empresa. Cada punto trae `qr_hash`, el "
+            "SHA-256 hexadecimal de su `qr_codigo` (UUID en minúsculas con "
+            "guiones), nunca el código. Devuelve un `ETag`; con `If-None-Match` "
+            "igual responde 304 sin cuerpo. Ambas respuestas llevan "
+            "`Cache-Control: private, no-store`."
+        ),
+        responses={
+            200: DatosSinConexionSerializer,
+            304: OpenApiResponse(description="Los datos no cambiaron."),
+        },
+    )
+    def get(self, request):
+        empresa = empresa_de(request)
+        ultima = (
+            Revision.objects.de_empresa(empresa)
+            .filter(
+                punto=OuterRef("pk"),
+                visita__estado__in=[Visita.Estado.ABIERTA, Visita.Estado.REALIZADA],
+                visita__cuenta_como_servicio=True,
+            )
+            .order_by("-realizada_en")
+            .values("realizada_en")[:1]
+        )
+        puntos = list(
+            PuntoControl.objects.de_empresa(empresa)
+            .filter(activo=True, sitio__activo=True, sitio__cliente__activo=True)
+            .select_related("sitio")
+            .annotate(ultima_revision=Subquery(ultima))
+            .order_by("sitio__nombre", "sitio_id", "orden", "id")
+        )
+        estados = estados_por_vencimiento(puntos, timezone.localdate())
+        for punto in puntos:
+            punto.estado = estados[punto.id]
+            punto.qr_hash = hashlib.sha256(str(punto.qr_codigo).encode()).hexdigest()
+        servicios = (
+            TipoServicio.objects.de_empresa(empresa)
+            .filter(activo=True)
+            .prefetch_related("campos")
+            .order_by("nombre", "id")
+        )
+        datos = DatosSinConexionSerializer(
+            {"puntos": puntos, "servicios": [_datos_servicio(s) for s in servicios]}
+        ).data
+        contenido = json.dumps(datos, sort_keys=True, ensure_ascii=False)
+        etag = '"%s"' % hashlib.sha256(contenido.encode("utf-8")).hexdigest()
+        if request.headers.get("If-None-Match") == etag:
+            respuesta = Response(status=304)
+        else:
+            respuesta = Response(datos)
+        respuesta["ETag"] = etag
+        respuesta["Cache-Control"] = "private, no-store"
+        return respuesta
 
 
 def _a_400(error):
