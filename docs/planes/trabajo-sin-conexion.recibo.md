@@ -36,3 +36,43 @@
 - duración: 32.7 s
 - Veredicto: PASA
 
+## 2026-11-18 20:58 — tarea T2,T4 de 2026-11-18-trabajo-sin-conexion.md
+
+- HEAD verificado: 0734e41
+- Contrato: intacto (congelado en 89f2a8d)
+- Criterios:
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_servicios.AtrasoAppTests.test_revision_71_horas_se_guarda --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_servicios.AtrasoAppTests.test_revision_73_horas_atraso_excedido --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_servicios.AtrasoAppTests.test_manual_sigue_con_168_horas --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_servicios.AtrasoAppTests.test_reintento_73_horas_mismo_uuid_es_duplicada --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_servicios.HoraClienteTests.test_abrir_pendiente_con_abierta_en_de_ayer --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_servicios.HoraClienteTests.test_abrir_con_abierta_en_futura_falla --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_servicios.HoraClienteTests.test_abierta_en_futura_tolerada_cuenta_revisiones_al_cerrar --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_servicios.HoraClienteTests.test_abrir_con_abierta_en_no_toma_pendiente_de_dia_posterior --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_servicios.HoraClienteTests.test_cerrada_en_anterior_a_abierta_falla --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_servicios.HoraClienteTests.test_reporte_guarda_reportado_en --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_servicios.HoraClienteTests.test_cierre_por_sistema_usa_reportado_en --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_servicios.VisitaNoAbiertaTests.test_revision_en_visita_pendiente --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_servicios.VisitaNoAbiertaTests.test_reporte_en_visita_cancelada --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_servicios.VisitaNoAbiertaTests.test_cierre_de_visita_pendiente --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_servicios.ServicioEnviadoTests.test_servicio_distinto_guarda_servicio_e_incidencia --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_servicios.ServicioEnviadoTests.test_servicio_igual_sin_incidencia --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_servicios.ServicioEnviadoTests.test_servicio_inactivo_o_de_otra_empresa_falla --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_servicios.ServicioEnviadoTests.test_valida_contra_la_planilla_del_servicio_enviado --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_servicios.ServicioEnviadoTests.test_visita_nueva_compara_con_servicio_del_punto --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_servicios.IncidenciaServicioTests.test_cuenta_sin_revisar_y_marcar_revisada_la_saca --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_servicios.CierreNocturnoTests.test_no_cierra_visita_con_actividad_reciente --keepdb`
+  - PASA (exit 0, nuevo: sí) `T2 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_servicios.CierreNocturnoTests.test_cierra_visita_vieja_sin_actividad --keepdb`
+  - PASA (exit 0, nuevo: —) `T2 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py makemigrations --check --dry-run`
+  - PASA (exit 0, nuevo: —) `T2 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas --keepdb`
+  - PASA (exit 0, nuevo: —) `T2 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 800 --subtarea T2`
+  - PASA (exit 0, nuevo: —) `T4 [cmd] git log --oneline plan/trabajo-sin-conexion | grep -q "T2: integra trabajo-sin-conexion-T2"`
+  - PASA (exit 0, nuevo: —) `T4 [cmd] git log --oneline plan/trabajo-sin-conexion | grep -q "T3: integra trabajo-sin-conexion-T3"`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - FALLA (exit 1, nuevo: —) `commits de la tarea dentro de Puede tocar`
+    ```
+    T4: test_vencimiento usa 2 días de atraso, dentro de ATRASO_MAXIMO_APP_HORAS (72) -> apps/visitas/tests/test_vencimiento.py
+    ```
+- duración: 53.2 s
+- Veredicto: FALLA
+

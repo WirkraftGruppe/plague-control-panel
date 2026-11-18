@@ -286,9 +286,9 @@ commit_base: 89f2a8d
 | Tarea | Estado | Commit | Recibo |
 |---|---|---|---|
 | T1 | hecha | 2d0311c | PASA 2026-11-18 20:43 |
-| T2 | pendiente | | |
+| T2 | hecha | 0734e41 | PASA 2026-11-18 20:58 |
 | T3 | hecha | c1a1594 | PASA 2026-11-18 (tarea) |
-| T4 | pendiente | | |
+| T4 | FALLA (alcance del ajuste 1e9ad96, espera decisión) | 0734e41 | FALLA 2026-11-18 20:58 |
 | T5 | pendiente | | |
 | T6 | pendiente | | |
 | T7 | pendiente | | |
