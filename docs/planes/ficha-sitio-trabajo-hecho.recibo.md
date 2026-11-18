@@ -82,3 +82,18 @@
 - duración: 12.9 s
 - Veredicto: PASA
 
+## 2026-11-18 17:15 — tarea T5 de 2026-11-18-ficha-sitio-trabajo-hecho.md
+
+- HEAD verificado: 98d6a47
+- Contrato: intacto (congelado en 3b0bb32)
+- Criterios:
+  - PASA (exit 0, nuevo: —) `T5 [grep-1] grep -n "días de aviso" docs/01-modelo-y-arquitectura.md`
+  - PASA (exit 0, nuevo: —) `T5 [grep-1] grep -n "días de aviso" docs/contrato-api.md`
+  - PASA (exit 0, nuevo: —) `T5 [grep-1] grep -n "30 s" docs/02-diseno.md`
+  - PASA (exit 1, nuevo: —) `T5 [grep-0] grep -n "dentro de los próximos 7 días" docs/01-modelo-y-arquitectura.md`
+  - PASA (exit 0, nuevo: —) `T5 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 80 --subtarea T5`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 1.0 s
+- Veredicto: PASA
+
