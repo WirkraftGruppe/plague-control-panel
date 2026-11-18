@@ -36,27 +36,30 @@ FALLOS_POR_USUARIO = 50  # fallos globales por usuario, desde cualquier IP
 VENTANA_USUARIO_MINUTOS = 60  # ventana del cupo global por usuario
 
 
-def leer_atraso_maximo_horas():
-    """Atraso máximo de `realizada_en` en una visita desde la app, en horas.
+def leer_horas(nombre, default):
+    """Lee del entorno una cantidad de horas: entero entre 1 y 8760 (un año).
 
-    Entero entre 1 y 8760 (un año); default 168 (una semana). El tope evita que un
-    valor enorme desborde la fecha al validar y dé 500 recién en el primer uso.
+    El tope evita que un valor enorme desborde la fecha al validar y dé 500 recién
+    en el primer uso.
     """
-    crudo = env("ATRASO_MAXIMO_HORAS", default="168")
+    crudo = env(nombre, default=default)
     try:
         valor = int(crudo)
     except ValueError:
         valor = 0
     if not 1 <= valor <= 8760:
-        raise ImproperlyConfigured(
-            "ATRASO_MAXIMO_HORAS debe ser un entero entre 1 y 8760."
-        )
+        raise ImproperlyConfigured(f"{nombre} debe ser un entero entre 1 y 8760.")
     return valor
 
 
-# Una visita desde la app con `realizada_en` más atrasada da 400: la carga el
-# administrador como manual (P-api-movil-16).
-ATRASO_MAXIMO_HORAS = leer_atraso_maximo_horas()
+# Atraso máximo de `realizada_en` en la carga manual del panel (default una
+# semana); más atrasada da error (P-api-movil-16).
+ATRASO_MAXIMO_HORAS = leer_horas("ATRASO_MAXIMO_HORAS", "168")
+
+# Atraso máximo de lo que manda la app (revisiones, reportes, apertura y cierre),
+# trabajado sin conexión; default 72. Más atrasado da 400 `atraso_excedido` y lo
+# carga el administrador como manual (plan trabajo-sin-conexion).
+ATRASO_MAXIMO_APP_HORAS = leer_horas("ATRASO_MAXIMO_APP_HORAS", "72")
 
 # Una visita abierta desde hace más horas la cierra `cerrar_visitas_abiertas` con
 # cierre "sistema" (plan puntos-control).
