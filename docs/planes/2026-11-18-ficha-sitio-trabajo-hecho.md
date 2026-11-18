@@ -151,8 +151,8 @@ commit_base: 3b0bb32
 
 | Tarea | Estado | Commit | Recibo |
 |---|---|---|---|
-| T1 | pendiente | | |
-| T2 | pendiente | | |
+| T1 | hecha | d1f40d1 | PASA 2026-11-18 |
+| T2 | hecha | c0ff43a | PASA 2026-11-18 |
 | T3 | pendiente | | |
 | T4 | pendiente | | |
 | T5 | pendiente | | |
