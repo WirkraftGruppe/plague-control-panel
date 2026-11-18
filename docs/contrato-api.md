@@ -1,6 +1,6 @@
 # Contrato de la API v1
 
-Actualizado: 2026-11-14
+Actualizado: 2026-11-18
 
 Resumen legible para la app móvil de Detach. La fuente completa (cuerpos, campos,
 códigos de error) es `docs/api/openapi-v1.yaml`; este archivo agrega, por ruta, el
@@ -50,7 +50,60 @@ límite de pedidos (throttle) y el rol que la puede usar. Todas las rutas cuelga
   es `null` para un usuario sin empresa. `usuario` era antes el username como texto.
 - **Empresa inactiva**: el 401 de `auth/token/`, de `auth/token/refresh/` y de cualquier ruta
   con un token vigente lleva, además de `detalle` y `campos`, `code: "empresa_inactiva"`.
-  Ningún otro error trae `code`.
+- **Códigos de error** (`code`): además de `empresa_inactiva`, solo traen `code` tres
+  errores de la app, para que distinga el reintentable del definitivo sin leer textos:
+  - `atraso_excedido` (400): la hora que manda la app (`realizada_en`, `abierta_en`,
+    `cerrada_en` o `reportado_en`) supera `ATRASO_MAXIMO_APP_HORAS`. Viene en `campos`, bajo
+    el campo que se pasó. No es reintentable: hay que avisar al administrador para que
+    cargue lo hecho como visita manual.
+  - `visita_no_abierta` (409): la revisión, el reporte de no revisado o el cierre sobre una
+    visita propia que está `pendiente`, `cancelada` o realizada por el sistema. Es
+    reintentable: la app reenvía `abrir` y reintenta con la visita que le devuelve.
+  - `visita_ya_cerrada` (409): el cierre de una visita `realizada` que cerró el sistema o
+    un administrador. Es definitivo y no se reintenta. El cierre repetido por el mismo
+    empleado sigue respondiendo 200.
+  El resto de los errores no lleva `code`.
+- **Hora de la app y atraso**: la app manda cuándo ocurrió cada cosa porque puede trabajar
+  sin conexión. `abierta_en` (opcional, en `POST visitas/abrir/`), `cerrada_en` (opcional,
+  en `POST visitas/<pk>/cerrar/`), `reportado_en` (opcional, en `POST
+  visitas/<pk>/no-revisados/`) y `realizada_en` (en `POST revisiones/`) son fechas con hora.
+  Una hora futura más allá de la tolerancia da 400 y una con más atraso que
+  `ATRASO_MAXIMO_APP_HORAS` (72 por defecto, configurable por entorno) da 400 con
+  `code: "atraso_excedido"`. La carga manual del panel sigue con `ATRASO_MAXIMO_HORAS` (168).
+  Un reintento con el mismo `cliente_uuid` ya registrado responde 409 aunque pase el límite:
+  la deduplicación va antes que el atraso. `cerrada_en` no puede ser anterior a `abierta_en`.
+- **Apertura con `abierta_en`**: el servidor guarda `min(abierta_en, ahora)` y solo reabre
+  turnos pendientes con `programada_para` vacía o no posterior al día de `abierta_en`; si no
+  hay, crea una visita nueva (el trabajo atrasado no se pega a un turno futuro). Si ya hay
+  una abierta, la devuelve sin cambios.
+- **Reenvío de `abrir`**: ante un 409 `visita_no_abierta`, la app reenvía `POST visitas/abrir/`
+  con el `qr_codigo` del punto y su `abierta_en` original, recibe la visita abierta (la
+  nueva o la que ya existía) y reintenta la revisión, el reporte o el cierre contra ese id,
+  con el mismo `cliente_uuid`. Lo cerrado no se toca.
+- **Servicio enviado** (`servicio`, id opcional en `POST revisiones/`): sin él, o igual al que
+  decide el servidor, no cambia nada. Si difiere, el servidor busca un servicio activo de la
+  empresa (otro id, inactivo o de otra empresa da 400 en `campos.servicio`), guarda la
+  revisión con ese servicio, valida la planilla contra el `esquema_punto` de ese servicio y la
+  marca con una incidencia que cuenta en "Incidencias sin revisar" del panel. Vale también
+  cuando el servidor no encontraba servicio para el punto o el suyo estaba de baja. En una
+  visita nueva sin ítems la comparación es contra el servicio del punto.
+- **Datos sin conexión** (`GET /api/v1/me/datos-sin-conexion/`): `{puntos[], servicios[]}`
+  con todos los puntos activos de la empresa (de sitios y clientes activos), no solo los de
+  los turnos del empleado, y los servicios activos.
+  - Cada punto: `{id, qr_hash, nombre, sector, sitio{id, nombre, direccion, localidad},
+    servicio, estado, proximo_vencimiento, ultima_revision}`. `servicio` es el id del servicio
+    del punto o `null`; `estado` usa la regla de `me/visitas/`; `ultima_revision` es el
+    `realizada_en` de la última revisión del punto en una visita abierta o realizada que
+    cuenta como servicio, o `null`.
+  - `qr_hash` es el SHA-256 en hexadecimal (minúsculas) de `str(qr_codigo)`, con el UUID en
+    minúsculas y con guiones. La respuesta nunca trae `qr_codigo`. La app calcula el mismo
+    hash del código que escanea y lo busca entre los `qr_hash` descargados; sigue mandando el
+    código escaneado en `abrir` y en `revisiones/`, porque el QR es la prueba de presencia.
+  - Cada servicio: `{id, nombre, slug, esquema_punto, esquema_visita}`, igual que en el
+    resolver de QR.
+  - Lleva `ETag`; con `If-None-Match` igual responde 304 sin cuerpo. El 200 y el 304 llevan
+    `Cache-Control: private, no-store`: la app guarda el ETag y los datos en su almacenamiento,
+    no en una caché HTTP compartida.
 - **Puntos no revisados** (`POST /api/v1/visitas/<pk>/no-revisados/`, multipart): registra una
   estación que no se pudo revisar en una visita abierta propia. Lleva `punto` (id de un punto
   activo del sitio de la visita), `motivo` (`falta_estacion`, `codigo_ilegible`, `sin_acceso`
@@ -59,7 +112,7 @@ límite de pedidos (throttle) y el rol que la puede usar. Todas las rutas cuelga
   motivo, detalle, creado}`, sin coordenadas ni foto. No es una revisión: no mueve
   el vencimiento del punto; sí permite cerrar una visita que no tiene revisiones (ver Cierre). Un punto por visita: un segundo
   reporte del mismo punto, un punto de otro sitio o inactivo dan 400 en `campos.punto`; una
-  visita propia que no está abierta, 400 "La visita no está abierta."; una visita ajena, de
+  visita propia que no está abierta, 409 con `code: "visita_no_abierta"`; una visita ajena, de
   otra empresa o inexistente, 404, aun con el cuerpo vacío. Un `cliente_uuid` ya registrado
   responde 409; los ids del reporte existente (`reporte`, `visita`) vienen solo si es del
   mismo empleado.
@@ -122,11 +175,12 @@ límite de pedidos (throttle) y el rol que la puede usar. Todas las rutas cuelga
 | POST | `/api/v1/sitios/<pk>/puntos/` | Administrador | alta_campo, 300/hora | 201 con el punto; 400, 403, 404 |
 | POST | `/api/v1/puntos/<pk>/ubicacion/` | Administrador | alta_campo, 300/hora | 200 con el punto; 400, 403, 404 |
 | GET | `/api/v1/me/puntos/` | Empleado o administrador | - | 200 con los puntos del usuario |
+| GET | `/api/v1/me/datos-sin-conexion/` | Empleado o administrador | - | 200 con los puntos y servicios de la empresa; 304 |
 | GET | `/api/v1/productos/` | Empleado o administrador | - | 200 con el catálogo; 304 |
 | GET | `/api/v1/me/visitas/` | Empleado o administrador | - | 200 con los turnos del usuario y sus ítems |
 | GET | `/api/v1/me/visitas/<pk>/` | Empleado o administrador | - | 200 con el turno; 404 |
 | POST | `/api/v1/visitas/abrir/` | Empleado o administrador | crear_visita, 120/hora | 201 con el turno; 200 si ya estaba abierto; 400 |
-| POST | `/api/v1/visitas/<pk>/cerrar/` | Empleado o administrador | crear_visita, 120/hora | 200 con la visita; 400, 404, 409 |
+| POST | `/api/v1/visitas/<pk>/cerrar/` | Empleado o administrador | crear_visita, 120/hora | 200 con la visita; 400, 404, 409 (`visita_no_abierta`, `visita_ya_cerrada`) |
 | POST | `/api/v1/visitas/<pk>/no-revisados/` | Empleado o administrador | crear_visita, 120/hora | 201 con el reporte; 400, 404, 409, 413 |
 | POST | `/api/v1/revisiones/` | Empleado o administrador | crear_visita, 120/hora | 201 con la revisión y su servicio; 400, 404, 409, 413 |
 | GET | `/api/v1/me/historial/` | Empleado | - | 200 con el historial paginado |

@@ -29,4 +29,9 @@ urlpatterns = [
         name="ubicacion-punto",
     ),
     path("me/puntos/", api_views.MisPuntosView.as_view(), name="mis-puntos"),
+    path(
+        "me/datos-sin-conexion/",
+        api_views.DatosSinConexionView.as_view(),
+        name="datos-sin-conexion",
+    ),
 ]

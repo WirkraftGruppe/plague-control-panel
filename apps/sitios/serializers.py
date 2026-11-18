@@ -216,3 +216,39 @@ class SitioCampoSerializer(serializers.Serializer):
     latitud = serializers.FloatField()
     longitud = serializers.FloatField()
     puntos = PuntoCampoSerializer(many=True)
+
+
+class SitioSinConexionSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    nombre = serializers.CharField()
+    direccion = serializers.CharField()
+    localidad = serializers.CharField()
+
+
+class PuntoSinConexionSerializer(serializers.Serializer):
+    """Punto activo para trabajar sin conexión; `qr_hash`, nunca `qr_codigo`."""
+
+    id = serializers.IntegerField()
+    qr_hash = serializers.CharField()
+    nombre = serializers.CharField()
+    sector = serializers.CharField()
+    sitio = SitioSinConexionSerializer()
+    servicio = serializers.IntegerField(source="servicio_id", allow_null=True)
+    estado = serializers.CharField()
+    proximo_vencimiento = serializers.DateField(allow_null=True)
+    ultima_revision = serializers.DateTimeField(allow_null=True)
+
+
+class ServicioSinConexionSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    nombre = serializers.CharField()
+    slug = serializers.CharField()
+    esquema_punto = serializers.ListField(child=serializers.DictField())
+    esquema_visita = serializers.ListField(child=serializers.DictField())
+
+
+class DatosSinConexionSerializer(serializers.Serializer):
+    """Respuesta de `GET me/datos-sin-conexion/`."""
+
+    puntos = PuntoSinConexionSerializer(many=True)
+    servicios = ServicioSinConexionSerializer(many=True)
