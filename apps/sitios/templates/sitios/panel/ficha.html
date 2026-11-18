@@ -48,16 +48,7 @@
   </section>
   <section aria-labelledby="titulo-lista">
     <h2 id="titulo-lista">Puntos de control</h2>
-    <ul class="lista-puntos" id="ficha-puntos">
-      {% for punto in puntos %}
-      <li class="punto-fila"{% if punto.activo %} data-punto="{{ punto.pk }}" data-estado="{{ punto.estado }}"{% endif %}>
-        <span class="numero-punto">{% if punto.activo %}{{ punto.numero }}{% else %}—{% endif %}</span>
-        <span class="punto-nombre">{{ punto.nombre }}<span class="texto-secundario">{{ punto.servicio.nombre|default:"Sin servicio" }}{% if punto.frecuencia_dias %} · cada {{ punto.frecuencia_dias }} días{% endif %}</span></span>
-        <span class="punto-vencimiento">{% if punto.activo %}{% if punto.proximo_vencimiento %}{{ punto.proximo_vencimiento|date:"d/m/Y" }} {% endif %}<span class="etiqueta-estado etiqueta-{{ punto.vencimiento_clase }}">{{ punto.vencimiento_etiqueta }}</span>{% else %}<span class="etiqueta-estado etiqueta-neutral">Inactivo</span>{% endif %}</span>
-        <a href="{% url 'panel:sitios:punto_editar' punto.pk %}">Editar<span class="visually-hidden"> {{ punto.nombre }}</span></a>
-      </li>
-      {% endfor %}
-    </ul>
+    {% include "sitios/panel/_ficha_avance.html" %}
   </section>
 </div>
 
