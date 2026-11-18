@@ -287,7 +287,7 @@ commit_base: 89f2a8d
 |---|---|---|---|
 | T1 | hecha | 2d0311c | PASA 2026-11-18 20:43 |
 | T2 | pendiente | | |
-| T3 | pendiente | | |
+| T3 | hecha | c1a1594 | PASA 2026-11-18 (tarea) |
 | T4 | pendiente | | |
 | T5 | pendiente | | |
 | T6 | pendiente | | |
