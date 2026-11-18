@@ -285,7 +285,7 @@ commit_base: 89f2a8d
 
 | Tarea | Estado | Commit | Recibo |
 |---|---|---|---|
-| T1 | pendiente | | |
+| T1 | hecha | 2d0311c | PASA 2026-11-18 20:43 |
 | T2 | pendiente | | |
 | T3 | pendiente | | |
 | T4 | pendiente | | |
