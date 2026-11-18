@@ -8,6 +8,7 @@ from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
+from django.utils import timezone
 from simple_history.models import HistoricalRecords
 
 from apps.accounts.models import User
@@ -237,6 +238,11 @@ class Revision(ModeloDeEmpresa):
     observaciones = models.TextField("observaciones", blank=True)
     incidencia = models.BooleanField("incidencia", default=False)
     incidencia_detalle = models.TextField("detalle de la incidencia", blank=True)
+    incidencia_servicio = models.BooleanField(
+        "incidencia de servicio",
+        default=False,
+        help_text="El empleado hizo la revisión con un servicio distinto del asignado.",
+    )
 
     history = HistoricalRecords(
         excluded_fields=["latitud", "longitud", "precision_m", "distancia_m", "datos"]
@@ -366,6 +372,7 @@ class PuntoNoRevisado(ModeloDeEmpresa):
         "código de la foto", default=uuid4, unique=True, editable=False
     )
     cliente_uuid = models.UUIDField("identificador del cliente", null=True, blank=True)
+    reportado_en = models.DateTimeField("reportado en", default=timezone.now)
     creado = models.DateTimeField("creado", auto_now_add=True)
 
     class Meta:
