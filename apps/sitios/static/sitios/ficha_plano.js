@@ -66,16 +66,25 @@
   }
   mostrar(elegido());
 
-  lista.querySelectorAll("[data-punto]").forEach(function (item) {
-    var id = item.dataset.punto;
-    item.addEventListener("mouseenter", function () { resaltar(id, true); });
-    item.addEventListener("mouseleave", function () { resaltar(id, false); });
-    item.addEventListener("focusin", function () { resaltar(id, true); });
-    item.addEventListener("focusout", function () { resaltar(id, false); });
-  });
+  function enganchar() {
+    lista.querySelectorAll("[data-punto]").forEach(function (item) {
+      var id = item.dataset.punto;
+      item.addEventListener("mouseenter", function () { resaltar(id, true); });
+      item.addEventListener("mouseleave", function () { resaltar(id, false); });
+      item.addEventListener("focusin", function () { resaltar(id, true); });
+      item.addEventListener("focusout", function () { resaltar(id, false); });
+    });
+  }
+  enganchar();
 
   /* Contrato con apps/panel: <ul id="estado-puntos"> con un <li data-punto data-estado> por punto. */
   document.addEventListener("htmx:afterSwap", function () {
+    /* El avance reemplaza la lista entera (outerHTML): hay que volver a engancharse. */
+    var nueva = document.getElementById("ficha-puntos");
+    if (nueva && nueva !== lista) {
+      lista = nueva;
+      enganchar();
+    }
     var estados = document.getElementById("estado-puntos");
     if (!estados) {
       return;

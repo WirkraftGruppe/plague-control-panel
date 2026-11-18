@@ -11,6 +11,7 @@ urlpatterns = [
     path("nuevo/", vistas.SitioAlta.as_view(), name="alta"),
     path("geocodificar/", vistas.Geocodificar.as_view(), name="geocodificar"),
     path("<int:pk>/", vistas.SitioFicha.as_view(), name="ficha"),
+    path("<int:pk>/avance/", vistas.SitioFichaAvance.as_view(), name="ficha_avance"),
     path("<int:pk>/editar/", vistas.SitioEdicion.as_view(), name="editar"),
     path("<int:pk>/puntos/nuevo/", vistas.PuntoAlta.as_view(), name="punto_alta"),
     path(

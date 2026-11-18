@@ -1,5 +1,6 @@
 """Vistas del panel de Sitios (solo administradores)."""
 
+from collections import defaultdict
 from urllib.parse import urlencode
 
 from csp.decorators import csp_update
@@ -9,7 +10,6 @@ from django.db import transaction
 from django.db.models import (
     BooleanField,
     Case,
-    Count,
     Exists,
     F,
     Min,
@@ -31,12 +31,13 @@ from django.views.generic import CreateView, DetailView, FormView, UpdateView
 from django.views.generic.detail import SingleObjectMixin
 
 from apps.accounts.mixins import AdministradorRequeridoMixin
+from apps.accounts.models import User
 from apps.clientes.empresa import VistaDeEmpresaMixin
 from apps.clientes.models import Cliente
 from apps.panel.listados import ListadoPanelMixin
 from apps.panel.mapa import ORIGEN_TESELAS
 from apps.servicios.models import TipoServicio
-from apps.visitas.models import PuntoNoRevisado, Visita
+from apps.visitas.models import ItemTurno, PuntoNoRevisado, Revision, Visita
 from apps.visitas.services import condicion_incidencia_sin_revisar
 
 from . import geocodificacion, qr, services
@@ -46,7 +47,7 @@ from .estado import (
     EstadoVencimiento,
     condicion_de_estado,
     conteos_por_estado,
-    estado_de_sitio,
+    estado_de_sitio_por_puntos,
     estados_por_vencimiento,
 )
 from .models import Plano, PuntoControl, Sitio
@@ -81,11 +82,102 @@ def _marcar_vencimiento(puntos):
         punto.vencimiento_clase = CLASE_VENCIMIENTO[estado]
 
 
+def _nombre_de(usuario):
+    return usuario.get_full_name() or usuario.username
+
+
+def avance_de_visitas(empresa, visitas):
+    """Agrega a cada visita ``total`` (M), ``revisados`` (N) y ``ids_revisados``.
+
+    M son los ítems del turno; sin ítems (visita abierta por QR), los puntos activos
+    del sitio. N son los puntos distintos de esos M con una revisión en la visita.
+    Hace tres consultas, sin importar cuántas visitas ni puntos haya.
+    """
+    visitas = list(visitas)
+    if not visitas:
+        return visitas
+    ids = [v.pk for v in visitas]
+    items, activos, revisados = defaultdict(set), defaultdict(set), defaultdict(set)
+    for visita_id, punto_id in (
+        ItemTurno.objects.de_empresa(empresa)
+        .filter(visita_id__in=ids)
+        .values_list("visita_id", "punto_id")
+    ):
+        items[visita_id].add(punto_id)
+    for sitio_id, punto_id in (
+        PuntoControl.objects.de_empresa(empresa)
+        .filter(sitio_id__in={v.sitio_id for v in visitas}, activo=True)
+        .values_list("sitio_id", "pk")
+    ):
+        activos[sitio_id].add(punto_id)
+    for visita_id, punto_id in (
+        Revision.objects.de_empresa(empresa)
+        .filter(visita_id__in=ids)
+        .values_list("visita_id", "punto_id")
+    ):
+        revisados[visita_id].add(punto_id)
+    for visita in visitas:
+        meta = items[visita.pk] or activos[visita.sitio_id]
+        visita.total = len(meta)
+        visita.revisados = len(meta & revisados[visita.pk])
+        visita.ids_revisados = revisados[visita.pk]
+    return visitas
+
+
+def contexto_de_puntos(empresa, sitio):
+    """Puntos del sitio con estado, última revisión y turnos abiertos que cuentan.
+
+    Lo comparten la ficha y su parcial de avance; la cantidad de consultas no
+    depende de la cantidad de puntos.
+    """
+    ultima = (
+        Revision.objects.de_empresa(empresa)
+        .filter(
+            punto=OuterRef("pk"),
+            visita__estado__in=[Visita.Estado.ABIERTA, Visita.Estado.REALIZADA],
+            visita__cuenta_como_servicio=True,
+        )
+        .order_by("-realizada_en", "-pk")
+    )
+    puntos = list(
+        sitio.puntos.select_related("plano", "servicio").annotate(
+            ultima_revision=Subquery(ultima.values("realizada_en")[:1]),
+            ultimo_operario_id=Subquery(ultima.values("visita__empleado_id")[:1]),
+        )
+    )
+    _marcar_vencimiento(puntos)
+    activos = [p for p in puntos if p.activo]
+    for numero, punto in enumerate(activos, start=1):
+        punto.numero = numero
+    abiertos = avance_de_visitas(
+        empresa,
+        Visita.objects.de_empresa(empresa)
+        .filter(
+            sitio=sitio,
+            estado=Visita.Estado.ABIERTA,
+            cuenta_como_servicio=True,
+        )
+        .select_related("empleado")
+        .order_by("abierta_en", "pk"),
+    )
+    ids = {p.ultimo_operario_id for p in puntos if p.ultimo_operario_id}
+    # User no tiene guardia de empresa: se filtra a mano.
+    operarios = {
+        u.pk: _nombre_de(u) for u in User.objects.filter(empresa=empresa, pk__in=ids)
+    }
+    for punto in puntos:
+        punto.ultimo_operario = operarios.get(punto.ultimo_operario_id, "")
+        punto.revisado_por = [
+            _nombre_de(v.empleado) for v in abiertos if punto.pk in v.ids_revisados
+        ]
+    return {"puntos": puntos, "puntos_activos": activos, "turnos_abiertos": abiertos}
+
+
 class SitioListado(AdministradorRequeridoMixin, ListadoPanelMixin):
     """Inicio del panel: turnos de hoy, qué requiere atención y todos los sitios.
 
-    El estado de cada sitio sale del mínimo ``proximo_vencimiento`` de sus puntos
-    activos; la cantidad de consultas no depende de la cantidad de sitios.
+    El estado de cada sitio sale de sus puntos activos; las consultas no
+    dependen de la cantidad de sitios.
     """
 
     model = Sitio
@@ -165,8 +257,6 @@ class SitioListado(AdministradorRequeridoMixin, ListadoPanelMixin):
             )
             .select_related("sitio", "empleado")
             .annotate(
-                total=Count("items", distinct=True),
-                revisados=Count("revisiones__punto", distinct=True),
                 atrasado=Case(
                     When(
                         estado=Visita.Estado.PENDIENTE,
@@ -179,7 +269,7 @@ class SitioListado(AdministradorRequeridoMixin, ListadoPanelMixin):
             )
             .order_by("-atrasado", "sitio__nombre", "pk")
         )
-        return list(visitas)
+        return avance_de_visitas(self.request.empresa, visitas)
 
     def _requieren_atencion(self):
         vencidos = (
@@ -207,8 +297,14 @@ class SitioListado(AdministradorRequeridoMixin, ListadoPanelMixin):
 
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
-        for sitio in contexto["object_list"]:
-            estado = estado_de_sitio(sitio.proximo_vencimiento, self.hoy)
+        sitios = list(contexto["object_list"])
+        activos = defaultdict(list)
+        for punto in PuntoControl.objects.de_empresa(self.request.empresa).filter(
+            sitio__in=sitios, activo=True
+        ):
+            activos[punto.sitio_id].append(punto)
+        for sitio in sitios:
+            estado = estado_de_sitio_por_puntos(activos[sitio.pk], self.hoy)
             sitio.estado_clave = estado.value
             sitio.chip_tono, sitio.chip_texto = CHIP_ESTADO_SITIO[estado]
         activo = self.request.GET.get("activo", "")
@@ -287,25 +383,20 @@ class SitioFicha(VistaDeEmpresaMixin, AdministradorRequeridoMixin, DetailView):
         pestana = self.request.GET.get("pestana", "turnos")
         if pestana not in PESTANAS:
             pestana = "turnos"
-        puntos = list(sitio.puntos.select_related("plano", "servicio"))
-        _marcar_vencimiento(puntos)
-        activos = [p for p in puntos if p.activo]
-        for numero, punto in enumerate(activos, start=1):
-            punto.numero = numero
+        datos = contexto_de_puntos(self.request.empresa, sitio)
+        activos = datos["puntos_activos"]
         planos = list(sitio.planos.filter(activo=True))
         pk_plano = self.request.GET.get("plano", "")
         plano = next((p for p in planos if str(p.pk) == pk_plano), None)
         plano = plano or (planos[0] if planos else None)
-        fechas = [p.proximo_vencimiento for p in activos if p.proximo_vencimiento]
-        estado_general = estado_de_sitio(min(fechas, default=None), hoy)
+        estado_general = estado_de_sitio_por_puntos(activos, hoy)
         turnos_pendientes = list(self._turnos(sitio, Visita.Estado.PENDIENTE))
         contexto.update(
             pestana=pestana,
             pestanas=(("turnos", "Turnos"), ("planos", "Planos"), ("datos", "Datos")),
             estado_general=estado_general.value,
             chip_general=CHIP_ESTADO_SITIO[estado_general],
-            puntos=puntos,
-            puntos_activos=activos,
+            **datos,
             datos_ficha_plano=self._datos_ficha_plano(planos, activos),
             planos=planos,
             plano=plano,
@@ -415,6 +506,18 @@ class SitioFicha(VistaDeEmpresaMixin, AdministradorRequeridoMixin, DetailView):
                 or (p.plano_id == plano.pk and (p.x is None or p.y is None))
             ],
         }
+
+
+class SitioFichaAvance(VistaDeEmpresaMixin, AdministradorRequeridoMixin, DetailView):
+    """Parcial de HTMX con los turnos abiertos y la lista de puntos de la ficha."""
+
+    model = Sitio
+    template_name = "sitios/panel/_ficha_avance.html"
+
+    def get_context_data(self, **kwargs):
+        contexto = super().get_context_data(**kwargs)
+        contexto.update(contexto_de_puntos(self.request.empresa, self.object))
+        return contexto
 
 
 def _url_ficha(sitio_pk, pestana, plano_pk=None):
