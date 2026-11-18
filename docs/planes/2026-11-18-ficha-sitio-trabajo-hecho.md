@@ -163,9 +163,10 @@ commit_base: 3b0bb32
 | Fecha | Modo | Bloqueantes | Decisiones | Menores |
 |---|---|---|---|---|
 | 2026-11-18 17:05 | plan | 0 | 3 | 6 |
+| 2026-11-18 18:05 | cierre | 1 | 0 | 4 |
 
-Auditoría: pendiente
-Hallazgos: pendiente
+Auditoría: APTO — sin hallazgos de ninguna severidad (2026-11-18); sugerencia opcional anotada como P-ficha-sitio-trabajo-hecho-6
+Hallazgos: [bloqueante] contrato-api.md:46 sin el caso `frecuencia_dias - 1` — corregido (commit T6); [menor] `_TRAMOS_AVISO` sin test de todos los tramos — pendiente P-ficha-sitio-trabajo-hecho-3; [menor] tests de 30 s no comprueban `hx-get` ni el `data-sondeo` de `#ficha-avance` — pendiente P-ficha-sitio-trabajo-hecho-4; [menor] 02-diseno.md:146 contradecía el sondeo de 5 s — corregido (commit T6); [menor] comentario desactualizado en apps/visitas/panel_views.py:63 — pendiente P-ficha-sitio-trabajo-hecho-5
 
 ### Decisiones del plan
 
@@ -180,6 +181,11 @@ Hallazgos: pendiente
 
 - P-ficha-sitio-trabajo-hecho-1 [menor] `estado_de_sitio(vencimiento, hoy)` (`apps/sitios/estado.py`) queda sin uso tras T4; borrarlo en el próximo plan que toque `sitios`.
 - P-ficha-sitio-trabajo-hecho-2 [observación] El listado de sitios pone "Al día" a un sitio con puntos al día y sin programar; el mapa lo pone "sin_programar" (`GRAVEDAD_VENCIMIENTO`). Diferencia anterior a este plan; la revisión de plan del 2026-11-18 la señaló.
+- P-ficha-sitio-trabajo-hecho-3 [menor] `_TRAMOS_AVISO` (`apps/sitios/estado.py:140`) copia a mano la regla de `dias_aviso`; `test_condicion_sql_coincide_con_estado_en_python` no recorre los tramos 2-4, 9-12, 17-24, el borde 25 ni la frecuencia 0. Recorrer 0..30 contra `dias_aviso`.
+- P-ficha-sitio-trabajo-hecho-4 [menor] Los tests de la actualización de 30 s (`apps/sitios/tests/test_panel_ficha_avance.py:233-242`) no comprueban que `#ficha-avance` sin turno no lleve `data-sondeo` ni `hx-get`, ni que con turno `hx-get` apunte a `panel:sitios:ficha_avance`; hoy la plantilla pone los cuatro atributos bajo un solo `if`.
+- P-ficha-sitio-trabajo-hecho-5 [observación] El comentario de `DIAS_SEMANA` (`apps/visitas/panel_views.py:63`) dice "como el umbral de 'próximo'", que ya depende de la frecuencia.
+- P-ficha-sitio-trabajo-hecho-6 [observación] Auditoría: un comentario en `condicion_de_estado` que explique por qué el `Exists` sin `de_empresa` es seguro (correlacionado con un `Sitio` ya filtrado; la empresa del punto se hereda del sitio).
+- P-ficha-sitio-trabajo-hecho-7 [menor] Prueba en navegador (usuario): con un turno abierto, la ficha se actualiza cada 30 s y el resaltado de puntos del plano sigue funcionando tras el reemplazo de la lista (`ficha_plano.js`, `htmx:afterSwap`).
 
 ### Decisiones
 
