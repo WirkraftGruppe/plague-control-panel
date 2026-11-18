@@ -5,7 +5,7 @@ from collections import defaultdict
 from typing import NamedTuple
 
 from django.db import models
-from django.db.models import Count, Exists, OuterRef, Q
+from django.db.models import BooleanField, Count, Exists, ExpressionWrapper, OuterRef, Q
 
 from .models import PuntoControl
 
@@ -48,7 +48,7 @@ def dias_aviso(frecuencia_dias):
 
 
 def estado_por_vencimiento(fecha, hoy, frecuencia_dias=None):
-    """Estado de un punto según vencimiento y frecuencia; sin fecha, ``sin_programar``."""
+    """Estado de un punto por vencimiento y frecuencia; sin fecha, sin_programar."""
     if fecha is None:
         return EstadoVencimiento.SIN_PROGRAMAR
     if fecha < hoy:
@@ -178,10 +178,22 @@ def _punto_en_aviso(hoy):
 
 
 def conteos_por_estado(sitios, hoy):
-    """``{estado: cantidad}`` de un queryset de sitios, en una agregación."""
-    agregados = sitios.order_by().aggregate(
+    """``{estado: cantidad}`` de un queryset de sitios, en una agregación.
+
+    Cada condición se anota antes de agregar: si el queryset ya trae un agregado,
+    Django lo envuelve en una subconsulta y el ``Exists`` solo ve lo anotado.
+    """
+    anotados = sitios.order_by().annotate(
         **{
-            e.value: Count("pk", filter=condicion_de_estado(e, hoy))
+            f"_estado_{e.value}": ExpressionWrapper(
+                condicion_de_estado(e, hoy), output_field=BooleanField()
+            )
+            for e in EstadoSitio
+        }
+    )
+    agregados = anotados.aggregate(
+        **{
+            e.value: Count("pk", filter=Q(**{f"_estado_{e.value}": True}))
             for e in EstadoSitio
         }
     )
