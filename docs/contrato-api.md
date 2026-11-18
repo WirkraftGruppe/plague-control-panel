@@ -42,7 +42,8 @@ límite de pedidos (throttle) y el rol que la puede usar. Todas las rutas cuelga
   devuelve la misma forma. `contacto` es `{nombre, telefono}` del contacto en el sitio, o `null`
   si no hay ninguno de los dos o si el sitio o su cliente están dados de baja; solo viene en los turnos activos propios (no en `me/historial/`
   ni en el cierre). `estado` del punto (`al_dia`, `proxima`, `vencida`, `sin_programar`) usa la
-  misma regla que el resolver de QR. `GET /api/v1/me/visitas/<pk>/` devuelve un turno con la
+  misma regla que el resolver de QR: `proxima` si vence entre hoy y hoy + los días de aviso de
+  su `frecuencia_dias` (`ceil(frecuencia_dias / 4)` entre 1 y 7; sin frecuencia, 7). `GET /api/v1/me/visitas/<pk>/` devuelve un turno con la
   forma de un elemento de la lista; uno ajeno, de otra empresa, realizado o inexistente da 404.
 - **Raíz** (`GET /api/v1/`): `{usuario{id, nombre_completo, username}, empresa{id, nombre},
   rol}`; `nombre_completo` cae en `username` si el usuario no tiene nombre cargado y `empresa`
@@ -73,7 +74,8 @@ límite de pedidos (throttle) y el rol que la puede usar. Todas las rutas cuelga
   con `Cache-Control: private, no-store`; un `<pk>` que no es la empresa del usuario o una
   empresa sin logo dan 404.
 - **Resolver un QR** (`POST /api/v1/qr/<codigo>/resolver/`): el `punto` trae `estado`
-  (`al_dia`, `proxima`, `vencida` o `sin_programar`), `proximo_vencimiento`, `en_turno` y
+  (`al_dia`, `proxima`, `vencida` o `sin_programar`; `proxima` según los días de aviso de su
+  `frecuencia_dias`, como en `me/visitas/`), `proximo_vencimiento`, `en_turno` y
   `servicio` (`{id, nombre, slug, esquema_punto, esquema_visita}` o `null`). `visita_destino`
   es el id de la visita en la que se guardará la revisión (la abierta propia del sitio o, si
   no hay, la pendiente que abre `visitas/abrir/`), o `null` si al abrir se crea una nueva.
