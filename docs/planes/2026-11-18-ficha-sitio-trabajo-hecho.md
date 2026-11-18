@@ -153,10 +153,10 @@ commit_base: 3b0bb32
 |---|---|---|---|
 | T1 | hecha | d1f40d1 | PASA 2026-11-18 |
 | T2 | hecha | c0ff43a | PASA 2026-11-18 |
-| T3 | pendiente | | |
-| T4 | pendiente | | |
-| T5 | pendiente | | |
-| T6 | pendiente | | |
+| T3 | hecha | 082f0fc | PASA 2026-11-18 |
+| T4 | hecha | 0e61b27 | PASA 2026-11-18 |
+| T5 | hecha | 1e10696 | PASA 2026-11-18 |
+| T6 | hecha | 4358b54 | PASA 2026-11-18 |
 
 ### Revisiones
 

@@ -97,3 +97,45 @@
 - duración: 1.0 s
 - Veredicto: PASA
 
+## 2026-11-18 17:18 — tarea T4 de 2026-11-18-ficha-sitio-trabajo-hecho.md
+
+- HEAD verificado: 4358b54
+- Contrato: intacto (congelado en 3b0bb32)
+- Criterios:
+  - PASA (exit 0, nuevo: sí) `T4 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_panel_ficha_avance.EstadoSitioPanelTests.test_listado_chip_proxima_por_un_punto_que_no_es_el_mas_cercano --keepdb`
+  - PASA (exit 0, nuevo: sí) `T4 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_panel_ficha_avance.EstadoSitioPanelTests.test_estado_de_me_puntos_coincide_con_la_ficha --keepdb`
+  - PASA (exit 0, nuevo: sí) `T4 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_panel_ficha_avance.UltimaRevisionTests.test_muestra_fecha_hora_y_operario_de_la_ultima_revision --keepdb`
+  - PASA (exit 0, nuevo: sí) `T4 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_panel_ficha_avance.UltimaRevisionTests.test_revision_de_visita_de_administrador_no_cuenta --keepdb`
+  - PASA (exit 0, nuevo: sí) `T4 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_panel_ficha_avance.UltimaRevisionTests.test_punto_sin_revisiones_dice_sin_revisiones --keepdb`
+  - PASA (exit 0, nuevo: sí) `T4 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_panel_ficha_avance.UltimaRevisionTests.test_consultas_iguales_con_5_y_50_puntos --keepdb`
+  - PASA (exit 0, nuevo: sí) `T4 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_panel_ficha_avance.AvanceTurnoTests.test_turno_abierto_muestra_operario_apertura_y_avance --keepdb`
+  - PASA (exit 0, nuevo: sí) `T4 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_panel_ficha_avance.AvanceTurnoTests.test_dos_turnos_abiertos_muestran_dos_bloques --keepdb`
+  - PASA (exit 0, nuevo: sí) `T4 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_panel_ficha_avance.AvanceTurnoTests.test_punto_revisado_en_el_turno_queda_marcado --keepdb`
+  - PASA (exit 0, nuevo: sí) `T4 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_panel_ficha_avance.AvanceTurnoTests.test_sin_turno_abierto_no_hay_actualizacion_de_30_s --keepdb`
+  - PASA (exit 0, nuevo: sí) `T4 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_panel_ficha_avance.AvanceTurnoTests.test_avance_tras_cerrar_el_turno_corta_la_actualizacion --keepdb`
+  - PASA (exit 0, nuevo: sí) `T4 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_panel_ficha_avance.AvanceTurnoTests.test_visita_de_administrador_no_cuenta_como_turno --keepdb`
+  - PASA (exit 0, nuevo: sí) `T4 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_panel_ficha_avance.AvanceTurnoTests.test_turnos_de_hoy_usan_el_mismo_avance --keepdb`
+  - PASA (exit 0, nuevo: sí) `T4 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_panel_ficha_avance.AvanceTurnoTests.test_avance_de_sitio_de_otra_empresa_da_404 --keepdb`
+  - PASA (exit 0, nuevo: sí) `T4 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_panel_ficha_avance.AvanceTurnoTests.test_avance_pide_administrador --keepdb`
+  - PASA (exit 1, nuevo: —) `T4 [grep-0] grep -nw "estado_de_sitio" apps/sitios/panel_views.py`
+  - PASA (exit 0, nuevo: —) `T4 [grep-1] grep -rn "every 30s" apps/sitios/templates/sitios/panel/`
+  - PASA (exit 0, nuevo: —) `T4 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios --keepdb`
+  - PASA (exit 0, nuevo: —) `T4 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 600 --subtarea T4`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 44.1 s
+- Veredicto: PASA
+
+## 2026-11-18 17:18 — tarea T6 de 2026-11-18-ficha-sitio-trabajo-hecho.md
+
+- HEAD verificado: 4358b54
+- Contrato: intacto (congelado en 3b0bb32)
+- Criterios:
+  - PASA (exit 0, nuevo: —) `T6 [cmd] git log --oneline plan/ficha-sitio-trabajo-hecho | grep -q "T3: integra ficha-sitio-trabajo-hecho-T3"`
+  - PASA (exit 0, nuevo: —) `T6 [cmd] git log --oneline plan/ficha-sitio-trabajo-hecho | grep -q "T4: integra ficha-sitio-trabajo-hecho-T4"`
+  - PASA (exit 0, nuevo: —) `T6 [cmd] git log --oneline plan/ficha-sitio-trabajo-hecho | grep -q "T5: integra ficha-sitio-trabajo-hecho-T5"`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 0.7 s
+- Veredicto: PASA
+
