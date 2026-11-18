@@ -138,6 +138,13 @@ Comportamiento (`panel_lateral.js`, cargado con `defer` desde el panel):
 - Al cerrar se vacía el contenedor y el foco vuelve al elemento que lo abrió.
 - Nuevo turno: el usuario ajusta el ancho del panel (solo el ancho) con el tirador `.tirador-ancho` del borde izquierdo, arrastrándolo o con las flechas (`role="separator"`); va de 420 px al ancho de la ventana menos 120 px, se guarda en `--ancho-nuevo-turno`; el formulario ocupa todo el ancho (sin el tope de 560 px de `.formulario`) y el plano crece en proporción 16:10, entre 280 px y 60 vh de alto. Los demás paneles siguen en 520 px.
 
+## Ficha del sitio
+
+- **Chip del listado**: "Vencido", "Próxima", "Al día" o "Sin fechas", según el peor de los puntos activos del sitio ("Sin fechas" solo si ninguno tiene fecha). El filtro "Próxima" conserva el valor `semana`. Un punto está en "Próxima" según sus días de aviso (`docs/01-modelo-y-arquitectura.md`, § 3.2.1); el mapa sigue su propia gravedad.
+- **Lista de puntos** (`#ficha-puntos`): cada punto muestra la fecha, la hora y el operario de su última revisión que cuenta como servicio, o "Sin revisiones". Un punto revisado en un turno abierto lleva la marca "Revisado en este turno".
+- **Bloque por turno abierto**: arriba de la lista, uno por cada turno abierto que cuenta como servicio (las visitas de un administrador se ignoran), con el operario, la hora de apertura y "N de M puntos revisados". M son los ítems del turno, o los puntos activos del sitio si no tiene ítems.
+- **Actualización**: los bloques y la lista se actualizan cada 30 s (HTMX), solo mientras haya un turno abierto que cuenta; sin él, esa actualización no corre. El sondeo de estado de 5 s (`apps/panel/estado.py`) sigue aparte.
+
 ## Textos de interfaz
 
 - Obligatorios: "Turno" (la unidad de trabajo), "Cargar visita" y "Próximo vencimiento".

@@ -266,7 +266,9 @@ class PuntoItemSerializer(serializers.Serializer):
     def get_estado(self, punto):
         """Estado por vencimiento, con la misma fecha para toda la respuesta."""
         hoy = self.context.setdefault("hoy", timezone.localdate())
-        return estado_por_vencimiento(punto.proximo_vencimiento, hoy)
+        return estado_por_vencimiento(
+            punto.proximo_vencimiento, hoy, frecuencia_dias=punto.frecuencia_dias
+        )
 
 
 class ItemTurnoSerializer(serializers.Serializer):

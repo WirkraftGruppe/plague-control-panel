@@ -1,0 +1,16 @@
+{# Turnos abiertos y puntos; solo se actualiza solo (cada 30 s) si hay un turno abierto que cuenta. #}
+<div id="ficha-avance"{% if turnos_abiertos %} data-sondeo hx-get="{% url 'panel:sitios:ficha_avance' sitio.pk %}" hx-trigger="every 30s" hx-swap="outerHTML"{% endif %}>
+  {% for turno in turnos_abiertos %}
+  <p class="mensaje mensaje-info"><strong>Turno abierto de {{ turno.empleado.get_full_name|default:turno.empleado.username }}</strong> desde las {{ turno.abierta_en|date:"H:i" }} · {{ turno.revisados }} de {{ turno.total }} puntos revisados</p>
+  {% endfor %}
+  <ul class="lista-puntos" id="ficha-puntos">
+    {% for punto in puntos %}
+    <li class="punto-fila"{% if punto.activo %} data-punto="{{ punto.pk }}" data-estado="{{ punto.estado }}"{% endif %}>
+      <span class="numero-punto">{% if punto.activo %}{{ punto.numero }}{% else %}—{% endif %}</span>
+      <span class="punto-nombre">{{ punto.nombre }}<span class="texto-secundario">{{ punto.servicio.nombre|default:"Sin servicio" }}{% if punto.frecuencia_dias %} · cada {{ punto.frecuencia_dias }} días{% endif %}</span><span class="texto-secundario">{% if punto.ultima_revision %}Última revisión: {{ punto.ultima_revision|date:"d/m/Y H:i" }}{% if punto.ultimo_operario %} · {{ punto.ultimo_operario }}{% endif %}{% else %}Sin revisiones{% endif %}</span>{% if punto.revisado_por %}<span class="texto-secundario">Revisado en este turno · {{ punto.revisado_por|join:", " }}</span>{% endif %}</span>
+      <span class="punto-vencimiento">{% if punto.activo %}{% if punto.proximo_vencimiento %}{{ punto.proximo_vencimiento|date:"d/m/Y" }} {% endif %}<span class="etiqueta-estado etiqueta-{{ punto.vencimiento_clase }}">{{ punto.vencimiento_etiqueta }}</span>{% else %}<span class="etiqueta-estado etiqueta-neutral">Inactivo</span>{% endif %}</span>
+      <a href="{% url 'panel:sitios:punto_editar' punto.pk %}">Editar<span class="visually-hidden"> {{ punto.nombre }}</span></a>
+    </li>
+    {% endfor %}
+  </ul>
+</div>

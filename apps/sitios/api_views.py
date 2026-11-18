@@ -170,7 +170,9 @@ class ResolverQRView(APIView):
                 "sector": punto.sector,
                 "plano": _datos_plano(punto),
                 "estado": estado_por_vencimiento(
-                    punto.proximo_vencimiento, timezone.localdate()
+                    punto.proximo_vencimiento,
+                    timezone.localdate(),
+                    punto.frecuencia_dias,
                 ),
                 "proximo_vencimiento": punto.proximo_vencimiento,
                 "servicio": _datos_servicio(servicio),
