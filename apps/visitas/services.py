@@ -870,14 +870,14 @@ def registrar_no_revisado(
     """
     if cliente_uuid is None:
         raise ValidationError({"cliente_uuid": "Este campo es obligatorio."})
-    if reportado_en is not None:
-        validar_hora_cliente(reportado_en, "reportado_en")
     empresa_id = empleado.empresa_id
     try:
         with _transaccion_con_archivos() as guardadas:
             existente = _no_revisado_duplicado(cliente_uuid, empresa_id)
             if existente:
                 raise NoRevisadoDuplicado(existente)
+            if reportado_en is not None:
+                validar_hora_cliente(reportado_en, "reportado_en")
             try:
                 sitio_id = (
                     Visita.objects.de_empresa(empresa_id)

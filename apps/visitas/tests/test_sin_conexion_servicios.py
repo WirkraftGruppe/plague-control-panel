@@ -13,6 +13,7 @@ from apps.servicios.models import CampoPlanilla
 from apps.sitios.models import Sitio
 from apps.visitas.models import PuntoNoRevisado, Revision, Visita
 from apps.visitas.services import (
+    NoRevisadoDuplicado,
     RevisionDuplicada,
     VisitaNoAbierta,
     abrir_visita,
@@ -188,6 +189,18 @@ class HoraClienteTests(BaseSinConexion):
         self.assertEqual(
             self.codigo(contexto.exception, "reportado_en"), "atraso_excedido"
         )
+
+    def test_reintento_reporte_73_horas_mismo_uuid_es_duplicado(self):
+        visita = self.abrir(abierta_en=hace(hours=71, minutes=30))
+        cliente_uuid = uuid4()
+        original = self.reportar(
+            visita, cliente_uuid=cliente_uuid, reportado_en=hace(hours=71)
+        )
+        with self.assertRaises(NoRevisadoDuplicado) as contexto:
+            self.reportar(
+                visita, cliente_uuid=cliente_uuid, reportado_en=hace(hours=73)
+            )
+        self.assertEqual(contexto.exception.reporte, original)
 
     def test_cierre_por_sistema_usa_reportado_en(self):
         visita = self.abrir(abierta_en=hace(hours=4))
