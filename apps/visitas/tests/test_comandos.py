@@ -30,6 +30,21 @@ def abierta_hace(horas, **extra):
     )
 
 
+def sin_actividad_reciente():
+    """Lleva `actualizado` y `recibida_en` al momento de apertura de cada visita.
+
+    Los fixtures nacen con actividad de ahora y el cierre nocturno la respeta.
+    """
+    empresa = una_empresa()
+    for visita in Visita.objects.de_empresa(empresa).filter(abierta_en__isnull=False):
+        Visita.objects.de_empresa(empresa).filter(pk=visita.pk).update(
+            actualizado=visita.abierta_en
+        )
+        Revision.objects.de_empresa(empresa).filter(visita=visita).update(
+            recibida_en=visita.abierta_en
+        )
+
+
 class CerrarAbiertasTests(TestCase):
     def ejecutar(self):
         salida = StringIO()
@@ -44,6 +59,7 @@ class CerrarAbiertasTests(TestCase):
         )
         reciente = abierta_hace(2)
         crear_revision(reciente)
+        sin_actividad_reciente()
         salida = self.ejecutar()
         vieja.refresh_from_db()
         reciente.refresh_from_db()
@@ -58,6 +74,7 @@ class CerrarAbiertasTests(TestCase):
     def test_el_maximo_sale_del_setting(self):
         visita = abierta_hace(2)
         crear_revision(visita)
+        sin_actividad_reciente()
         self.ejecutar()
         visita.refresh_from_db()
         self.assertEqual(visita.estado, Visita.Estado.REALIZADA)
@@ -71,6 +88,7 @@ class CerrarAbiertasTests(TestCase):
         )
         asignada = abierta_hace(20, asignada_por=asignador)
         propia = abierta_hace(20)
+        sin_actividad_reciente()
         self.ejecutar()
         asignada.refresh_from_db()
         propia.refresh_from_db()
@@ -86,6 +104,7 @@ class CerrarAbiertasTests(TestCase):
         crear_revision(trabada)
         libre = abierta_hace(20)
         crear_revision(libre)
+        sin_actividad_reciente()
 
         def cierra(visita, **opciones):
             if visita.pk == trabada.pk:

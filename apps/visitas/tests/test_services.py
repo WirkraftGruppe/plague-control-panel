@@ -342,10 +342,10 @@ class CicloVisitaTests(SinArchivosMixin, TestCase):
 
     def test_atraso_y_futuro_se_rechazan(self):
         visita, _ = abrir(empleado=self.empleado, sitio=self.sitio)
-        horas = 169
+        horas = 73
         with self.assertRaises(ValidationError) as contexto:
             self.revisar(visita, realizada_en=timezone.now() - timedelta(hours=horas))
-        self.assertIn("168", str(contexto.exception.message_dict["realizada_en"]))
+        self.assertIn("72", str(contexto.exception.message_dict["realizada_en"]))
         with self.assertRaises(ValidationError) as contexto:
             self.revisar(visita, realizada_en=timezone.now() + timedelta(hours=1))
         self.assertIn("realizada_en", contexto.exception.message_dict)
