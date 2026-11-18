@@ -68,3 +68,17 @@
 - duración: 12.9 s
 - Veredicto: FALLA
 
+## 2026-11-18 17:15 — tarea T3 de 2026-11-18-ficha-sitio-trabajo-hecho.md
+
+- HEAD verificado: 0ed4e68
+- Contrato: intacto (congelado en 3b0bb32)
+- Criterios:
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_estado_aviso.EstadoAvisoApiTests.test_estado_del_punto_del_turno_usa_la_frecuencia --keepdb`
+  - PASA (exit 0, nuevo: —) `T3 [grep-1] grep -n "frecuencia_dias=punto.frecuencia_dias" apps/visitas/serializers.py`
+  - PASA (exit 0, nuevo: —) `T3 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas --keepdb`
+  - PASA (exit 0, nuevo: —) `T3 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 120 --subtarea T3`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 12.9 s
+- Veredicto: PASA
+
