@@ -281,7 +281,7 @@ T2 y T5 superan los 6 archivos: `services.py` y la API de `visitas` tienen un so
 
 ## Registro de verificación
 
-commit_base: <pendiente>
+commit_base: 89f2a8d
 
 | Tarea | Estado | Commit | Recibo |
 |---|---|---|---|
