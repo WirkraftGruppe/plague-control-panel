@@ -43,7 +43,7 @@ límite de pedidos (throttle) y el rol que la puede usar. Todas las rutas cuelga
   si no hay ninguno de los dos o si el sitio o su cliente están dados de baja; solo viene en los turnos activos propios (no en `me/historial/`
   ni en el cierre). `estado` del punto (`al_dia`, `proxima`, `vencida`, `sin_programar`) usa la
   misma regla que el resolver de QR: `proxima` si vence entre hoy y hoy + los días de aviso de
-  su `frecuencia_dias` (`ceil(frecuencia_dias / 4)` entre 1 y 7; sin frecuencia, 7). `GET /api/v1/me/visitas/<pk>/` devuelve un turno con la
+  su `frecuencia_dias` (`ceil(frecuencia_dias / 4)` entre 1 y 7; sin frecuencia, 7; si el aviso cubre la frecuencia entera, `frecuencia_dias - 1`: con frecuencia 1, `proxima` solo el día que vence). `GET /api/v1/me/visitas/<pk>/` devuelve un turno con la
   forma de un elemento de la lista; uno ajeno, de otra empresa, realizado o inexistente da 404.
 - **Raíz** (`GET /api/v1/`): `{usuario{id, nombre_completo, username}, empresa{id, nombre},
   rol}`; `nombre_completo` cae en `username` si el usuario no tiene nombre cargado y `empresa`

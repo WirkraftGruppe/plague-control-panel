@@ -143,7 +143,7 @@ Comportamiento (`panel_lateral.js`, cargado con `defer` desde el panel):
 - **Chip del listado**: "Vencido", "Próxima", "Al día" o "Sin fechas", según el peor de los puntos activos del sitio ("Sin fechas" solo si ninguno tiene fecha). El filtro "Próxima" conserva el valor `semana`. Un punto está en "Próxima" según sus días de aviso (`docs/01-modelo-y-arquitectura.md`, § 3.2.1); el mapa sigue su propia gravedad.
 - **Lista de puntos** (`#ficha-puntos`): cada punto muestra la fecha, la hora y el operario de su última revisión que cuenta como servicio, o "Sin revisiones". Un punto revisado en un turno abierto lleva la marca "Revisado en este turno".
 - **Bloque por turno abierto**: arriba de la lista, uno por cada turno abierto que cuenta como servicio (las visitas de un administrador se ignoran), con el operario, la hora de apertura y "N de M puntos revisados". M son los ítems del turno, o los puntos activos del sitio si no tiene ítems.
-- **Actualización**: los bloques y la lista se actualizan cada 30 s (HTMX), solo mientras haya un turno abierto que cuenta; sin él no hay pedidos periódicos. El sondeo de estado de 5 s (`apps/panel/estado.py`) sigue aparte.
+- **Actualización**: los bloques y la lista se actualizan cada 30 s (HTMX), solo mientras haya un turno abierto que cuenta; sin él, esa actualización no corre. El sondeo de estado de 5 s (`apps/panel/estado.py`) sigue aparte.
 
 ## Textos de interfaz
 
