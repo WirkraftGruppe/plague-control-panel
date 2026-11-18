@@ -147,7 +147,7 @@ No hay migraciones. T1 cambia `estado.py`, que usan T3 y T4, así que va sola en
 
 ## Registro de verificación
 
-commit_base: <hash del commit docs(plan): ficha-sitio-trabajo-hecho>
+commit_base: 3b0bb32
 
 | Tarea | Estado | Commit | Recibo |
 |---|---|---|---|
