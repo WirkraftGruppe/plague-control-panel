@@ -455,3 +455,37 @@
 - duración: 58.8 s
 - Veredicto: PASA
 
+## 2026-11-19 14:10 — tarea T11 de 2026-11-18-trabajo-sin-conexion.md
+
+- HEAD verificado: e41342e
+- Contrato: modificado y aceptado (6e288a2, decisión del usuario)
+- Criterios:
+  - PASA (exit 0, nuevo: —) `T11 [cmd] git log --oneline plan/trabajo-sin-conexion | grep -q "T9: integra trabajo-sin-conexion-T9"`
+  - PASA (exit 0, nuevo: —) `T11 [cmd] git log --oneline plan/trabajo-sin-conexion | grep -q "T10: integra trabajo-sin-conexion-T10"`
+  - PASA (exit 0, nuevo: —) `T11 [grep-1] grep -n "ultima_revision_fecha" docs/api/openapi-v1.yaml`
+  - PASA (exit 0, nuevo: —) `T11 [cmd] T=$(mktemp) && PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py spectacular --validate --file "$(cygpath -w "$T")" && diff -q --strip-trailing-cr "$T" docs/api/openapi-v1.yaml; r=$?; rm -f "$T"; exit $r`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - FALLA (exit 1, nuevo: —) `commits de la tarea dentro de Puede tocar`
+    ```
+    T11: regenera openapi-v1.yaml con T9 y T10 integradas -> docs/api/openapi-v1.yaml
+    ```
+- duración: 1.8 s
+- Veredicto: FALLA
+
+## 2026-11-19 14:10 — tarea T11 de 2026-11-18-trabajo-sin-conexion.md
+
+- HEAD verificado: e41342e
+- Contrato: modificado y aceptado (6e288a2, decisión del usuario)
+- Criterios:
+  - PASA (exit 0, nuevo: —) `T11 [cmd] git log --oneline plan/trabajo-sin-conexion | grep -q "T9: integra trabajo-sin-conexion-T9"`
+  - PASA (exit 0, nuevo: —) `T11 [cmd] git log --oneline plan/trabajo-sin-conexion | grep -q "T10: integra trabajo-sin-conexion-T10"`
+  - PASA (exit 0, nuevo: —) `T11 [grep-1] grep -n "ultima_revision_fecha" docs/api/openapi-v1.yaml`
+  - PASA (exit 0, nuevo: —) `T11 [cmd] T=$(mktemp) && PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py spectacular --validate --file "$(cygpath -w "$T")" && diff -q --strip-trailing-cr "$T" docs/api/openapi-v1.yaml; r=$?; rm -f "$T"; exit $r`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - FALLA (exit 1, nuevo: —) `commits de la tarea dentro de Puede tocar`
+    ```
+    T11: regenera openapi-v1.yaml con T9 y T10 integradas -> docs/api/openapi-v1.yaml
+    ```
+- duración: 1.8 s
+- Veredicto: FALLA
+
