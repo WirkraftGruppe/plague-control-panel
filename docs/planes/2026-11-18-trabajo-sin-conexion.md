@@ -178,6 +178,7 @@ T2 y T5 superan los 6 archivos: `services.py` y la API de `visitas` tienen un so
 
 - **Ola**: 2 (después de verificar T2 y T3)
 - **Depende de**: T2, T3
+- **Puede tocar**: `apps/visitas/tests/test_vencimiento.py` (solo el ajuste de integración: su revisión de 3 días superaba `ATRASO_MAXIMO_APP_HORAS`)
 - **Pasos**:
   1. Revisar `bash .claude/hooks/cambios.sh . plan/trabajo-sin-conexion` de T2 y T3, no los informes.
   2. Desde la raíz (rama `plan/trabajo-sin-conexion`), `bash .claude/hooks/worktree-integrar.sh trabajo-sin-conexion T<n> plan/trabajo-sin-conexion <rutas>` por cada subtarea, de a una, con `verificar.py tarea` tras cada integración.
