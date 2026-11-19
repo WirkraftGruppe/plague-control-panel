@@ -325,12 +325,16 @@ class DatosSinConexionView(APIView):
             PuntoControl.objects.de_empresa(empresa)
             .filter(activo=True, sitio__activo=True, sitio__cliente__activo=True)
             .select_related("sitio")
-            .annotate(ultima_revision=Subquery(ultima))
+            .annotate(ultima_realizada_en=Subquery(ultima))
             .order_by("sitio__nombre", "sitio_id", "orden", "id")
         )
         estados = estados_por_vencimiento(puntos, timezone.localdate())
         for punto in puntos:
             punto.estado = estados[punto.id]
+            realizada = punto.ultima_realizada_en
+            punto.ultima_revision_fecha = (
+                timezone.localdate(realizada) if realizada else None
+            )
             punto.qr_hash = hashlib.sha256(str(punto.qr_codigo).encode()).hexdigest()
         servicios = (
             TipoServicio.objects.de_empresa(empresa)

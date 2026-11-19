@@ -236,7 +236,7 @@ class PuntoSinConexionSerializer(serializers.Serializer):
     servicio = serializers.IntegerField(source="servicio_id", allow_null=True)
     estado = serializers.CharField()
     proximo_vencimiento = serializers.DateField(allow_null=True)
-    ultima_revision = serializers.DateTimeField(allow_null=True)
+    ultima_revision_fecha = serializers.DateField(allow_null=True)
 
 
 class ServicioSinConexionSerializer(serializers.Serializer):
