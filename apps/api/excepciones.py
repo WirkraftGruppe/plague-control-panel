@@ -5,7 +5,7 @@ import logging
 from django.core.exceptions import NON_FIELD_ERRORS
 from django.core.exceptions import ValidationError as ErrorDeDjango
 from rest_framework import status
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import ErrorDetail, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import exception_handler
 
@@ -14,7 +14,12 @@ logger = logging.getLogger(__name__)
 DETALLE_VALIDACION = "Hay datos inválidos."
 DETALLE_INTERNO = "Error interno del servidor."
 # Códigos de excepción que el cliente puede ver en `code`; el resto no se expone.
-CODIGOS_PUBLICOS = {"empresa_inactiva"}
+CODIGOS_PUBLICOS = {
+    "atraso_excedido",
+    "empresa_inactiva",
+    "visita_no_abierta",
+    "visita_ya_cerrada",
+}
 
 
 def _como_lista(valor):
@@ -61,15 +66,35 @@ def _detalle_legible(exc, respuesta):
     return str(detalle)
 
 
+def _detalle_con_codigo(error):
+    """Un error de Django como `ErrorDetail`, conservando su `code`."""
+    return ErrorDetail(" ".join(error.messages), code=error.code or "invalid")
+
+
+def _codigo_publico(codigos):
+    """Primer código público dentro de `get_codes()` (texto, lista o diccionario)."""
+    if isinstance(codigos, str):
+        return codigos if codigos in CODIGOS_PUBLICOS else None
+    valores = codigos.values() if isinstance(codigos, dict) else codigos
+    for valor in valores:
+        encontrado = _codigo_publico(valor)
+        if encontrado:
+            return encontrado
+    return None
+
+
 def manejar_excepcion(exc, contexto):
     """Respuesta uniforme; las excepciones no previstas no exponen su texto."""
     if isinstance(exc, ErrorDeDjango):
         if hasattr(exc, "error_dict"):
-            errores = dict(exc.message_dict)
+            errores = {
+                campo: [_detalle_con_codigo(error) for error in lista]
+                for campo, lista in exc.error_dict.items()
+            }
             if NON_FIELD_ERRORS in errores:
                 errores["non_field_errors"] = errores.pop(NON_FIELD_ERRORS)
         else:
-            errores = exc.messages
+            errores = [_detalle_con_codigo(error) for error in exc.error_list]
         exc = ValidationError(errores)
     respuesta = exception_handler(exc, contexto)
     if respuesta is None:
@@ -86,8 +111,8 @@ def manejar_excepcion(exc, contexto):
     else:
         detalle = _detalle_legible(exc, respuesta)
     cuerpo = {"detalle": detalle, "campos": campos}
-    codigo = exc.get_codes() if hasattr(exc, "get_codes") else None
-    if isinstance(codigo, str) and codigo in CODIGOS_PUBLICOS:
+    codigo = _codigo_publico(exc.get_codes()) if hasattr(exc, "get_codes") else None
+    if codigo:
         cuerpo["code"] = codigo
     respuesta.data = cuerpo
     return respuesta

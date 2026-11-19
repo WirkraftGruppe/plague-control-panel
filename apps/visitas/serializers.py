@@ -65,6 +65,12 @@ class AbrirVisitaSerializer(serializers.Serializer):
     las coordenadas del teléfono para verificar la ubicación."""
 
     qr_codigo = serializers.UUIDField()
+    abierta_en = serializers.DateTimeField(
+        required=False,
+        allow_null=True,
+        default=None,
+        help_text="Hora en que el empleado abrió, si estaba sin conexión.",
+    )
     latitud = serializers.DecimalField(
         max_digits=9,
         decimal_places=6,
@@ -124,6 +130,12 @@ class CrearRevisionSerializer(serializers.Serializer):
     qr_codigo = serializers.UUIDField()
     cliente_uuid = serializers.UUIDField(allow_null=False)
     realizada_en = serializers.DateTimeField()
+    servicio = serializers.IntegerField(
+        required=False,
+        allow_null=True,
+        default=None,
+        help_text="Id del servicio que el empleado eligió para el punto.",
+    )
     latitud = serializers.DecimalField(
         max_digits=9,
         decimal_places=6,
@@ -216,6 +228,12 @@ class ReportarNoRevisadoSerializer(serializers.Serializer):
         default=None,
     )
     cliente_uuid = serializers.UUIDField(allow_null=False)
+    reportado_en = serializers.DateTimeField(
+        required=False,
+        allow_null=True,
+        default=None,
+        help_text="Hora del reporte, si el empleado estaba sin conexión.",
+    )
 
 
 class SitioResumenSerializer(serializers.Serializer):
@@ -372,6 +390,11 @@ class CerrarVisitaSerializer(serializers.Serializer):
     """Entrada de `POST visitas/<pk>/cerrar/`: planilla de la visita y observaciones."""
 
     datos = serializers.JSONField(required=False)
+    cerrada_en = serializers.DateTimeField(
+        required=False,
+        allow_null=True,
+        help_text="Hora del cierre, si el empleado estaba sin conexión.",
+    )
     observaciones = serializers.CharField(
         required=False, allow_blank=True, max_length=MAX_LARGO_TEXTO
     )

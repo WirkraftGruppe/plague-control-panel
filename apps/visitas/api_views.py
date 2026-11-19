@@ -41,6 +41,7 @@ from .serializers import (
 from .services import (
     NoRevisadoDuplicado,
     RevisionDuplicada,
+    VisitaNoAbierta,
     VisitaNoEncontrada,
     VisitaYaCerrada,
     abrir_visita,
@@ -71,6 +72,12 @@ class VisitaYaCerradaError(APIException):
     status_code = status.HTTP_409_CONFLICT
     default_detail = "La visita ya fue cerrada."
     default_code = "visita_ya_cerrada"
+
+
+class VisitaNoAbiertaError(APIException):
+    status_code = status.HTTP_409_CONFLICT
+    default_detail = "La visita no está abierta."
+    default_code = "visita_no_abierta"
 
 
 def visitas_activas_del_usuario(request):
@@ -142,14 +149,19 @@ class AbrirVisitaView(APIView):
             "empleado ya tiene una abierta en el sitio la devuelve con 200. `latitud`, "
             "`longitud` y `precision_m` son opcionales: con coordenadas se guarda la "
             "distancia al punto y la incidencia de ubicación, sin rechazar nunca por "
-            "distancia. La visita de un administrador no toma pendientes."
+            "distancia. `abierta_en` (opcional) es la hora en que el empleado abrió "
+            "sin conexión: no puede ser futura ni tener más de "
+            "`ATRASO_MAXIMO_APP_HORAS` de atraso (`code: atraso_excedido`). La "
+            "visita de un administrador no toma pendientes."
         ),
         request=AbrirVisitaSerializer,
         responses={
             201: VisitaActivaSerializer,
             200: VisitaActivaSerializer,
             400: OpenApiResponse(
-                description="QR inexistente, de un punto o sitio inactivo."
+                description="QR inexistente, de un punto o sitio inactivo, o "
+                "`abierta_en` futura o con atraso excedido (`campos.abierta_en`, "
+                "con `code: atraso_excedido` en el segundo caso)."
             ),
         },
     )
@@ -163,6 +175,7 @@ class AbrirVisitaView(APIView):
             latitud=entrada.validated_data["latitud"],
             longitud=entrada.validated_data["longitud"],
             precision_m=entrada.validated_data["precision_m"],
+            abierta_en=entrada.validated_data["abierta_en"],
         )
         visita = (
             Visita.objects.de_empresa(empresa_de(request))
@@ -195,7 +208,9 @@ class CrearRevisionView(APIView):
             "responde 409; "
             "`revision` y `visita` solo vienen si son del mismo empleado. Un "
             "administrador que escanea un punto sin coordenadas, con precisión de a lo "
-            "sumo 50 m, las fija."
+            "sumo 50 m, las fija. `servicio` (id, opcional) es el que eligió el "
+            "empleado: si difiere del que decide el servidor, la revisión lo usa y "
+            "queda con una incidencia."
         ),
         request={
             "multipart/form-data": OpenApiRequest(
@@ -210,14 +225,19 @@ class CrearRevisionView(APIView):
                 description=(
                     "Validación: QR que no es de un punto del sitio, visita no "
                     "abierta, coordenadas faltantes, punto sin servicio o con el "
-                    "servicio dado de baja, planilla inválida o revisión con más "
-                    "horas de atraso que el máximo (168 por defecto)."
+                    "servicio dado de baja, `servicio` inactivo o de otra empresa, "
+                    "planilla inválida, hora futura o revisión con más horas de "
+                    "atraso que `ATRASO_MAXIMO_APP_HORAS` (`campos.realizada_en` "
+                    "con `code: atraso_excedido`)."
                 )
             ),
             404: OpenApiResponse(
                 description="La visita no existe o es de otro usuario."
             ),
-            409: OpenApiResponse(description="El `cliente_uuid` ya fue registrado."),
+            409: OpenApiResponse(
+                description="El `cliente_uuid` ya fue registrado, o la visita propia "
+                "no está abierta (`code: visita_no_abierta`: reenviar `abrir`)."
+            ),
             413: OpenApiResponse(description="El pedido supera el tamaño permitido."),
         },
     )
@@ -242,6 +262,8 @@ class CrearRevisionView(APIView):
             )
         except VisitaNoEncontrada:
             raise NotFound("La visita no existe.")
+        except VisitaNoAbierta as no_abierta:
+            raise VisitaNoAbiertaError(" ".join(no_abierta.messages))
         except RevisionDuplicada as duplicada:
             cuerpo = {"detalle": MENSAJE_DUPLICADA, "campos": {}}
             # Solo el dueño recibe los ids: no se expone lo de otro empleado.
@@ -271,21 +293,26 @@ class ReportarNoRevisadoView(APIView):
             "para el vencimiento, pero una visita sin revisiones y con al menos un "
             "reporte se puede cerrar (`sin_revisiones`). Un `cliente_uuid` ya "
             "registrado responde 409; `reporte` y `visita` solo vienen si es del "
-            "mismo empleado."
+            "mismo empleado. `reportado_en` (opcional) es la hora del reporte si el "
+            "empleado estaba sin conexión, con el mismo límite de atraso."
         ),
         request={"multipart/form-data": ReportarNoRevisadoSerializer},
         responses={
             201: NoRevisadoSerializer,
             400: OpenApiResponse(
                 description=(
-                    "Visita no abierta, punto de otro sitio, inactivo o ya "
-                    "reportado, o campos inválidos."
+                    "Punto de otro sitio, inactivo o ya reportado, `reportado_en` "
+                    "futura o con atraso excedido (`code: atraso_excedido`), o "
+                    "campos inválidos."
                 )
             ),
             404: OpenApiResponse(
                 description="La visita no existe o es de otro usuario."
             ),
-            409: OpenApiResponse(description="El `cliente_uuid` ya fue registrado."),
+            409: OpenApiResponse(
+                description="El `cliente_uuid` ya fue registrado, o la visita propia "
+                "no está abierta (`code: visita_no_abierta`: reenviar `abrir`)."
+            ),
             413: OpenApiResponse(description="El pedido supera el tamaño permitido."),
         },
     )
@@ -317,6 +344,8 @@ class ReportarNoRevisadoView(APIView):
             )
         except VisitaNoEncontrada:
             raise NotFound("La visita no existe.")
+        except VisitaNoAbierta as no_abierta:
+            raise VisitaNoAbiertaError(" ".join(no_abierta.messages))
         except NoRevisadoDuplicado as duplicado:
             cuerpo = {"detalle": MENSAJE_NO_REVISADO_DUPLICADO, "campos": {}}
             # Solo el dueño recibe los ids: no se expone lo de otro empleado.
@@ -343,20 +372,25 @@ class CerrarVisitaView(APIView):
             "`datos` es la planilla de ámbito visita; todo es opcional. Cerrar de "
             "nuevo una visita que ya cerró el mismo usuario devuelve 200 con la "
             "visita; si la cerró el sistema o un administrador, 409. Cerrar la "
-            "visita de un administrador no cuenta como servicio."
+            "visita de un administrador no cuenta como servicio. `cerrada_en` "
+            "(opcional) es la hora del cierre si el empleado estaba sin conexión: no "
+            "puede ser anterior a la apertura, futura ni exceder el atraso máximo."
         ),
         request=CerrarVisitaSerializer,
         responses={
             200: VisitaRealizadaSerializer,
             400: OpenApiResponse(
-                description="No está abierta, no tiene al menos una revisión o un "
-                "reporte de punto no revisado, o la planilla es inválida."
+                description="No tiene al menos una revisión o un reporte de punto "
+                "no revisado, la planilla es inválida o `cerrada_en` es inválida "
+                "(`code: atraso_excedido` si excede el atraso)."
             ),
             404: OpenApiResponse(
                 description="La visita no existe o es de otro usuario."
             ),
             409: OpenApiResponse(
-                description="La visita ya la cerró el sistema o un administrador."
+                description="La visita propia no está abierta (`code: "
+                "visita_no_abierta`: reenviar `abrir`) o ya la cerró el sistema o un "
+                "administrador (`code: visita_ya_cerrada`)."
             ),
         },
     )
@@ -381,6 +415,8 @@ class CerrarVisitaView(APIView):
             )
         except VisitaYaCerrada:
             raise VisitaYaCerradaError()
+        except VisitaNoAbierta as no_abierta:
+            raise VisitaNoAbiertaError(" ".join(no_abierta.messages))
         cerrada = (
             Visita.objects.de_empresa(empresa)
             .select_related("sitio")

@@ -102,10 +102,11 @@ class NoRevisadosApiTests(ApiVisitasBase):
         r = ReportarNoRevisadoView.as_view()(pedido, pk=otra_empresa.id)
         self.assertEqual(r.status_code, 404, r.data)
 
-    def test_visita_propia_cerrada_da_400(self):
+    def test_visita_propia_cerrada_da_409(self):
         visita = self._realizada(self.empleado, 5)
         r = self._reportar(visita.id)
-        self.assertEqual(r.status_code, 400, r.data)
+        self.assertEqual(r.status_code, 409, r.data)
+        self.assertEqual(r.data["code"], "visita_no_abierta")
         self.assertIn("La visita no está abierta.", str(r.data))
         self.assertFalse(PuntoNoRevisado.objects.de_empresa(una_empresa()).exists())
 

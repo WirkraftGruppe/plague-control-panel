@@ -127,4 +127,12 @@ class CodigoErrorTests(TestCase):
         )
         self.assertEqual(esquema.status_code, 200)
         propiedades = esquema.json()["components"]["schemas"]["Error"]["properties"]
-        self.assertEqual(propiedades["code"]["enum"], ["empresa_inactiva"])
+        self.assertEqual(
+            propiedades["code"]["enum"],
+            [
+                "atraso_excedido",
+                "empresa_inactiva",
+                "visita_no_abierta",
+                "visita_ya_cerrada",
+            ],
+        )
