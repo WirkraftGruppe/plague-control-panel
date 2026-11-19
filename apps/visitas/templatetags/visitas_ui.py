@@ -43,8 +43,24 @@ def con_incidencia_servicio(revisiones):
 def llegada_tardia(revision):
     """Hora de llegada al servidor si difiere más de 10 min de la del teléfono.
 
-    Devuelve `None` en caso contrario, para que la plantilla no muestre nada.
+    Devuelve `None` en caso contrario, para que la plantilla no muestre nada, y en
+    las visitas de origen manual: su hora de recepción es la de la carga.
     """
+    if revision.visita.origen == Visita.Origen.MANUAL:
+        return None
     if abs(revision.recibida_en - revision.realizada_en) > UMBRAL_LLEGADA:
         return revision.recibida_en
+    return None
+
+
+@register.filter
+def llegada_diferida(declarada, recibida):
+    """Hora de recepción si difiere más de 10 min de la declarada; si no, `None`.
+
+    Tolera horas nulas (visitas anteriores a la hora de recepción o sin cerrar).
+    """
+    if declarada is None or recibida is None:
+        return None
+    if abs(recibida - declarada) > UMBRAL_LLEGADA:
+        return recibida
     return None

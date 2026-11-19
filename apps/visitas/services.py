@@ -447,12 +447,12 @@ def abrir_visita(
     tomar locks y de crear nada.
 
     `abierta_en` es la hora en que el empleado abrió sin conexión: se valida con
-    `validar_hora_cliente` y se guarda `min(abierta_en, ahora)`. Con ella solo se
-    reabren pendientes sin programar o programadas hasta `localdate(abierta_en)`;
-    si no hay ninguna se crea una visita nueva.
+    `validar_hora_cliente` y se guarda `min(abierta_en, ahora)`; con una visita ya
+    abierta no se evalúa ni se toca. Al reabrir o crear se guarda la hora de
+    recepción (`abierta_recibida_en`). Con ella solo se reabren pendientes sin
+    programar o programadas hasta `localdate(abierta_en)`; si no hay ninguna se
+    crea una visita nueva.
     """
-    if abierta_en is not None:
-        validar_hora_cliente(abierta_en, "abierta_en")
     with transaction.atomic():
         try:
             punto = (
@@ -472,7 +472,7 @@ def abrir_visita(
         )
         # visita_destino no bloquea filas: se bloquean antes las visitas propias del
         # sitio que pueden ser el destino (abiertas o pendientes).
-        list(
+        propias = list(
             Visita.objects.de_empresa(sitio.empresa_id)
             .select_for_update()
             .filter(
@@ -481,6 +481,12 @@ def abrir_visita(
                 estado__in=[Visita.Estado.ABIERTA, Visita.Estado.PENDIENTE],
             )
         )
+        # Con una abierta se devuelve tal cual: `abierta_en` no se evalúa.
+        abierta = next((v for v in propias if v.estado == Visita.Estado.ABIERTA), None)
+        if abierta is not None:
+            return abierta, False
+        if abierta_en is not None:
+            validar_hora_cliente(abierta_en, "abierta_en")
         hasta = None if abierta_en is None else timezone.localdate(abierta_en)
         destino = visita_destino(empleado=empleado, sitio=sitio, hasta=hasta)
         if destino is not None and destino.estado == Visita.Estado.ABIERTA:
@@ -498,6 +504,7 @@ def abrir_visita(
             propia.incidencia_ubicacion = incidencia_ubicacion
             propia.estado = Visita.Estado.ABIERTA
             propia.abierta_en = apertura
+            propia.abierta_recibida_en = ahora
             propia.origen = Visita.Origen.APP
             propia.motivo_manual = ""
             propia.cuenta_como_servicio = True
@@ -509,6 +516,7 @@ def abrir_visita(
             origen=Visita.Origen.APP,
             estado=Visita.Estado.ABIERTA,
             abierta_en=apertura,
+            abierta_recibida_en=ahora,
             incidencia_asignacion=hay_de_otro,
             distancia_m=distancia,
             precision_m=precision_m,
@@ -897,6 +905,18 @@ def registrar_no_revisado(
                 raise VisitaNoEncontrada()
             if visita.estado != Visita.Estado.ABIERTA:
                 raise VisitaNoAbierta()
+            if (
+                reportado_en is not None
+                and visita.abierta_en
+                and reportado_en < visita.abierta_en
+            ):
+                raise ValidationError(
+                    {
+                        "reportado_en": [
+                            "La hora del reporte no puede ser anterior a la apertura."
+                        ]
+                    }
+                )
             errores = _validar_coordenadas(latitud, longitud)
             if motivo not in PuntoNoRevisado.Motivo.values:
                 errores["motivo"] = ["Motivo inválido."]
@@ -960,6 +980,7 @@ def _cerrar_sin_revisiones(visita):
     if visita.asignada_por_id:
         visita.estado = Visita.Estado.PENDIENTE
         visita.abierta_en = None
+        visita.abierta_recibida_en = None
         visita.cierre = ""
     else:
         visita.estado = Visita.Estado.CANCELADA
@@ -1014,8 +1035,9 @@ def cerrar_visita(
     sistema. Bloquea en el orden Sitio -> Visita. Cerrar de nuevo por el mismo
     empleado es idempotente; si la cerró el sistema o un administrador, levanta
     `VisitaYaCerrada`. El empleado sobre una visita pendiente o cancelada recibe
-    `VisitaNoAbierta`. Si el empleado manda `cerrada_en`, se valida con
-    `validar_hora_cliente` y no puede ser anterior a `abierta_en`.
+    `VisitaNoAbierta`. El cierre del empleado guarda `cerrada_recibida_en` (hora del
+    servidor); los demás cierres la dejan nula. Si el empleado manda `cerrada_en`,
+    se valida con `validar_hora_cliente` y no puede ser anterior a `abierta_en`.
     """
     if cierre not in Visita.Cierre.values:
         raise ValidationError({"cierre": "Tipo de cierre inválido."})
@@ -1122,6 +1144,8 @@ def cerrar_visita(
         visita_bd.estado = Visita.Estado.REALIZADA
         visita_bd.cierre = cierre
         visita_bd.cerrada_en = cerrada_en
+        if cierre == Visita.Cierre.EMPLEADO:
+            visita_bd.cerrada_recibida_en = timezone.now()
         visita_bd.full_clean()
         visita_bd.save()
     return visita_bd

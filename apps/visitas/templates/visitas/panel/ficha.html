@@ -16,9 +16,9 @@
     {% if visita.motivo_manual %}<dt>Motivo</dt><dd>{{ visita.motivo_manual }}</dd>{% endif %}
     <dt>Programada para</dt><dd>{{ visita.programada_para|date:"d/m/Y"|default:"—" }}</dd>
     <dt>Asignada por</dt><dd>{% if visita.asignada_por %}{{ visita.asignada_por.get_full_name|default:visita.asignada_por.username }}{% else %}—{% endif %}</dd>
-    <dt>Abierta</dt><dd>{{ visita.abierta_en|date:"d/m/Y H:i"|default:"—" }}</dd>
+    <dt>Abierta</dt><dd>{{ visita.abierta_en|date:"d/m/Y H:i"|default:"—" }}{% with llegada=visita.abierta_en|llegada_diferida:visita.abierta_recibida_en %}{% if llegada %} · Llegó {{ llegada|date:"d/m/Y H:i" }} · registrado sin conexión{% endif %}{% endwith %}</dd>
     {% if visita.distancia_m is not None %}<dt>Distancia al punto al abrir</dt><dd>{{ visita.distancia_m }} m</dd>{% endif %}
-    <dt>Cerrada</dt><dd>{{ visita.cerrada_en|date:"d/m/Y H:i"|default:"—" }}{% if visita.cierre %} ({{ visita.get_cierre_display }}){% endif %}</dd>
+    <dt>Cerrada</dt><dd>{{ visita.cerrada_en|date:"d/m/Y H:i"|default:"—" }}{% if visita.cierre %} ({{ visita.get_cierre_display }}){% endif %}{% with llegada=visita.cerrada_en|llegada_diferida:visita.cerrada_recibida_en %}{% if llegada %} · Llegó {{ llegada|date:"d/m/Y H:i" }} · registrado sin conexión{% endif %}{% endwith %}</dd>
     {% if visita.observaciones %}<dt>Observaciones</dt><dd>{{ visita.observaciones|linebreaksbr }}</dd>{% endif %}
   </dl>
 
@@ -64,7 +64,7 @@
     <section>
       <h3>{{ revision.punto.nombre }} · {{ revision.servicio }}{% if revision.fuera_de_turno %} (fuera de turno){% endif %} · {{ revision.realizada_en|date:"d/m/Y H:i" }}</h3>
       {% if revision.incidencia_servicio %}<p>Servicio distinto del asignado</p>{% endif %}
-      {% with llegada=revision|llegada_tardia %}{% if llegada %}<p>Llegó {{ llegada|date:"d/m/Y H:i" }}</p>{% endif %}{% endwith %}
+      {% with llegada=revision|llegada_tardia %}{% if llegada %}<p>Llegó {{ llegada|date:"d/m/Y H:i" }} · registrado sin conexión</p>{% endif %}{% endwith %}
       {% if revision.distancia_m is not None %}<p>Distancia al punto: {{ revision.distancia_m }} m{% if revision.incidencia_ubicacion %} (fuera del radio permitido){% endif %}</p>{% endif %}
       {% if revision.filas %}
         <table class="tabla planilla">
