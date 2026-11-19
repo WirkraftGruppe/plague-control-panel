@@ -291,8 +291,8 @@ commit_base: 89f2a8d
 | T3 | hecha | c1a1594 | PASA 2026-11-18 (tarea) |
 | T4 | hecha (contrato modificado 3d9aa29, usuario) | b2b59bf | PASA 2026-11-18 |
 | T5 | hecha | 35a0340 | PASA 2026-11-18 |
-| T6 | pendiente | | |
-| T7 | pendiente | | |
+| T6 | hecha | 2c63d63 | PASA 2026-11-18 |
+| T7 | hecha | 2c63d63 | PASA 2026-11-18 (paso 4: contrato y serializers coinciden) |
 
 ### Revisiones
 

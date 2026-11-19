@@ -120,3 +120,24 @@
 - duración: 44.5 s
 - Veredicto: PASA
 
+## 2026-11-18 21:31 — tarea T6,T7 de 2026-11-18-trabajo-sin-conexion.md
+
+- HEAD verificado: 2c63d63
+- Contrato: modificado y aceptado (3d9aa29, decisión del usuario)
+- Criterios:
+  - PASA (exit 0, nuevo: sí) `T6 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_sin_conexion.FichaSinConexionTests.test_ficha_muestra_servicio_distinto --keepdb`
+  - PASA (exit 0, nuevo: sí) `T6 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_sin_conexion.FichaSinConexionTests.test_ficha_muestra_llegada_si_difiere_mas_de_10_minutos --keepdb`
+  - PASA (exit 0, nuevo: sí) `T6 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_sin_conexion.FichaSinConexionTests.test_ficha_no_muestra_llegada_si_difiere_10_minutos_o_menos --keepdb`
+  - PASA (exit 0, nuevo: sí) `T6 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_sin_conexion.FichaSinConexionTests.test_boton_marcar_revisada_con_incidencia_de_servicio --keepdb`
+  - PASA (exit 0, nuevo: sí) `T6 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_sin_conexion.FichaSinConexionTests.test_menu_cuenta_incidencia_de_servicio --keepdb`
+  - PASA (exit 0, nuevo: —) `T6 [grep-1] grep -n "incidencia_servicio" docs/01-modelo-y-arquitectura.md`
+  - PASA (exit 0, nuevo: —) `T6 [grep-1] grep -n "ATRASO_MAXIMO_APP_HORAS" docs/01-modelo-y-arquitectura.md`
+  - PASA (exit 0, nuevo: —) `T6 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas --keepdb`
+  - PASA (exit 0, nuevo: —) `T6 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 300 --subtarea T6`
+  - PASA (exit 0, nuevo: —) `T7 [cmd] git log --oneline plan/trabajo-sin-conexion | grep -q "T5: integra trabajo-sin-conexion-T5"`
+  - PASA (exit 0, nuevo: —) `T7 [cmd] git log --oneline plan/trabajo-sin-conexion | grep -q "T6: integra trabajo-sin-conexion-T6"`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 21.3 s
+- Veredicto: PASA
+
