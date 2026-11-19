@@ -337,3 +337,72 @@
 - duración: 262.3 s
 - Veredicto: PASA
 
+## 2026-11-19 14:02 — tarea T8 de 2026-11-18-trabajo-sin-conexion.md
+
+- HEAD verificado: 8232e62
+- Contrato: modificado y aceptado (6e288a2, decisión del usuario)
+- Criterios:
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test config.tests.test_ajuste_tope_visita.AjusteTopeVisitaTests.test_default_36_y_rango_1_a_8760 --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test config.tests.test_ajuste_tope_visita.AjusteTopeVisitaTests.test_tope_menor_que_el_maximo_falla --keepdb`
+  - PASA (exit 0, nuevo: —) `T8 [grep-1] grep -n "VISITA_ABIERTA_TOPE_HORAS" .env.example`
+  - PASA (exit 0, nuevo: —) `T8 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 60 --subtarea T8`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 2.9 s
+- Veredicto: PASA
+
+## 2026-11-19 14:04 — tarea T10 de 2026-11-18-trabajo-sin-conexion.md
+
+- HEAD verificado: 6ab615a
+- Contrato: modificado y aceptado (6e288a2, decisión del usuario)
+- Criterios:
+  - FALLA (exit 1, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_datos_sin_conexion.DatosSinConexionTests.test_ultima_revision_fecha_es_solo_la_fecha_de_la_mas_reciente --keepdb`
+    ```
+    E
+    ======================================================================
+    ERROR: test_ultima_revision_fecha_es_solo_la_fecha_de_la_mas_reciente (unittest.loader._FailedTest.test_ultima_revision_fecha_es_solo_la_fecha_de_la_mas_reciente)
+    ----------------------------------------------------------------------
+    AttributeError: type object 'DatosSinConexionTests' has no attribute 'test_ultima_revision_fecha_es_solo_la_fecha_de_la_mas_reciente'
+    
+    ----------------------------------------------------------------------
+    Ran 1 test in 0.000s
+    
+    FAILED (errors=1)
+    Found 1 test(s).
+    System check identified no issues (0 silenced).
+    ```
+  - FALLA (exit 1, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_datos_sin_conexion.DatosSinConexionTests.test_ultima_revision_fecha_usa_el_dia_local_cerca_de_medianoche --keepdb`
+    ```
+    E
+    ======================================================================
+    ERROR: test_ultima_revision_fecha_usa_el_dia_local_cerca_de_medianoche (unittest.loader._FailedTest.test_ultima_revision_fecha_usa_el_dia_local_cerca_de_medianoche)
+    ----------------------------------------------------------------------
+    AttributeError: type object 'DatosSinConexionTests' has no attribute 'test_ultima_revision_fecha_usa_el_dia_local_cerca_de_medianoche'
+    
+    ----------------------------------------------------------------------
+    Ran 1 test in 0.000s
+    
+    FAILED (errors=1)
+    Found 1 test(s).
+    System check identified no issues (0 silenced).
+    ```
+  - FALLA (exit 1, nuevo: —) `T10 [grep-1] grep -n "ultima_revision_fecha" docs/contrato-api.md`
+    ```
+    ```
+  - FALLA (exit 0, nuevo: —) `T10 [grep-0] grep -n "o realizada por el sistema. Es" docs/contrato-api.md`
+    ```
+    60:    visita propia que está `pendiente`, `cancelada` o realizada por el sistema. Es
+    ```
+  - FALLA (exit 1, nuevo: —) `T10 [grep-1] grep -n "anterior a la apertura" docs/contrato-api.md`
+    ```
+    ```
+  - FALLA (exit 1, nuevo: —) `T10 [grep-1] grep -n "sin evaluar" docs/contrato-api.md`
+    ```
+    ```
+  - PASA (exit 0, nuevo: —) `T10 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios apps.api --keepdb`
+  - PASA (exit 0, nuevo: —) `T10 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 250 --subtarea T10`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 20.5 s
+- Veredicto: FALLA
+
