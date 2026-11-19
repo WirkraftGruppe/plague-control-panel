@@ -76,3 +76,15 @@
 - duración: 53.2 s
 - Veredicto: FALLA
 
+## 2026-11-18 21:26 — tarea T4 de 2026-11-18-trabajo-sin-conexion.md
+
+- HEAD verificado: b2b59bf
+- Contrato: modificado y aceptado (3d9aa29, decisión del usuario)
+- Criterios:
+  - PASA (exit 0, nuevo: —) `T4 [cmd] git log --oneline plan/trabajo-sin-conexion | grep -q "T2: integra trabajo-sin-conexion-T2"`
+  - PASA (exit 0, nuevo: —) `T4 [cmd] git log --oneline plan/trabajo-sin-conexion | grep -q "T3: integra trabajo-sin-conexion-T3"`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 0.6 s
+- Veredicto: PASA
+
