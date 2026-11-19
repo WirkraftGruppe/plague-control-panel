@@ -290,7 +290,7 @@ commit_base: 89f2a8d
 | T2 | hecha | 0734e41 | PASA 2026-11-18 20:58 |
 | T3 | hecha | c1a1594 | PASA 2026-11-18 (tarea) |
 | T4 | hecha (contrato modificado 3d9aa29, usuario) | b2b59bf | PASA 2026-11-18 |
-| T5 | pendiente | | |
+| T5 | hecha | 35a0340 | PASA 2026-11-18 |
 | T6 | pendiente | | |
 | T7 | pendiente | | |
 

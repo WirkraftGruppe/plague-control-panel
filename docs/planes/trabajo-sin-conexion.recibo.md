@@ -88,3 +88,35 @@
 - duración: 0.6 s
 - Veredicto: PASA
 
+## 2026-11-18 21:29 — tarea T5 de 2026-11-18-trabajo-sin-conexion.md
+
+- HEAD verificado: 35a0340
+- Contrato: modificado y aceptado (3d9aa29, decisión del usuario)
+- Criterios:
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion.AtrasoApiTests.test_revision_71_horas_201 --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion.AtrasoApiTests.test_revision_73_horas_400_atraso_excedido --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion.AtrasoApiTests.test_reporte_73_horas_400_atraso_excedido --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion.AbrirCerrarApiTests.test_abrir_con_abierta_en_de_ayer_abre_el_pendiente --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion.AbrirCerrarApiTests.test_abrir_con_hora_futura_400 --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion.AbrirCerrarApiTests.test_cancelado_por_cierre_nocturno_abrir_y_revisiones_201 --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion.AbrirCerrarApiTests.test_realizada_por_sistema_revision_409_y_abrir_crea_visita_nueva --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion.AbrirCerrarApiTests.test_reporte_y_cierre_en_visita_no_abierta_409 --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion.AbrirCerrarApiTests.test_cerrar_dos_veces_200 --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion.AbrirCerrarApiTests.test_cerrar_con_cerrada_en_del_cliente --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion.ServicioApiTests.test_servicio_distinto_201_con_incidencia --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion.ServicioApiTests.test_servicio_inactivo_o_de_otra_empresa_400 --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion.IdempotenciaApiTests.test_mismo_uuid_no_duplica_revision --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion.IdempotenciaApiTests.test_mismo_uuid_no_duplica_reporte --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion.IdempotenciaApiTests.test_reintento_73_horas_mismo_uuid_409 --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion.AbrirCerrarApiTests.test_cierre_de_visita_cerrada_por_sistema_409_visita_ya_cerrada --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion.EsquemaTests.test_enum_code_coincide_con_codigos_publicos --keepdb`
+  - PASA (exit 0, nuevo: —) `T5 [grep-1] grep -n "visita_no_abierta" docs/api/openapi-v1.yaml`
+  - PASA (exit 0, nuevo: —) `T5 [grep-1] grep -n "reportado_en" docs/api/openapi-v1.yaml`
+  - PASA (exit 0, nuevo: —) `T5 [cmd] T=$(mktemp) && PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py spectacular --validate --file "$(cygpath -w "$T")" && diff -q --strip-trailing-cr "$T" docs/api/openapi-v1.yaml; r=$?; rm -f "$T"; exit $r`
+  - PASA (exit 0, nuevo: —) `T5 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas apps.api --keepdb`
+  - PASA (exit 0, nuevo: —) `T5 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 650 --subtarea T5`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 44.5 s
+- Veredicto: PASA
+
