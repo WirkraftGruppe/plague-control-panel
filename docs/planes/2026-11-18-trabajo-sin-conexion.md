@@ -303,9 +303,10 @@ commit_base: 89f2a8d
 | 2026-11-18 20:30 | plan | 1 | 0 | 2 |
 | 2026-11-18 20:32 | plan | 1 | 0 | 2 |
 | 2026-11-18 20:32 | plan | 0 | 0 | 1 |
+| 2026-11-18 21:55 | cierre | 0 | 1 | 9 |
 
-Auditoría: pendiente
-Hallazgos: ninguno todavía
+Auditoría: sin bloqueantes (2026-11-18 22:00); 3 necesitan decisión (P-trabajo-sin-conexion-2 a -4), 2 menores y 1 observación (P-trabajo-sin-conexion-12 y -13)
+Hallazgos: [bloqueante] ninguno; [necesita decisión] 4, en "Esperan tu decisión" de `docs/estado.md` (P-trabajo-sin-conexion-1 a -4); [menor] el resto, como pendientes P-trabajo-sin-conexion-5 a -14; paso 4 de T7: `contrato-api.md` coincide con los serializers y el `extend_schema` de T5
 
 ### Decisiones del plan
 
@@ -314,6 +315,21 @@ Hallazgos: ninguno todavía
 ## Pendientes que deja este plan
 
 ### Problemas
+
+- P-trabajo-sin-conexion-1 [importante] Necesita decisión (revisor): `abrir_visita` valida `abierta_en` antes de buscar la abierta (`apps/visitas/services.py:454`); el reenvío de `abrir` tras un 409 `visita_no_abierta` con un `abierta_en` de más de 72 h da 400 `atraso_excedido` aunque haya una abierta o revisiones dentro del límite. Opciones: limitar `abierta_en` al tope, devolver la abierta antes de validar o documentar que la app reabre sin `abierta_en`.
+- P-trabajo-sin-conexion-2 [importante] Necesita decisión (auditoría, media): `ultima_revision` en `me/datos-sin-conexion/` (`apps/sitios/api_views.py:314-328`) da a cada empleado la fecha y hora de la última revisión de todos los puntos de la empresa, también de sitios donde trabajan otros. Opciones: quitarlo, bajarlo a fecha o darlo solo en sitios con turnos del usuario. Cambia el contrato de un campo todavía sin publicar: conviene decidir antes de que la app lo use.
+- P-trabajo-sin-conexion-3 [importante] Necesita decisión (auditoría, media): `abierta_en` y `cerrada_en` ahora los declara el teléfono y la ficha los muestra sin la hora de llegada al servidor (solo queda en `HistoricalVisita`). Si tienen valor de asistencia: campos `abierta_recibida_en`/`cerrada_recibida_en` (migración aditiva) y aviso en la ficha como "Llegó" de las revisiones.
+- P-trabajo-sin-conexion-4 [importante] Necesita decisión (auditoría, baja): `cerrar_visitas_abiertas` ya no tiene tope absoluto; una visita con actividad cada menos de 16 h no se cierra nunca. Propuesta: cerrar igual si `abierta_en` < ahora − (`VISITA_ABIERTA_MAXIMO_HORAS` + `ATRASO_MAXIMO_APP_HORAS`).
+- P-trabajo-sin-conexion-5 [menor] `docs/contrato-api.md:59-62` se contradice: el cierre de una visita realizada por el sistema figura con `visita_no_abierta` y con `visita_ya_cerrada` (el código y los tests dan `visita_ya_cerrada`); además falta que la revisión o el reporte sobre una visita que cerró el mismo empleado da `visita_no_abierta`. Avisarlo a `detach-app` junto con el contrato.
+- P-trabajo-sin-conexion-6 [menor] `cerrada_en` solo se compara con `abierta_en`: puede quedar antes de las revisiones y reportes de la visita, y `reportado_en` puede ser anterior a `abierta_en`, con lo que el cierre por sistema deja `cerrada_en < abierta_en` (`apps/visitas/services.py:880`, `:1086-1097`). Revisor y auditoría.
+- P-trabajo-sin-conexion-7 [menor] `hay_de_otro` se calcula sin `hasta` (`apps/visitas/services.py:489`): una apertura con `abierta_en` de ayer marca `incidencia_asignacion` por un pendiente de otro empleado programado para hoy o después.
+- P-trabajo-sin-conexion-8 [menor] Con `abierta_en`, un pendiente sin fecha creado después de esa hora se reabre igual (`apps/visitas/services.py:308-312`): el turno queda abierto antes de existir. Auditoría.
+- P-trabajo-sin-conexion-9 [menor] "Llegó …" aparece en todas las revisiones de una visita manual (`recibida_en`=ahora y `realizada_en` de hasta 168 h atrás; `apps/visitas/templatetags/visitas_ui.py:48`); el test del panel usa una visita `MANUAL`. Excluir el origen manual.
+- P-trabajo-sin-conexion-10 [menor] Con `incidencia_servicio` como única incidencia, el bloque "Incidencia" de la ficha (`ficha.html:25`) sale sin un párrafo que la explique, y en una visita abierta aparece sin botón (igual que con `no_revisados`).
+- P-trabajo-sin-conexion-11 [menor] Tests que faltan: `abierta_en` y `cerrada_en` con más de 72 h (400 `atraso_excedido`) por la API; la reapertura tras el cierre nocturno con el `abierta_en` original de más de 16 h (`apps/visitas/tests/test_sin_conexion.py:103`); `ultima_revision` como la más reciente y sin visitas pendientes o canceladas (`apps/sitios/tests/test_datos_sin_conexion.py:158`, hoy solo `assertTrue`).
+- P-trabajo-sin-conexion-12 [observación] El texto del 400 por `realizada_en` futura cambió de "La fecha de realización no puede ser futura." a "La fecha no puede ser futura." (`apps/visitas/services.py:83`); ningún test ni el contrato dependen de él.
+- P-trabajo-sin-conexion-13 [observación] El comentario de `cerrar_visita` (`apps/visitas/services.py:1057-1059`) dice que `abierta_en` es hora del servidor; ahora puede ser la del teléfono (sin caso explotable: solo se fija en visitas sin revisiones).
+- P-trabajo-sin-conexion-14 [menor] Avisar a `detach-app` los cambios de contrato: `me/datos-sin-conexion/`, `abierta_en`, `cerrada_en`, `reportado_en`, `servicio`, los `code` nuevos y el reenvío de `abrir`.
 
 ### Decisiones
 
