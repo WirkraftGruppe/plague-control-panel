@@ -52,6 +52,15 @@ def leer_horas(nombre, default):
     return valor
 
 
+def validar_tope_visita(tope, maximo):
+    """El tope absoluto del cierre nocturno no puede ser menor que el de actividad."""
+    if tope < maximo:
+        raise ImproperlyConfigured(
+            "VISITA_ABIERTA_TOPE_HORAS no puede ser menor que "
+            "VISITA_ABIERTA_MAXIMO_HORAS."
+        )
+
+
 # Atraso máximo de `realizada_en` en la carga manual del panel (default una
 # semana); más atrasada da error (P-api-movil-16).
 ATRASO_MAXIMO_HORAS = leer_horas("ATRASO_MAXIMO_HORAS", "168")
@@ -64,6 +73,11 @@ ATRASO_MAXIMO_APP_HORAS = leer_horas("ATRASO_MAXIMO_APP_HORAS", "72")
 # Una visita abierta desde hace más horas la cierra `cerrar_visitas_abiertas` con
 # cierre "sistema" (plan puntos-control).
 VISITA_ABIERTA_MAXIMO_HORAS = 16
+
+# Tope absoluto: una visita abierta desde hace más horas (por `abierta_en`) la cierra
+# `cerrar_visitas_abiertas` aunque tenga actividad reciente; default 36.
+VISITA_ABIERTA_TOPE_HORAS = leer_horas("VISITA_ABIERTA_TOPE_HORAS", "36")
+validar_tope_visita(VISITA_ABIERTA_TOPE_HORAS, VISITA_ABIERTA_MAXIMO_HORAS)
 
 
 def leer_distancia_maxima_m():
