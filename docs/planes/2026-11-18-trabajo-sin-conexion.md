@@ -406,6 +406,10 @@ commit_base: 89f2a8d
 | T5 | hecha | 35a0340 | PASA 2026-11-18 |
 | T6 | hecha | 2c63d63 | PASA 2026-11-18 |
 | T7 | hecha | 2c63d63 | PASA 2026-11-18 (paso 4: contrato y serializers coinciden) |
+| T8 | hecha | 8232e62 | PASA 2026-11-19 |
+| T9 | hecha | a346630 | PASA 2026-11-19 (tarea; corrección de la revisión de cierre en a346630) |
+| T10 | hecha | d350cb0 | PASA 2026-11-19 |
+| T11 | hecha (contrato modificado 56b659b, usuario) | e41342e | PASA en `todo` 2026-11-19 (HEAD a346630) |
 
 ### Revisiones
 
@@ -417,8 +421,13 @@ commit_base: 89f2a8d
 | 2026-11-18 20:32 | plan | 1 | 0 | 2 |
 | 2026-11-18 20:32 | plan | 0 | 0 | 1 |
 | 2026-11-18 21:55 | cierre | 0 | 1 | 9 |
+| 2026-11-19 | plan (T8-T11) | 3 | 0 | 7 |
+| 2026-11-19 | plan (T8-T11) | 1 | 0 | 2 |
+| 2026-11-19 | cierre (T8-T11) | 1 | 3 | 4 |
 
 Auditoría: sin bloqueantes (2026-11-18 22:00); 3 necesitan decisión (P-trabajo-sin-conexion-2 a -4), 2 menores y 1 observación (P-trabajo-sin-conexion-12 y -13)
+Auditoría T8-T11: sin bloqueantes (2026-11-19); 2 necesitan decisión (P-trabajo-sin-conexion-17 y -18) y 5 observaciones (P-trabajo-sin-conexion-21 y -22; el resto ya registrado o corregido)
+Hallazgos T8-T11: [bloqueante] el test del sufijo "registrado sin conexión" de la revisión no lo probaba (revisor de cierre), corregido en a346630 y `todo` repetido en PASA; el FALLA de alcance de T11 se resolvió como contrato modificado (56b659b, usuario); [necesita decisión] 4, en "Esperan tu decisión" de `docs/estado.md` (P-trabajo-sin-conexion-15 a -18); [menor] P-trabajo-sin-conexion-19 a -22; la abierta de menor pk y el código muerto de `abrir_visita`, corregidos en a346630
 Hallazgos: [bloqueante] ninguno de revisión ni auditoría; el cierre global dio FALLA por `ruff` E501 en el test de T1, corregido en 0f65929 y `todo` repetido en PASA; [necesita decisión] 4, en "Esperan tu decisión" de `docs/estado.md` (P-trabajo-sin-conexion-1 a -4); [menor] el resto, como pendientes P-trabajo-sin-conexion-5 a -14; paso 4 de T7: `contrato-api.md` coincide con los serializers y el `extend_schema` de T5
 
 ### Decisiones del plan
@@ -443,6 +452,14 @@ Hallazgos: [bloqueante] ninguno de revisión ni auditoría; el cierre global dio
 - P-trabajo-sin-conexion-12 [observación] El texto del 400 por `realizada_en` futura cambió de "La fecha de realización no puede ser futura." a "La fecha no puede ser futura." (`apps/visitas/services.py:83`); ningún test ni el contrato dependen de él.
 - P-trabajo-sin-conexion-13 [observación] El comentario de `cerrar_visita` (`apps/visitas/services.py:1057-1059`) dice que `abierta_en` es hora del servidor; ahora puede ser la del teléfono (sin caso explotable: solo se fija en visitas sin revisiones).
 - P-trabajo-sin-conexion-14 [menor] Avisar a `detach-app` los cambios de contrato: `me/datos-sin-conexion/`, `abierta_en`, `cerrada_en`, `reportado_en`, `servicio`, los `code` nuevos y el reenvío de `abrir`.
+- P-trabajo-sin-conexion-15 [importante] Necesita decisión (revisor de cierre): P-1 y P-6 chocan. Si el empleado ya tiene en el sitio una visita abierta después que la original, el reenvío de `abrir` con el `abierta_en` original devuelve esa visita, y el reintento del reporte o del cierre con su hora original, anterior a esa apertura, da 400 definitivo (`apps/visitas/services.py:908-918`). `docs/contrato-api.md:82-85` dice que se reintenta contra ese id como si siempre funcionara; lo trabajado se pierde hasta una carga manual.
+- P-trabajo-sin-conexion-16 [menor] Necesita decisión (revisor de cierre): `reportado_en < abierta_en` se compara sin tolerancia (`apps/visitas/services.py:908-912`); con apertura en línea `abierta_en` es la hora del servidor y un teléfono con el reloj un minuto atrasado recibe 400 no reintentable. El futuro sí tiene `TOLERANCIA_FUTURO`.
+- P-trabajo-sin-conexion-17 [importante] Necesita decisión (auditoría, media): el tope de P-4 no corre en producción mientras no haya cron de `cerrar_visitas_abiertas` (`docs/despliegue.md:72`, P-puntos-control-10). Propuesta: cron horario en Railway; con uno diario el tope real llega a 36 + 24 = 60 h.
+- P-trabajo-sin-conexion-18 [menor] Necesita decisión (auditoría, baja): `me/datos-sin-conexion/` no tiene límite de pedidos; consultándola en bucle con `If-None-Match`, un empleado ve cuándo cambia `ultima_revision_fecha`, `estado` o `proximo_vencimiento` de cualquier punto de la empresa y deduce la hora de la primera revisión del día. Opciones: throttle con alcance propio (p. ej. 12/hora) o calcular esos campos sin las revisiones de hoy.
+- P-trabajo-sin-conexion-19 [menor] Los tests de `ReenvioAbrirTests` (`apps/visitas/tests/test_sin_conexion_ajustes.py:38-42`) se llaman "200" pero llaman al servicio, no a la API.
+- P-trabajo-sin-conexion-20 [menor] Que el cierre por administrador deje `cerrada_recibida_en` nula se prueba solo vía `registrar_visita_manual`, no con `cerrar_visita(cierre=ADMINISTRADOR)` sobre una visita abierta por la app.
+- P-trabajo-sin-conexion-21 [observación] `_guardar_revision` acepta `realizada_en` anterior a `abierta_en` y el cierre por sistema (también el del tope) puede dejar `cerrada_en < abierta_en` (resto de P-trabajo-sin-conexion-6).
+- P-trabajo-sin-conexion-22 [observación] `VISITA_ABIERTA_TOPE_HORAS` falta en la lista de variables de `docs/despliegue.md` (el default 36 es válido).
 
 ### Decisiones
 
@@ -455,4 +472,26 @@ Hallazgos: [bloqueante] ninguno de revisión ni auditoría; el cierre global dio
 - 2026-11-18 — `abrir` con `abierta_en` solo reabre pendientes con `programada_para` nula o ≤ el día de `abierta_en`; si no hay, crea una visita nueva, y el servicio de sus revisiones se compara con el del punto — el trabajo atrasado no se pega a un turno futuro — (usuario) — reemplaza a: (nada)
 - 2026-11-18 — `code` público nuevo: `atraso_excedido` (400), `visita_no_abierta` (409) y `visita_ya_cerrada` (409) — la app necesita distinguir el error reintentable del definitivo sin leer textos — (agente) — reemplaza a: (nada)
 
+### Etiquetas
+
+- etiqueta: P-trabajo-sin-conexion-6 → despues — resta lo de la revisión anterior a la apertura (P-trabajo-sin-conexion-21)
+- etiqueta: P-trabajo-sin-conexion-7 → despues
+- etiqueta: P-trabajo-sin-conexion-8 → despues
+- etiqueta: P-trabajo-sin-conexion-10 → despues
+- etiqueta: P-trabajo-sin-conexion-11 → despues
+- etiqueta: P-trabajo-sin-conexion-12 → despues
+- etiqueta: P-trabajo-sin-conexion-13 → despues
+- etiqueta: P-trabajo-sin-conexion-14 → despues
+- etiqueta: P-trabajo-sin-conexion-19 → despues
+- etiqueta: P-trabajo-sin-conexion-20 → despues
+- etiqueta: P-trabajo-sin-conexion-21 → despues
+- etiqueta: P-trabajo-sin-conexion-22 → despliegue
+
 ### Cierra
+
+- cierra: P-trabajo-sin-conexion-1 — T9: `abrir` con una visita abierta responde 200 sin evaluar `abierta_en`
+- cierra: P-trabajo-sin-conexion-2 — T10: `ultima_revision_fecha`, solo la fecha
+- cierra: P-trabajo-sin-conexion-3 — T9: `abierta_recibida_en` y `cerrada_recibida_en`, y "Llegó … · registrado sin conexión" en la ficha
+- cierra: P-trabajo-sin-conexion-4 — T8 y T9: `VISITA_ABIERTA_TOPE_HORAS` (36) en el cierre nocturno
+- cierra: P-trabajo-sin-conexion-5 — T10: `docs/contrato-api.md` separa `visita_no_abierta` y `visita_ya_cerrada` en el cierre
+- cierra: P-trabajo-sin-conexion-9 — T9: `llegada_tardia` no se muestra en visitas manuales
