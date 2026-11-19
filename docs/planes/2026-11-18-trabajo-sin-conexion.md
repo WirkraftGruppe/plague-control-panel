@@ -380,6 +380,7 @@ Decididas por el usuario sobre el PR #13, antes de fusionar:
 
 - **Ola**: 5 (después de verificar T9 y T10)
 - **Depende de**: T9, T10
+- **Puede tocar**: `docs/api/openapi-v1.yaml` (regenerado en el paso 3)
 - **Pasos**:
   1. Revisar `bash .claude/hooks/cambios.sh . plan/trabajo-sin-conexion` de T9 y T10, no los informes.
   2. Desde la raíz, `worktree-integrar.sh` por cada subtarea, de a una, con `verificar.py tarea` tras cada integración; `manage.py migrate` en desarrollo (entra `visitas.0004`).
