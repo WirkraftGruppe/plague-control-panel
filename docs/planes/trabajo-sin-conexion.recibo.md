@@ -424,3 +424,34 @@
 - duración: 21.5 s
 - Veredicto: PASA
 
+## 2026-11-19 14:09 — tarea T9 de 2026-11-18-trabajo-sin-conexion.md
+
+- HEAD verificado: 456054e
+- Contrato: modificado y aceptado (6e288a2, decisión del usuario)
+- Criterios:
+  - PASA (exit 0, nuevo: sí) `T9 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_ajustes.ReenvioAbrirTests.test_abrir_con_abierta_y_abierta_en_de_73_horas_200_sin_tocarla --keepdb`
+  - PASA (exit 0, nuevo: sí) `T9 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_ajustes.HoraRecepcionTests.test_abrir_y_cerrar_guardan_la_hora_de_recepcion --keepdb`
+  - PASA (exit 0, nuevo: sí) `T9 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_ajustes.HoraRecepcionTests.test_ficha_muestra_llegada_de_apertura_y_cierre_sin_conexion --keepdb`
+  - PASA (exit 0, nuevo: sí) `T9 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_ajustes.HoraRecepcionTests.test_ficha_no_muestra_llegada_de_apertura_si_difiere_10_minutos_o_menos --keepdb`
+  - PASA (exit 0, nuevo: sí) `T9 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_ajustes.ReenvioAbrirTests.test_abrir_con_abierta_y_abierta_en_futura_200_sin_tocarla --keepdb`
+  - PASA (exit 0, nuevo: sí) `T9 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_ajustes.ReenvioAbrirTests.test_qr_invalido_con_abierta_en_invalida_da_error_en_qr_codigo --keepdb`
+  - PASA (exit 0, nuevo: sí) `T9 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_ajustes.HoraRecepcionTests.test_cierre_por_sistema_y_manual_no_guardan_hora_de_recepcion --keepdb`
+  - PASA (exit 0, nuevo: sí) `T9 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_ajustes.HoraRecepcionTests.test_cierre_repetido_no_pisa_la_hora_de_recepcion --keepdb`
+  - PASA (exit 0, nuevo: sí) `T9 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_ajustes.HoraRecepcionTests.test_ficha_no_muestra_llegada_en_apertura_en_linea --keepdb`
+  - PASA (exit 0, nuevo: sí) `T9 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_ajustes.HoraRecepcionTests.test_ficha_revision_dice_registrado_sin_conexion --keepdb`
+  - PASA (exit 0, nuevo: sí) `T9 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_ajustes.HoraRecepcionTests.test_ficha_no_muestra_llegada_en_revisiones_manuales --keepdb`
+  - PASA (exit 0, nuevo: sí) `T9 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_ajustes.HoraRecepcionTests.test_ficha_de_pendiente_tras_cierre_sin_revisiones_200 --keepdb`
+  - PASA (exit 0, nuevo: sí) `T9 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_ajustes.TopeCierreNocturnoTests.test_tope_se_lee_de_settings --keepdb`
+  - PASA (exit 0, nuevo: sí) `T9 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_ajustes.TopeCierreNocturnoTests.test_cierra_visita_de_mas_de_36_horas_con_actividad_reciente --keepdb`
+  - PASA (exit 0, nuevo: sí) `T9 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_ajustes.HoraAnteriorApiTests.test_cerrada_en_anterior_a_abierta_en_400_en_el_campo --keepdb`
+  - PASA (exit 0, nuevo: sí) `T9 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_ajustes.HoraAnteriorApiTests.test_reportado_en_anterior_a_abierta_en_400_en_el_campo --keepdb`
+  - PASA (exit 0, nuevo: —) `T9 [grep-1] grep -n "abierta_recibida_en" docs/01-modelo-y-arquitectura.md`
+  - PASA (exit 0, nuevo: —) `T9 [grep-1] grep -n "VISITA_ABIERTA_TOPE_HORAS" docs/01-modelo-y-arquitectura.md`
+  - PASA (exit 0, nuevo: —) `T9 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py makemigrations --check --dry-run`
+  - PASA (exit 0, nuevo: —) `T9 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas apps.sitios apps.api --keepdb`
+  - PASA (exit 0, nuevo: —) `T9 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 600 --subtarea T9`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 58.8 s
+- Veredicto: PASA
+
