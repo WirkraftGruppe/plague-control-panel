@@ -725,8 +725,8 @@ paths:
           description: ''
         '400':
           description: 'No tiene al menos una revisión o un reporte de punto no revisado,
-            la planilla es inválida o `cerrada_en` es inválida (`code: atraso_excedido`
-            si excede el atraso).'
+            la planilla es inválida o `cerrada_en` es inválida: anterior a la apertura
+            (`campos.cerrada_en`) o futura (`code: atraso_excedido` si excede el atraso).'
         '404':
           description: La visita no existe o es de otro usuario.
         '409':
@@ -787,7 +787,8 @@ paths:
           description: ''
         '400':
           description: 'Punto de otro sitio, inactivo o ya reportado, `reportado_en`
-            futura o con atraso excedido (`code: atraso_excedido`), o campos inválidos.'
+            futura, anterior a la apertura de la visita (`campos.reportado_en`) o
+            con atraso excedido (`code: atraso_excedido`), o campos inválidos.'
         '404':
           description: La visita no existe o es de otro usuario.
         '409':
@@ -817,12 +818,13 @@ paths:
       operationId: visitas_abrir_create
       description: 'Abre el turno pendiente más antiguo del empleado en el sitio del
         QR o crea una visita sin ítems. `qr_codigo` es el de un punto activo. Si el
-        empleado ya tiene una abierta en el sitio la devuelve con 200. `latitud`,
-        `longitud` y `precision_m` son opcionales: con coordenadas se guarda la distancia
-        al punto y la incidencia de ubicación, sin rechazar nunca por distancia. `abierta_en`
-        (opcional) es la hora en que el empleado abrió sin conexión: no puede ser
-        futura ni tener más de `ATRASO_MAXIMO_APP_HORAS` de atraso (`code: atraso_excedido`).
-        La visita de un administrador no toma pendientes.'
+        empleado ya tiene una abierta en el sitio la devuelve con 200, sin evaluar
+        `abierta_en` y sin modificarla. `latitud`, `longitud` y `precision_m` son
+        opcionales: con coordenadas se guarda la distancia al punto y la incidencia
+        de ubicación, sin rechazar nunca por distancia. `abierta_en` (opcional) es
+        la hora en que el empleado abrió sin conexión: no puede ser futura ni tener
+        más de `ATRASO_MAXIMO_APP_HORAS` de atraso (`code: atraso_excedido`). La visita
+        de un administrador no toma pendientes.'
       summary: Abrir una visita
       tags:
       - visitas
@@ -1604,9 +1606,9 @@ components:
           type: string
           format: date
           nullable: true
-        ultima_revision:
+        ultima_revision_fecha:
           type: string
-          format: date-time
+          format: date
           nullable: true
       required:
       - estado
@@ -1617,7 +1619,7 @@ components:
       - sector
       - servicio
       - sitio
-      - ultima_revision
+      - ultima_revision_fecha
     Raiz:
       type: object
       properties:
