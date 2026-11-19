@@ -7,7 +7,9 @@ Mergeado: ficha-sitio-trabajo-hecho (PR #12), ajustes-api-app-base (PR #10), sop
 ## Carriles
 | Plan | Rama | Worktree | Sesión |
 |---|---|---|---|
-| trabajo-sin-conexion | plan/trabajo-sin-conexion | — | cerrado, PR abierto |
+| trabajo-sin-conexion | plan/trabajo-sin-conexion | raíz | corrigiendo el PR #13 (T8 a T11) |
+| trabajo-sin-conexion-T9 | trabajo-sin-conexion-T9 | worktrees/trabajo-sin-conexion-T9 | implementador |
+| trabajo-sin-conexion-T10 | trabajo-sin-conexion-T10 | worktrees/trabajo-sin-conexion-T10 | implementador |
 
 ## Pendiente inmediato
 - Decidir P-trabajo-sin-conexion-1 a -4 (abajo) antes de que la app use el contrato nuevo; los que se acepten van a un plan nuevo.
