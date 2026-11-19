@@ -146,7 +146,8 @@ class AbrirVisitaView(APIView):
         description=(
             "Abre el turno pendiente más antiguo del empleado en el sitio del QR o "
             "crea una visita sin ítems. `qr_codigo` es el de un punto activo. Si el "
-            "empleado ya tiene una abierta en el sitio la devuelve con 200. `latitud`, "
+            "empleado ya tiene una abierta en el sitio la devuelve con 200, sin "
+            "evaluar `abierta_en` y sin modificarla. `latitud`, "
             "`longitud` y `precision_m` son opcionales: con coordenadas se guarda la "
             "distancia al punto y la incidencia de ubicación, sin rechazar nunca por "
             "distancia. `abierta_en` (opcional) es la hora en que el empleado abrió "
@@ -302,8 +303,9 @@ class ReportarNoRevisadoView(APIView):
             400: OpenApiResponse(
                 description=(
                     "Punto de otro sitio, inactivo o ya reportado, `reportado_en` "
-                    "futura o con atraso excedido (`code: atraso_excedido`), o "
-                    "campos inválidos."
+                    "futura, anterior a la apertura de la visita (`campos."
+                    "reportado_en`) o con atraso excedido (`code: "
+                    "atraso_excedido`), o campos inválidos."
                 )
             ),
             404: OpenApiResponse(
@@ -381,7 +383,8 @@ class CerrarVisitaView(APIView):
             200: VisitaRealizadaSerializer,
             400: OpenApiResponse(
                 description="No tiene al menos una revisión o un reporte de punto "
-                "no revisado, la planilla es inválida o `cerrada_en` es inválida "
+                "no revisado, la planilla es inválida o `cerrada_en` es inválida: "
+                "anterior a la apertura (`campos.cerrada_en`) o futura "
                 "(`code: atraso_excedido` si excede el atraso)."
             ),
             404: OpenApiResponse(

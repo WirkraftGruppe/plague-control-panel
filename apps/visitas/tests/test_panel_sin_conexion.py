@@ -27,8 +27,7 @@ class FichaSinConexionTests(TestCase):
         ahora = timezone.now()
         return crear_visita(
             estado=Visita.Estado.REALIZADA,
-            origen=Visita.Origen.MANUAL,
-            motivo_manual="Carga",
+            origen=Visita.Origen.APP,
             abierta_en=ahora,
             cerrada_en=ahora,
             cierre=Visita.Cierre.ADMINISTRADOR,

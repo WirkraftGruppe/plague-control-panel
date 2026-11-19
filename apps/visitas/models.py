@@ -65,6 +65,12 @@ class Visita(ModeloDeEmpresa):
     )
     abierta_en = models.DateTimeField("abierta en", null=True, blank=True)
     cerrada_en = models.DateTimeField("cerrada en", null=True, blank=True)
+    abierta_recibida_en = models.DateTimeField(
+        "apertura recibida en", null=True, blank=True, editable=False
+    )
+    cerrada_recibida_en = models.DateTimeField(
+        "cierre recibido en", null=True, blank=True, editable=False
+    )
     cierre = models.CharField(
         "cierre", max_length=15, choices=Cierre.choices, blank=True
     )
