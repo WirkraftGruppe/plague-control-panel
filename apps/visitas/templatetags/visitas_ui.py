@@ -1,5 +1,7 @@
 """Etiquetas de plantilla del panel de Visitas."""
 
+from datetime import timedelta
+
 from django import template
 
 from apps.visitas.models import Visita
@@ -26,3 +28,23 @@ def incidencias_sin_revisar(context):
         .filter(condicion_incidencia_sin_revisar())
         .count()
     )
+
+
+UMBRAL_LLEGADA = timedelta(minutes=10)
+
+
+@register.filter
+def con_incidencia_servicio(revisiones):
+    """Indica si alguna revisión cargada tiene un servicio distinto del asignado."""
+    return any(revision.incidencia_servicio for revision in revisiones)
+
+
+@register.filter
+def llegada_tardia(revision):
+    """Hora de llegada al servidor si difiere más de 10 min de la del teléfono.
+
+    Devuelve `None` en caso contrario, para que la plantilla no muestre nada.
+    """
+    if abs(revision.recibida_en - revision.realizada_en) > UMBRAL_LLEGADA:
+        return revision.recibida_en
+    return None
