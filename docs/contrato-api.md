@@ -56,9 +56,11 @@ límite de pedidos (throttle) y el rol que la puede usar. Todas las rutas cuelga
     `cerrada_en` o `reportado_en`) supera `ATRASO_MAXIMO_APP_HORAS`. Viene en `campos`, bajo
     el campo que se pasó. No es reintentable: hay que avisar al administrador para que
     cargue lo hecho como visita manual.
-  - `visita_no_abierta` (409): la revisión, el reporte de no revisado o el cierre sobre una
-    visita propia que está `pendiente`, `cancelada` o realizada por el sistema. Es
-    reintentable: la app reenvía `abrir` y reintenta con la visita que le devuelve.
+  - `visita_no_abierta` (409): la revisión o el reporte de no revisado sobre una visita
+    propia que no está abierta (`pendiente`, `cancelada` o `realizada`), y el cierre de una
+    `pendiente` o `cancelada`. Es reintentable: la app reenvía `abrir` y reintenta con la
+    visita que le devuelve. El reenvío de `abrir` con una visita abierta responde 200 con
+    ella, sin evaluar `abierta_en`.
   - `visita_ya_cerrada` (409): el cierre de una visita `realizada` que cerró el sistema o
     un administrador. Es definitivo y no se reintenta. El cierre repetido por el mismo
     empleado sigue respondiendo 200.
@@ -71,7 +73,8 @@ límite de pedidos (throttle) y el rol que la puede usar. Todas las rutas cuelga
   `ATRASO_MAXIMO_APP_HORAS` (72 por defecto, configurable por entorno) da 400 con
   `code: "atraso_excedido"`. La carga manual del panel sigue con `ATRASO_MAXIMO_HORAS` (168).
   Un reintento con el mismo `cliente_uuid` ya registrado responde 409 aunque pase el límite:
-  la deduplicación va antes que el atraso. `cerrada_en` no puede ser anterior a `abierta_en`.
+  la deduplicación va antes que el atraso. Una `cerrada_en` o un `reportado_en`
+  anterior a la apertura (`abierta_en`) da 400 con el error en el campo.
 - **Apertura con `abierta_en`**: el servidor guarda `min(abierta_en, ahora)` y solo reabre
   turnos pendientes con `programada_para` vacía o no posterior al día de `abierta_en`; si no
   hay, crea una visita nueva (el trabajo atrasado no se pega a un turno futuro). Si ya hay
@@ -91,10 +94,10 @@ límite de pedidos (throttle) y el rol que la puede usar. Todas las rutas cuelga
   con todos los puntos activos de la empresa (de sitios y clientes activos), no solo los de
   los turnos del empleado, y los servicios activos.
   - Cada punto: `{id, qr_hash, nombre, sector, sitio{id, nombre, direccion, localidad},
-    servicio, estado, proximo_vencimiento, ultima_revision}`. `servicio` es el id del servicio
-    del punto o `null`; `estado` usa la regla de `me/visitas/`; `ultima_revision` es el
-    `realizada_en` de la última revisión del punto en una visita abierta o realizada que
-    cuenta como servicio, o `null`.
+    servicio, estado, proximo_vencimiento, ultima_revision_fecha}`. `servicio` es el id del servicio
+    del punto o `null`; `estado` usa la regla de `me/visitas/`; `ultima_revision_fecha` es la
+    fecha local (`AAAA-MM-DD`, sin hora ni operario) de la última revisión del punto en una
+    visita abierta o realizada que cuenta como servicio, o `null`.
   - `qr_hash` es el SHA-256 en hexadecimal (minúsculas) de `str(qr_codigo)`, con el UUID en
     minúsculas y con guiones. La respuesta nunca trae `qr_codigo`. La app calcula el mismo
     hash del código que escanea y lo busca entre los `qr_hash` descargados; sigue mandando el

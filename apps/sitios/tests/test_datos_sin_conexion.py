@@ -145,7 +145,7 @@ class DatosSinConexionTests(DatosDeDosEmpresas, TestCase):
                 "servicio",
                 "estado",
                 "proximo_vencimiento",
-                "ultima_revision",
+                "ultima_revision_fecha",
             },
         )
         self.assertEqual(punto["servicio"], self.servicio_a.id)
@@ -155,7 +155,7 @@ class DatosSinConexionTests(DatosDeDosEmpresas, TestCase):
             set(punto["sitio"]), {"id", "nombre", "direccion", "localidad"}
         )
         self.assertEqual(punto["sitio"]["id"], self.sitio_a.id)
-        self.assertTrue(punto["ultima_revision"])
+        self.assertTrue(punto["ultima_revision_fecha"])
         servicio = datos["servicios"][0]
         self.assertEqual(
             set(servicio),
@@ -180,7 +180,44 @@ class DatosSinConexionTests(DatosDeDosEmpresas, TestCase):
             realizada_en=timezone.now(),
             recibida_en=timezone.now(),
         )
-        self.assertIsNone(self._pedir().data["puntos"][0]["ultima_revision"])
+        self.assertIsNone(self._pedir().data["puntos"][0]["ultima_revision_fecha"])
+
+    def _visita_contada(self):
+        return Visita.objects.create(
+            sitio=self.sitio_a,
+            empleado=self.empleado_a,
+            origen=Visita.Origen.APP,
+            estado=Visita.Estado.ABIERTA,
+            abierta_en=timezone.now(),
+            cuenta_como_servicio=True,
+        )
+
+    def _revision_en(self, visita, hora):
+        Revision.objects.create(
+            visita=visita,
+            punto=self.punto_a,
+            servicio=self.servicio_a,
+            realizada_en=hora,
+            recibida_en=timezone.now(),
+        )
+
+    def test_ultima_revision_fecha_es_solo_la_fecha_de_la_mas_reciente(self):
+        visita = self._visita_contada()
+        antigua = timezone.now() - datetime.timedelta(days=5)
+        reciente = timezone.now() - datetime.timedelta(days=1)
+        self._revision_en(visita, antigua)
+        self._revision_en(visita, reciente)
+        valor = self._pedir().data["puntos"][0]["ultima_revision_fecha"]
+        self.assertEqual(valor, timezone.localdate(reciente).isoformat())
+        self.assertNotIn("T", valor)
+
+    def test_ultima_revision_fecha_usa_el_dia_local_cerca_de_medianoche(self):
+        visita = self._visita_contada()
+        # 01:30 UTC del 10 es 22:30 del 9 en Buenos Aires (UTC-3).
+        hora = datetime.datetime(2026, 5, 10, 1, 30, tzinfo=datetime.timezone.utc)
+        self._revision_en(visita, hora)
+        valor = self._pedir().data["puntos"][0]["ultima_revision_fecha"]
+        self.assertEqual(valor, "2026-05-09")
 
     def test_entrega_qr_hash_y_nunca_qr_codigo(self):
         respuesta = self._pedir()
