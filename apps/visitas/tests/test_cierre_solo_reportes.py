@@ -76,13 +76,16 @@ class CierreSoloReportesTests(ApiVisitasBase):
         asignada = self._abierta(abierta_en=vieja, asignada_por=self.admin)
         self._reporte(asignada)
         sin_nada = self._abierta(self.otro, abierta_en=vieja)
+        # Sin actividad reciente: la visita, su reporte y el reporte de la asignada.
+        Visita.objects.de_empresa(una_empresa()).update(actualizado=vieja)
+        PuntoNoRevisado.objects.de_empresa(una_empresa()).update(creado=vieja)
         call_command("cerrar_visitas_abiertas", stdout=StringIO())
         for v in (visita, asignada, sin_nada):
             v.refresh_from_db()
         for v in (visita, asignada):
             self.assertEqual(v.estado, Visita.Estado.REALIZADA)
             self.assertEqual(v.cierre, Visita.Cierre.SISTEMA)
-        ultimo = visita.no_revisados.get().creado
+        ultimo = visita.no_revisados.get().reportado_en
         self.assertEqual(visita.cerrada_en, ultimo)
         self.assertEqual(sin_nada.estado, Visita.Estado.CANCELADA)
 

@@ -215,8 +215,8 @@ class FlujoRevisionesTests(ApiVisitasBase):
         for nombre, visita in casos.items():
             with self.subTest(nombre):
                 r = self._post(visita)
-                self.assertEqual(r.status_code, 400, r.content)
-                self.assertIn("visita", r.data["campos"])
+                self.assertEqual(r.status_code, 409, r.content)
+                self.assertEqual(r.data["code"], "visita_no_abierta")
         self.assertEqual(
             Revision.objects.de_empresa(una_empresa())
             .filter(cliente_uuid__isnull=False)

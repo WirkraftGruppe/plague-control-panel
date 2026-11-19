@@ -37,16 +37,16 @@ class AtrasoMaximoTests(BaseApiTests):
         return self.api.post("/api/v1/revisiones/", cuerpo, format="multipart")
 
     def test_realizada_en_mas_antigua_que_el_limite_da_400(self):
-        r = self._post_con_atraso(169)
+        r = self._post_con_atraso(73)
         self.assertEqual(r.status_code, 400, r.content)
-        self.assertIn("168", str(r.data["campos"]["realizada_en"]))
+        self.assertIn("72", str(r.data["campos"]["realizada_en"]))
         self.assertFalse(Revision.objects.de_empresa(una_empresa()).exists())
 
     def test_realizada_en_dentro_del_limite_se_acepta(self):
-        r = self._post_con_atraso(167)
+        r = self._post_con_atraso(71)
         self.assertEqual(r.status_code, 201, r.content)
 
-    @override_settings(ATRASO_MAXIMO_HORAS=24)
+    @override_settings(ATRASO_MAXIMO_APP_HORAS=24)
     def test_limite_de_atraso_sigue_el_setting(self):
         r = self._post_con_atraso(30)
         self.assertEqual(r.status_code, 400, r.content)
@@ -54,11 +54,11 @@ class AtrasoMaximoTests(BaseApiTests):
 
     def test_reintento_fuera_del_limite_responde_409(self):
         cliente_uuid = uuid4()
-        with override_settings(ATRASO_MAXIMO_HORAS=168):
-            r = self._post_con_atraso(167, cliente_uuid)
+        with override_settings(ATRASO_MAXIMO_APP_HORAS=72):
+            r = self._post_con_atraso(71, cliente_uuid)
         self.assertEqual(r.status_code, 201, r.content)
-        with override_settings(ATRASO_MAXIMO_HORAS=1):
-            r = self._post_con_atraso(167, cliente_uuid)
+        with override_settings(ATRASO_MAXIMO_APP_HORAS=1):
+            r = self._post_con_atraso(71, cliente_uuid)
         self.assertEqual(r.status_code, 409, r.content)
         self.assertEqual(Revision.objects.de_empresa(una_empresa()).count(), 1)
         self.assertEqual(

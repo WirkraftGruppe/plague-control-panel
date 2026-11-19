@@ -35,7 +35,7 @@ class VencimientoTests(BaseTurnoTests):
         visita = self.abrir()
         reciente = self.revisar(visita, self.general)
         self.revisar(
-            visita, self.general, realizada_en=timezone.now() - timedelta(days=3)
+            visita, self.general, realizada_en=timezone.now() - timedelta(days=2)
         )
         esperado = timezone.localdate(reciente.realizada_en) + timedelta(days=30)
         self.assertEqual(self.vencimiento(), esperado)
