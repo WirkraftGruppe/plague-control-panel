@@ -406,3 +406,21 @@
 - duración: 20.5 s
 - Veredicto: FALLA
 
+## 2026-11-19 14:06 — tarea T10 de 2026-11-18-trabajo-sin-conexion.md
+
+- HEAD verificado: a15c4fb
+- Contrato: modificado y aceptado (6e288a2, decisión del usuario)
+- Criterios:
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_datos_sin_conexion.DatosSinConexionTests.test_ultima_revision_fecha_es_solo_la_fecha_de_la_mas_reciente --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_datos_sin_conexion.DatosSinConexionTests.test_ultima_revision_fecha_usa_el_dia_local_cerca_de_medianoche --keepdb`
+  - PASA (exit 0, nuevo: —) `T10 [grep-1] grep -n "ultima_revision_fecha" docs/contrato-api.md`
+  - PASA (exit 1, nuevo: —) `T10 [grep-0] grep -n "o realizada por el sistema. Es" docs/contrato-api.md`
+  - PASA (exit 0, nuevo: —) `T10 [grep-1] grep -n "anterior a la apertura" docs/contrato-api.md`
+  - PASA (exit 0, nuevo: —) `T10 [grep-1] grep -n "sin evaluar" docs/contrato-api.md`
+  - PASA (exit 0, nuevo: —) `T10 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios apps.api --keepdb`
+  - PASA (exit 0, nuevo: —) `T10 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 250 --subtarea T10`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 21.5 s
+- Veredicto: PASA
+
