@@ -306,7 +306,7 @@ commit_base: 89f2a8d
 | 2026-11-18 21:55 | cierre | 0 | 1 | 9 |
 
 Auditoría: sin bloqueantes (2026-11-18 22:00); 3 necesitan decisión (P-trabajo-sin-conexion-2 a -4), 2 menores y 1 observación (P-trabajo-sin-conexion-12 y -13)
-Hallazgos: [bloqueante] ninguno; [necesita decisión] 4, en "Esperan tu decisión" de `docs/estado.md` (P-trabajo-sin-conexion-1 a -4); [menor] el resto, como pendientes P-trabajo-sin-conexion-5 a -14; paso 4 de T7: `contrato-api.md` coincide con los serializers y el `extend_schema` de T5
+Hallazgos: [bloqueante] ninguno de revisión ni auditoría; el cierre global dio FALLA por `ruff` E501 en el test de T1, corregido en 0f65929 y `todo` repetido en PASA; [necesita decisión] 4, en "Esperan tu decisión" de `docs/estado.md` (P-trabajo-sin-conexion-1 a -4); [menor] el resto, como pendientes P-trabajo-sin-conexion-5 a -14; paso 4 de T7: `contrato-api.md` coincide con los serializers y el `extend_schema` de T5
 
 ### Decisiones del plan
 
