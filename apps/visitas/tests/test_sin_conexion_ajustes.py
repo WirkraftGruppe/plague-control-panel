@@ -129,11 +129,12 @@ class HoraRecepcionTests(BaseSinConexion):
         self.assertNotContains(self._ficha(visita), SIN_CONEXION)
 
     def test_ficha_revision_dice_registrado_sin_conexion(self):
-        visita = self.abrir(abierta_en=hace(hours=3))
+        # Apertura en línea: el único "registrado sin conexión" es el de la revisión.
+        visita = self.abrir()
         self.revisar(visita, self.general, realizada_en=hace(hours=2))
         respuesta = self._ficha(visita)
-        self.assertContains(respuesta, "Llegó ")
-        self.assertContains(respuesta, SIN_CONEXION)
+        self.assertContains(respuesta, "Llegó ", count=1)
+        self.assertContains(respuesta, SIN_CONEXION, count=1)
 
     def test_ficha_no_muestra_llegada_en_revisiones_manuales(self):
         Sitio.objects.de_empresa(una_empresa()).filter(pk=self.sitio.pk).update(

@@ -480,18 +480,17 @@ def abrir_visita(
                 empleado=empleado,
                 estado__in=[Visita.Estado.ABIERTA, Visita.Estado.PENDIENTE],
             )
+            .order_by("pk")
         )
-        # Con una abierta se devuelve tal cual: `abierta_en` no se evalúa.
+        # Con una abierta (la de menor pk, como `visita_destino`) se devuelve tal
+        # cual: `abierta_en` no se evalúa.
         abierta = next((v for v in propias if v.estado == Visita.Estado.ABIERTA), None)
         if abierta is not None:
             return abierta, False
         if abierta_en is not None:
             validar_hora_cliente(abierta_en, "abierta_en")
         hasta = None if abierta_en is None else timezone.localdate(abierta_en)
-        destino = visita_destino(empleado=empleado, sitio=sitio, hasta=hasta)
-        if destino is not None and destino.estado == Visita.Estado.ABIERTA:
-            return destino, False
-        propia = destino
+        propia = visita_destino(empleado=empleado, sitio=sitio, hasta=hasta)
         hay_de_otro = (
             not empleado.es_administrador and _pendiente_para(sitio, empleado, punto)[1]
         )
