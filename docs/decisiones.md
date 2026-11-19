@@ -312,3 +312,4 @@ Una decisión no se edita: se agrega otra que la reemplaza y la nombra por su fe
 - 2026-11-14 — los pendientes P-soporte-app-operario-2 a -10 quedan con etiqueta `despues` — no frenan el despliegue — (usuario) — reemplaza a: (nada)
 - 2026-11-14 — contrato modificado de ajustes-api-app-base (997807d): `sitio.contacto` es `null` en los turnos activos si el sitio o el cliente están dados de baja; los turnos siguen listados (T4) — hallazgo de la auditoría, opción (a) de P-ajustes-api-app-base-6 — (usuario) — reemplaza a: (nada)
 - 2026-11-14 — los pendientes P-ajustes-api-app-base-1 a -5 quedan con etiqueta `despues` — no frenan el despliegue — (usuario) — reemplaza a: (nada)
+- 2026-11-18 — contrato modificado de trabajo-sin-conexion (3d9aa29): T4 puede tocar `apps/visitas/tests/test_vencimiento.py` para el ajuste de integración (su revisión de 3 días superaba `ATRASO_MAXIMO_APP_HORAS` = 72); los criterios no cambian — (usuario) — reemplaza a: (nada)
