@@ -486,6 +486,10 @@ Hallazgos: [bloqueante] ninguno de revisión ni auditoría; el cierre global dio
 - etiqueta: P-trabajo-sin-conexion-20 → despues
 - etiqueta: P-trabajo-sin-conexion-21 → despues
 - etiqueta: P-trabajo-sin-conexion-22 → despliegue
+- etiqueta: P-trabajo-sin-conexion-15 → coordinacion-operarios — decisión del usuario 2026-11-19: aceptar y dejar incidencia de horas inconsistentes
+- etiqueta: P-trabajo-sin-conexion-16 → coordinacion-operarios — decisión del usuario 2026-11-19: misma incidencia de horas inconsistentes
+- etiqueta: P-trabajo-sin-conexion-17 → despliegue — decisión del usuario 2026-11-19: cron cada hora
+- etiqueta: P-trabajo-sin-conexion-18 → coordinacion-operarios — decisión del usuario 2026-11-19: 30 pedidos por hora por usuario; riesgo residual aceptado
 
 ### Cierra
 

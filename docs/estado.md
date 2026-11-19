@@ -1,7 +1,7 @@
 # Estado de Detach
 <!-- Se reescribe: 25 líneas y 3000 bytes como máximo. Lo histórico, en git y en el registro de sesiones. -->
 Actualizado: 2026-11-19
-Plan activo: ninguno. trabajo-sin-conexion cerrado de nuevo con las decisiones del 2026-11-19 (T8 a T11, `todo` en PASA); PR #13 contra `main` espera la fusión (usuario).
+Plan activo: ninguno. trabajo-sin-conexion cerrado de nuevo con las decisiones del 2026-11-19 (T8 a T11, `todo` en PASA); PR #13 contra `main`: lo fusiona el usuario.
 Mergeado: ficha-sitio-trabajo-hecho (PR #12), ajustes-api-app-base (PR #10), soporte-app-operario (PR #8 y #9), recibo-tras-cierre (PR #7), guardia-cd-worktrees (PR #6), acelerar-tests (PR #4), robustez-listados (PR #1), PR #2 y #3. Desplegado: nada todavía (lo confirma el usuario).
 
 ## Carriles
@@ -17,8 +17,6 @@ Mergeado: ficha-sitio-trabajo-hecho (PR #12), ajustes-api-app-base (PR #10), sop
 - Antes del despliegue: `showmigrations` contra producción (P-flujo-sitio-15), lo corre el usuario.
 - GitHub: único remoto `origin`; Claude abre los PR con `gh pr create`. Suite de Django: ~1170 tests (`todo` en ~270 s).
 
-## Esperan tu decisión
-- P-trabajo-sin-conexion-15: el reenvío de `abrir` devuelve una abierta posterior y el reintento del reporte o cierre con su hora original da 400 definitivo (choque P-1/P-6).
-- P-trabajo-sin-conexion-16: `reportado_en` anterior a la apertura, sin tolerancia de reloj.
-- P-trabajo-sin-conexion-17 (seguridad): el tope de 36 h no corre sin cron en producción; propuesta: cron horario.
-- P-trabajo-sin-conexion-18 (seguridad): `datos-sin-conexion` sin límite de pedidos deja deducir la hora de la primera revisión del día.
+## Decidido (2026-11-19), espera plan
+- Plan de coordinación entre operarios: incidencia de horas inconsistentes en lugar del 400 (P-trabajo-sin-conexion-15 y -16) y 30 pedidos por hora por usuario en `datos-sin-conexion` (P-18, riesgo residual aceptado).
+- Plan de despliegue: cron de `cerrar_visitas_abiertas` cada hora (P-trabajo-sin-conexion-17).
