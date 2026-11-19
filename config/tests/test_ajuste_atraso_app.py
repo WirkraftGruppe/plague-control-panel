@@ -1,4 +1,4 @@
-"""Ajuste `ATRASO_MAXIMO_APP_HORAS`: atraso máximo de lo que manda la app sin conexión."""
+"""Ajuste `ATRASO_MAXIMO_APP_HORAS`: atraso máximo de lo que manda la app."""
 
 import os
 from unittest import mock
