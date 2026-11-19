@@ -280,6 +280,118 @@ T2 y T5 superan los 6 archivos: `services.py` y la API de `visitas` tienen un so
   - `[cmd]` `git log --oneline plan/trabajo-sin-conexion | grep -q "T5: integra trabajo-sin-conexion-T5"`
   - `[cmd]` `git log --oneline plan/trabajo-sin-conexion | grep -q "T6: integra trabajo-sin-conexion-T6"`
 
+### Modificación 2026-11-19 — decisiones del usuario sobre P-trabajo-sin-conexion-1 a -4 (T8 a T11)
+
+Decididas por el usuario sobre el PR #13, antes de fusionar:
+
+- **P-1**: `abrir` con una visita ya abierta del operario en ese sitio responde 200 con esa visita, sin evaluar `abierta_en` (ni atraso ni hora futura) y sin modificarla. El límite de 72 h aplica solo al abrir o crear.
+- **P-2**: en `me/datos-sin-conexion/`, `ultima_revision` pasa a `ultima_revision_fecha`: solo la fecha, sin hora ni operario. El detalle con operario y hora lo expondrá el plan de coordinación entre operarios.
+- **P-3**: la visita guarda la hora de recepción en el servidor de la apertura (`abierta_recibida_en`) y del cierre (`cerrada_recibida_en`). La ficha del turno muestra la hora declarada y, cuando difieren en más de 10 minutos, "Llegó <hora> · registrado sin conexión", igual en las revisiones. Lo cargado a mano en el panel no lleva esa línea (P-9, que entra aquí: su `recibida_en` es la hora de la carga).
+- **P-4**: tope absoluto del cierre nocturno: una visita con más de `VISITA_ABIERTA_TOPE_HORAS` (36 por defecto, configurable) desde `abierta_en` se cierra aunque tenga actividad reciente. Lo que llegue después sigue la regla ya implementada (409 `visita_no_abierta` y reenvío de `abrir`).
+- **P-5**: `docs/contrato-api.md` (`visita_no_abierta`): el cierre de una visita que cerró el sistema da `visita_ya_cerrada`, como el código.
+- **P-6 (en parte)**: `cerrada_en` y `reportado_en` anteriores a `abierta_en` dan 400 con el error en el campo.
+
+| Ola | Subtareas | Apps (migraciones) |
+|---|---|---|
+| 4 | T8 (principal, sin worktree) | config (sin migraciones) |
+| 5 | T9, T10, T11 (integración) | visitas (0004), sitios (sin migraciones) |
+
+### T8 — `VISITA_ABIERTA_TOPE_HORAS` en settings (principal)
+
+- **Ola**: 4
+- **Depende de**: T7
+- **Puede tocar**: `config/settings/base.py`, `.env.example`, `config/tests/test_ajuste_tope_visita.py`
+- **No puede tocar**: `docs/planes/`, `apps/`
+- **Skill a leer antes**: `.agents/skills/django-conventions/SKILL.md` § Task 8: Testing Django Applications
+- **Worktree**: no
+- **Presupuesto**: 60 líneas agregadas
+- **Qué hacer**: `VISITA_ABIERTA_TOPE_HORAS = leer_horas("VISITA_ABIERTA_TOPE_HORAS", "36")` con su comentario; si es menor que `VISITA_ABIERTA_MAXIMO_HORAS`, `ImproperlyConfigured`, con una función `validar_tope_visita(tope, maximo)` probada. Documentarlo comentado en `.env.example`; test del default 36 y del rango 1 a 8760.
+- **Criterios**:
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test config.tests.test_ajuste_tope_visita.AjusteTopeVisitaTests.test_default_36_y_rango_1_a_8760 --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test config.tests.test_ajuste_tope_visita.AjusteTopeVisitaTests.test_tope_menor_que_el_maximo_falla --keepdb`
+  - `[grep-1]` `grep -n "VISITA_ABIERTA_TOPE_HORAS" .env.example`
+  - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 60 --subtarea T8`
+
+### T9 — Dominio y ficha de `visitas`: reenvío de `abrir`, hora de recepción, tope nocturno y horas anteriores a la apertura
+
+- **Ola**: 5
+- **Depende de**: T8
+- **Puede tocar**: `apps/visitas/models.py`, `apps/visitas/migrations/0004_*.py`, `apps/visitas/services.py`, `apps/visitas/management/commands/cerrar_visitas_abiertas.py`, `apps/visitas/templates/visitas/panel/ficha.html`, `apps/visitas/templatetags/visitas_ui.py`, `apps/visitas/tests/test_sin_conexion_ajustes.py`, `apps/visitas/tests/test_sin_conexion_servicios.py`, `apps/visitas/tests/test_sin_conexion.py`, `apps/visitas/tests/test_panel_sin_conexion.py`, `apps/visitas/tests/test_comandos.py`, `apps/visitas/tests/test_cierre_solo_reportes.py`, `apps/visitas/api_views.py` (solo los textos de `extend_schema`), `docs/01-modelo-y-arquitectura.md`
+- **No puede tocar**: `docs/planes/`, `docs/contrato-api.md`, `docs/api/`, `apps/visitas/serializers.py`, `apps/visitas/panel_views.py`, `apps/sitios/`, `apps/api/`, `config/`
+- **Skill a leer antes**: `.agents/skills/django-conventions/SKILL.md` § Task 2: Models and Database Best Practices y § Task 8: Testing Django Applications
+- **Worktree**: sí
+- **Presupuesto**: 600 líneas agregadas
+- **Tamaño**: supera los 6 archivos porque `services.py`, la ficha y sus tests tienen un solo dueño (como T2); los cuatro cambios tocan las mismas funciones.
+- **Qué hacer**:
+  - **P-1** (`abrir_visita`): primero se valida el QR (un QR inválido da el error en `qr_codigo` aunque `abierta_en` también lo sea). Si el empleado ya tiene una visita abierta en el sitio, se devuelve con `creada=False`, sin validar `abierta_en` (ni atraso ni hora futura) y sin tocarla. La validación de `abierta_en` sigue antes de reabrir un pendiente o crear una visita.
+  - **P-3**: `Visita.abierta_recibida_en` y `Visita.cerrada_recibida_en` (`DateTimeField`, nulos, migración aditiva sin relleno). `abrir_visita` fija `abierta_recibida_en = ahora` al reabrir o crear. `cerrar_visita` fija `cerrada_recibida_en = ahora` solo con `cierre=EMPLEADO` y no la pisa en el cierre repetido; el cierre por sistema, por administrador y el de `registrar_visita_manual` la dejan nula. `_cerrar_sin_revisiones` limpia `abierta_recibida_en` junto con `abierta_en`. La ficha (`ficha.html:19` y `:21`) muestra junto a "Abierta" y "Cerrada" "Llegó <hora> · registrado sin conexión" cuando ambas horas existen y difieren en más de 10 minutos, con un filtro de `visitas_ui` que reusa el umbral de `llegada_tardia` y tolera horas nulas. La línea "Llegó …" de las revisiones (`ficha.html:67`) suma " · registrado sin conexión", y `llegada_tardia` devuelve `None` en visitas de origen manual (P-9).
+  - **P-4** (`cerrar_visitas_abiertas`): además de las que hoy cierra, cierra toda abierta con `abierta_en` < ahora − `VISITA_ABIERTA_TOPE_HORAS`, aunque tenga actividad reciente. Docstring y `help` lo dicen.
+  - **P-6 (en parte)**: `registrar_no_revisado` rechaza `reportado_en` anterior a `abierta_en` con `ValidationError({"reportado_en": [...]})`, después de la dedupe y de comprobar que la visita está abierta. `cerrar_visita` ya rechaza `cerrada_en` anterior; se prueba por la API.
+  - **OpenAPI** (`apps/visitas/api_views.py`, solo textos de `extend_schema`): `abrir` dice que con una visita abierta responde 200 sin evaluar `abierta_en`; `cerrar` y `no-revisados` listan el 400 por hora anterior a la apertura. El yaml lo regenera T11.
+  - Los tests de los criterios de T1 a T7 conservan sus clases y nombres (el fixture `MANUAL` de `test_panel_sin_conexion.py` pasa a origen app).
+  - **Doc 01**: los dos campos de recepción, el tope `VISITA_ABIERTA_TOPE_HORAS`, el reenvío de `abrir` con una abierta y el rechazo de horas anteriores a la apertura.
+- **Criterios**:
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_ajustes.ReenvioAbrirTests.test_abrir_con_abierta_y_abierta_en_de_73_horas_200_sin_tocarla --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_ajustes.HoraRecepcionTests.test_abrir_y_cerrar_guardan_la_hora_de_recepcion --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_ajustes.HoraRecepcionTests.test_ficha_muestra_llegada_de_apertura_y_cierre_sin_conexion --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_ajustes.HoraRecepcionTests.test_ficha_no_muestra_llegada_de_apertura_si_difiere_10_minutos_o_menos --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_ajustes.ReenvioAbrirTests.test_abrir_con_abierta_y_abierta_en_futura_200_sin_tocarla --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_ajustes.ReenvioAbrirTests.test_qr_invalido_con_abierta_en_invalida_da_error_en_qr_codigo --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_ajustes.HoraRecepcionTests.test_cierre_por_sistema_y_manual_no_guardan_hora_de_recepcion --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_ajustes.HoraRecepcionTests.test_cierre_repetido_no_pisa_la_hora_de_recepcion --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_ajustes.HoraRecepcionTests.test_ficha_no_muestra_llegada_en_apertura_en_linea --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_ajustes.HoraRecepcionTests.test_ficha_revision_dice_registrado_sin_conexion --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_ajustes.HoraRecepcionTests.test_ficha_no_muestra_llegada_en_revisiones_manuales --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_ajustes.HoraRecepcionTests.test_ficha_de_pendiente_tras_cierre_sin_revisiones_200 --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_ajustes.TopeCierreNocturnoTests.test_tope_se_lee_de_settings --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_ajustes.TopeCierreNocturnoTests.test_cierra_visita_de_mas_de_36_horas_con_actividad_reciente --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_ajustes.HoraAnteriorApiTests.test_cerrada_en_anterior_a_abierta_en_400_en_el_campo --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_sin_conexion_ajustes.HoraAnteriorApiTests.test_reportado_en_anterior_a_abierta_en_400_en_el_campo --keepdb`
+  - `[grep-1]` `grep -n "abierta_recibida_en" docs/01-modelo-y-arquitectura.md`
+  - `[grep-1]` `grep -n "VISITA_ABIERTA_TOPE_HORAS" docs/01-modelo-y-arquitectura.md`
+  - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py makemigrations --check --dry-run`
+  - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas apps.sitios apps.api --keepdb`
+  - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 600 --subtarea T9`
+
+### T10 — `ultima_revision_fecha` en la descarga, contrato de API y OpenAPI
+
+- **Ola**: 5
+- **Depende de**: T8
+- **Puede tocar**: `apps/sitios/api_views.py`, `apps/sitios/serializers.py`, `apps/sitios/tests/test_datos_sin_conexion.py`, `docs/contrato-api.md`
+- **No puede tocar**: `docs/planes/`, `docs/01-modelo-y-arquitectura.md`, `docs/api/`, `apps/visitas/`, `apps/api/`, `apps/sitios/panel_views.py`, `apps/sitios/templates/`, `config/`, migraciones
+- **Skill a leer antes**: `.agents/skills/django-conventions/SKILL.md` § Task 4: Django REST Framework (DRF) Best Practices y § Task 8: Testing Django Applications
+- **Worktree**: sí
+- **Presupuesto**: 250 líneas agregadas
+- **Qué hacer**:
+  - **P-2**: `PuntoSinConexionSerializer.ultima_revision` pasa a `ultima_revision_fecha` (`DateField`, nula): la fecha local (`timezone.localdate`) de la revisión más reciente que hoy cuenta, sin hora ni operario. El ETag sigue el contenido.
+  - **Contrato**: `ultima_revision_fecha` en la sección de `datos-sin-conexion`. `visita_no_abierta` ya no dice "o realizada por el sistema" para el cierre: la revisión y el reporte sobre una visita propia no abierta (pendiente, cancelada o realizada) dan `visita_no_abierta`; el cierre de una pendiente o cancelada da `visita_no_abierta`, y el de una realizada por el sistema o un administrador, `visita_ya_cerrada`. El reenvío de `abrir` con una visita abierta responde 200 con ella sin evaluar `abierta_en`. `cerrada_en` y `reportado_en` anteriores a `abierta_en` dan 400 con el error en el campo.
+  - El OpenAPI lo regenera T11, después de integrar T9 y T10.
+- **Criterios**:
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_datos_sin_conexion.DatosSinConexionTests.test_ultima_revision_fecha_es_solo_la_fecha_de_la_mas_reciente --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_datos_sin_conexion.DatosSinConexionTests.test_ultima_revision_fecha_usa_el_dia_local_cerca_de_medianoche --keepdb`
+  - `[grep-1]` `grep -n "ultima_revision_fecha" docs/contrato-api.md`
+  - `[grep-0]` `grep -n "o realizada por el sistema. Es" docs/contrato-api.md`
+  - `[grep-1]` `grep -n "anterior a la apertura" docs/contrato-api.md`
+  - `[grep-1]` `grep -n "sin evaluar" docs/contrato-api.md`
+  - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios apps.api --keepdb`
+  - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 250 --subtarea T10`
+
+### T11 — Integración ola 5 y cierre (principal)
+
+- **Ola**: 5 (después de verificar T9 y T10)
+- **Depende de**: T9, T10
+- **Pasos**:
+  1. Revisar `bash .claude/hooks/cambios.sh . plan/trabajo-sin-conexion` de T9 y T10, no los informes.
+  2. Desde la raíz, `worktree-integrar.sh` por cada subtarea, de a una, con `verificar.py tarea` tras cada integración; `manage.py migrate` en desarrollo (entra `visitas.0004`).
+  3. Regenerar `docs/api/openapi-v1.yaml` con `manage.py spectacular --validate` y commitearlo como `T11:`.
+  4. Cierre: `verificar.py todo`, `revisor` modo cierre y `auditor-seguridad` sobre lo nuevo; el resto de P-trabajo-sin-conexion-5 a -14 recibe la etiqueta `despues`.
+- **Presupuesto**: no aplica a los merges; los commits `T11:` (el OpenAPI regenerado y ajustes), `bash .claude/hooks/presupuesto.sh . '<commit_base>' 60 --subtarea T11`
+- **Criterios**:
+  - `[cmd]` `git log --oneline plan/trabajo-sin-conexion | grep -q "T9: integra trabajo-sin-conexion-T9"`
+  - `[cmd]` `git log --oneline plan/trabajo-sin-conexion | grep -q "T10: integra trabajo-sin-conexion-T10"`
+  - `[grep-1]` `grep -n "ultima_revision_fecha" docs/api/openapi-v1.yaml`
+  - `[cmd]` `T=$(mktemp) && PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py spectacular --validate --file "$(cygpath -w "$T")" && diff -q --strip-trailing-cr "$T" docs/api/openapi-v1.yaml; r=$?; rm -f "$T"; exit $r`
+
 ## Registro de verificación
 
 commit_base: 89f2a8d
