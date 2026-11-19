@@ -1,5 +1,7 @@
 """Postproceso del esquema OpenAPI: respuestas 401 y 429 comunes."""
 
+from .excepciones import CODIGOS_PUBLICOS
+
 ESQUEMA_ERROR = {
     "type": "object",
     "properties": {
@@ -8,7 +10,7 @@ ESQUEMA_ERROR = {
             "type": "object",
             "additionalProperties": {"type": "array", "items": {"type": "string"}},
         },
-        "code": {"type": "string", "enum": ["empresa_inactiva"]},
+        "code": {"type": "string", "enum": sorted(CODIGOS_PUBLICOS)},
     },
     "required": ["detalle", "campos"],
 }
