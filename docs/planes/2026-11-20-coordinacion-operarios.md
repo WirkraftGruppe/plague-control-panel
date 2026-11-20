@@ -329,7 +329,7 @@ Las olas siguen el grafo de FK: `productos` va antes que `visitas`, y `sitios` l
 
 ## Registro de verificación
 
-commit_base: <hash del commit docs(plan): coordinacion-operarios>
+commit_base: 794af57
 
 | Tarea | Estado | Commit | Recibo |
 |---|---|---|---|
