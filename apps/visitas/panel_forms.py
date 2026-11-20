@@ -5,12 +5,14 @@ from django.db.models import Case, Exists, OuterRef, When
 from django.utils import timezone
 
 from apps.accounts.models import User
+from apps.productos.consultas import ultimo_lote_subquery
 from apps.productos.models import Producto
 from apps.productos.unidades import CHOICES as UNIDADES
 from apps.servicios.models import TipoServicio
 from apps.sitios.estado import EstadoVencimiento, estados_por_vencimiento
 from apps.sitios.models import PuntoControl
 
+from . import coordinacion
 from .models import Revision, Visita
 from .planillas import validar_datos
 from .serializers import MAX_BYTES_FOTO
@@ -37,6 +39,7 @@ class FormularioPuntosConServicio(forms.Form):
     def __init__(self, *args, sitio, **kwargs):
         super().__init__(*args, **kwargs)
         self.sitio = sitio
+        self.asignados = {}  # `{punto_id: nombre}`; lo completa el formulario de turno
         puntos = PuntoControl.objects.de_empresa(sitio.empresa_id).filter(
             sitio=sitio, activo=True
         )
@@ -68,6 +71,7 @@ class FormularioPuntosConServicio(forms.Form):
                 "estado": estados[punto.pk],
                 "estado_texto": EstadoVencimiento(estados[punto.pk]).label,
                 "marcado": str(punto.pk) in tildados,
+                "asignado_a": self.asignados.get(punto.pk),
                 "servicio": self[f"servicio_{punto.pk}"],
             }
             for punto in self.puntos_activos
@@ -102,8 +106,14 @@ class FormularioTurno(FormularioPuntosConServicio):
     def __init__(self, *args, sitio, **kwargs):
         super().__init__(*args, sitio=sitio, **kwargs)
         self.fields["empleado"].queryset = empleados_de_empresa(sitio.empresa_id)
-        # Al abrir el formulario: todos los puntos activos tildados y fecha de hoy.
-        self.initial.setdefault("puntos", [p.pk for p in self.puntos_activos])
+        # Los puntos en el turno pendiente o abierto de otro empleado se muestran
+        # asignados y destildados; se pueden tildar igual.
+        self.asignados = coordinacion.puntos_asignados_a_otros(
+            sitio.empresa_id, [p.pk for p in self.puntos_activos], None
+        )
+        # Al abrir: los puntos activos sin asignar tildados y la fecha de hoy.
+        libres = [p.pk for p in self.puntos_activos if p.pk not in self.asignados]
+        self.initial.setdefault("puntos", libres)
         self.initial.setdefault("programada_para", timezone.localdate())
         # El responsable del sitio, si es un empleado activo, va primero y preelegido.
         campo = self.fields["empleado"]
@@ -145,8 +155,26 @@ class VariosArchivosField(forms.FileField):
         ]
 
 
+class SelectProducto(forms.Select):
+    """Select de productos con la dosis y el último lote en `data-*` de cada opción."""
+
+    def create_option(self, name, value, *args, **kwargs):
+        opcion = super().create_option(name, value, *args, **kwargs)
+        producto = getattr(value, "instance", None)
+        if producto is not None:
+            atributos = opcion["attrs"]
+            atributos["data-dosis-variable"] = "1" if producto.dosis_variable else "0"
+            if producto.dosis_habitual is not None:
+                atributos["data-dosis"] = f"{producto.dosis_habitual:f}"
+            atributos["data-unidad-dosis"] = producto.unidad_dosis_habitual or ""
+            atributos["data-lote"] = getattr(producto, "ultimo_lote", None) or ""
+        return opcion
+
+
 class ProductoConUnidadField(forms.ModelChoiceField):
     """Muestra la unidad base del producto para elegir la unidad de la cantidad."""
+
+    widget = SelectProducto
 
     def label_from_instance(self, producto):
         return f"{producto} ({producto.unidad_base})"
@@ -157,16 +185,21 @@ class FormularioProductoManual(forms.Form):
 
     Solo del catálogo de la empresa. La unidad de la cantidad debe ser una de las
     del producto (lo valida el servicio); la de la dosis es texto libre, por ejemplo
-    la `unidad_dosis_por_defecto`.
+    la `unidad_dosis_habitual`. La dosis solo se pide en productos de dosis variable.
     """
 
     producto = ProductoConUnidadField(
         label="Producto", queryset=Producto.objects.none()
     )
     lote = forms.CharField(label="Lote", max_length=60)
-    dosis = forms.DecimalField(label="Dosis", max_digits=10, decimal_places=3)
+    dosis = forms.DecimalField(
+        label="Dosis", max_digits=10, decimal_places=3, required=False
+    )
     unidad_dosis = forms.CharField(
-        label="Unidad de la dosis", max_length=20, help_text="Por ejemplo: ml/l."
+        label="Unidad de la dosis",
+        max_length=20,
+        required=False,
+        help_text="Por ejemplo: ml/l.",
     )
     cantidad = forms.DecimalField(label="Cantidad", max_digits=10, decimal_places=3)
     unidad = forms.ChoiceField(
@@ -177,9 +210,11 @@ class FormularioProductoManual(forms.Form):
 
     def __init__(self, *args, empresa_id, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["producto"].queryset = Producto.objects.de_empresa(
-            empresa_id
-        ).filter(activo=True)
+        self.fields["producto"].queryset = (
+            Producto.objects.de_empresa(empresa_id)
+            .filter(activo=True)
+            .annotate(ultimo_lote=ultimo_lote_subquery())
+        )
 
 
 FormSetProductos = forms.formset_factory(
