@@ -115,6 +115,7 @@ class ResolverQRTests(TestCase):
                 "proximo_vencimiento": None,
                 "servicio": None,
                 "en_turno": False,
+                "revisado_hoy_por": None,
             },
         )
 

@@ -37,6 +37,7 @@ from apps.clientes.models import Cliente
 from apps.panel.listados import ListadoPanelMixin
 from apps.panel.mapa import ORIGEN_TESELAS
 from apps.servicios.models import TipoServicio
+from apps.visitas.coordinacion import nombre_de_empleado as _nombre_de
 from apps.visitas.models import ItemTurno, PuntoNoRevisado, Revision, Visita
 from apps.visitas.services import condicion_incidencia_sin_revisar
 
@@ -80,10 +81,6 @@ def _marcar_vencimiento(puntos):
         estado = punto.estado = estados[punto.pk]
         punto.vencimiento_etiqueta = EstadoVencimiento(estado).label
         punto.vencimiento_clase = CLASE_VENCIMIENTO[estado]
-
-
-def _nombre_de(usuario):
-    return usuario.get_full_name() or usuario.username
 
 
 def avance_de_visitas(empresa, visitas):
@@ -391,6 +388,17 @@ class SitioFicha(VistaDeEmpresaMixin, AdministradorRequeridoMixin, DetailView):
         plano = plano or (planos[0] if planos else None)
         estado_general = estado_de_sitio_por_puntos(activos, hoy)
         turnos_pendientes = list(self._turnos(sitio, Visita.Estado.PENDIENTE))
+        turnos_realizados = list(
+            self._turnos(sitio, Visita.Estado.REALIZADA)[:TURNOS_REALIZADOS_MAXIMO]
+        )
+        con_duplicada = set(
+            Revision.objects.de_empresa(self.request.empresa)
+            .filter(
+                incidencia_duplicada=True,
+                visita_id__in=[v.pk for v in turnos_pendientes + turnos_realizados],
+            )
+            .values_list("visita_id", flat=True)
+        )
         contexto.update(
             pestana=pestana,
             pestanas=(("turnos", "Turnos"), ("planos", "Planos"), ("datos", "Datos")),
@@ -401,8 +409,11 @@ class SitioFicha(VistaDeEmpresaMixin, AdministradorRequeridoMixin, DetailView):
             planos=planos,
             plano=plano,
             turnos_pendientes=turnos_pendientes,
-            turnos_realizados=self._turnos(sitio, Visita.Estado.REALIZADA)[
-                :TURNOS_REALIZADOS_MAXIMO
+            turnos_realizados=turnos_realizados,
+            turnos_duplicados=[
+                v
+                for v in turnos_pendientes + turnos_realizados
+                if v.pk in con_duplicada
             ],
             aviso_sin_turnos=not turnos_pendientes
             and any(p.estado == EstadoVencimiento.VENCIDA for p in activos),
