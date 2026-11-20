@@ -20,6 +20,7 @@ class StockRevisionApiTests(ApiVisitasBase):
             nombre_comercial="Concentrado en galones",
             unidad_base="gal",
             modo_unidad="equivalentes",
+            dosis_variable=True,
             empresa=una_empresa(),
         )
         registrar_ingreso(self.galones, Decimal("10"), False, self.empleado)

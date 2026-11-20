@@ -134,17 +134,15 @@ class CicloVisitaTests(SinArchivosMixin, TestCase):
         argumentos.update(extra)
         return registrar_revision(**argumentos)
 
-    def test_revision_sin_coordenadas_se_rechaza(self):
+    def test_revision_sin_coordenadas_se_acepta_marcada(self):
         visita, _ = abrir(empleado=self.empleado, sitio=self.sitio)
         for campo in ("latitud", "longitud"):
             with self.subTest(campo=campo):
-                with self.assertRaises(ValidationError) as contexto:
-                    self.revisar(visita, **{campo: None})
-                self.assertEqual(
-                    contexto.exception.message_dict[campo],
-                    ["Este campo es obligatorio."],
-                )
-        self.assertEqual(visita.revisiones.count(), 0)
+                revision = self.revisar(visita, **{campo: None})
+                self.assertTrue(revision.incidencia_sin_ubicacion)
+                self.assertIsNone(revision.latitud)
+                self.assertIsNone(revision.longitud)
+        self.assertEqual(visita.revisiones.count(), 2)
 
     def test_abrir_revisar_cerrar_actualiza_el_vencimiento(self):
         self.punto.frecuencia_dias = 30
