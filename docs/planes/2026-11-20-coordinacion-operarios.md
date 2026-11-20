@@ -161,7 +161,7 @@ Las olas siguen el grafo de FK: `productos` va antes que `visitas`, y `sitios` l
   - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas --keepdb`
   - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 800 --subtarea T3`
 
-### T3b — Tests de las incidencias nuevas y la apertura sin escaneo (`test_incidencias_nuevas.py`)
+### T3c — Tests de las incidencias nuevas y la apertura sin escaneo (`test_incidencias_nuevas.py`)
 
 - **Ola**: 2
 - **Depende de**: T3 (mismo worktree, `coordinacion-operarios-T3`)
@@ -187,7 +187,7 @@ Las olas siguen el grafo de FK: `productos` va antes que `visitas`, y `sitios` l
   - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.AperturaSinEscaneoTests.test_ajena_o_de_otra_empresa_no_existe --keepdb`
   - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.AperturaSinEscaneoTests.test_vuelta_a_pendiente_baja_la_incidencia --keepdb`
   - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.ConteoIncidenciasTests.test_cuatro_incidencias_cuentan_y_marcar_revisada_las_saca --keepdb`
-  - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 300 --subtarea T3b`
+  - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 300 --subtarea T3c`
 
 ### T4 — Integración ola 2 (principal)
 
@@ -349,7 +349,7 @@ commit_base: 794af57
 | T1 | hecha | 48b6109 | PASA (tarea, HEAD 48b6109 en el worktree; b018b02 tras integrar) |
 | T2 | hecha | b018b02 | PASA (tarea T1,T2, HEAD b018b02) |
 | T3 | pendiente | | |
-| T3b | pendiente | | |
+| T3c | pendiente | | |
 | T4 | pendiente | | |
 | T5 | pendiente | | |
 | T6 | pendiente | | |
