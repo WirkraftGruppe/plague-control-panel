@@ -141,3 +141,18 @@
 - duración: 48.3 s
 - Veredicto: PASA
 
+## 2026-11-20 12:21 — tarea T11,T9 de 2026-11-20-coordinacion-operarios.md
+
+- HEAD verificado: 40c3427
+- Contrato: modificado y aceptado (bdf0cf5, decisión del usuario)
+- Criterios:
+  - PASA (exit 0, nuevo: —) `T11 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py spectacular --validate --file "$TEMP/openapi-coordinacion.yaml" && diff -q --strip-trailing-cr "$TEMP/openapi-coordinacion.yaml" docs/api/openapi-v1.yaml`
+  - PASA (exit 0, nuevo: —) `T11 [grep-1] grep -n "dosis_variable" docs/01-modelo-y-arquitectura.md`
+  - PASA (exit 1, nuevo: —) `T11 [grep-0] grep -n "unidad_dosis_por_defecto" docs/contrato-api.md docs/api/openapi-v1.yaml docs/01-modelo-y-arquitectura.md`
+  - PASA (exit 0, nuevo: —) `T11 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 350 --subtarea T11`
+  - PASA (exit 0, nuevo: —) `T9 [cmd] git log --oneline plan/coordinacion-operarios | grep -q "T8: integra coordinacion-operarios-T8"`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 2.1 s
+- Veredicto: PASA
+

@@ -367,9 +367,9 @@ commit_base: 794af57
 | T5 | hecha | dbd7820, 984cacc | PASA (tarea T5,T7, HEAD e06c285; 1 ronda de corrección) |
 | T6 | hecha | 5865b5e | PASA (tarea, HEAD b6128be) |
 | T7 | hecha | e06c285 | PASA (tarea T5,T7, HEAD e06c285) |
-| T8 | pendiente | | |
-| T11 | pendiente | | |
-| T9 | pendiente | | |
+| T8 | hecha | 76b3abd | PASA (tarea, HEAD 6cf68a7; 1 ronda de corrección) |
+| T11 | hecha | 57493bb | PASA (tarea T11,T9, HEAD 40c3427) |
+| T9 | hecha | 40c3427 | PASA (tarea T11,T9, HEAD 40c3427) |
 
 ### Revisiones
 
