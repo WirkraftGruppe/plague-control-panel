@@ -7,7 +7,7 @@ Mergeado: trabajo-sin-conexion (PR #13), ficha-sitio-trabajo-hecho (PR #12), aju
 ## Carriles
 | Plan | Rama | Worktree | Sesión |
 |---|---|---|---|
-| coordinacion-operarios | plan/coordinacion-operarios | worktrees/coordinacion-operarios-T<n> (aún ninguno) | libre: la toma la sesión de implementación |
+| coordinacion-operarios | plan/coordinacion-operarios | raíz + worktrees/coordinacion-operarios-T<n> | ocupado: sesión de implementación (2026-11-20) |
 
 ## Pendiente inmediato
 - Implementar coordinacion-operarios desde T1 (ola 1: productos y `cargar_demo`).
