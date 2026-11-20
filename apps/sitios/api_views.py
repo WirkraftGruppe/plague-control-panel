@@ -21,12 +21,13 @@ from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.negotiation import BaseContentNegotiation
 from rest_framework.parsers import JSONParser, MultiPartParser
 from rest_framework.response import Response
-from rest_framework.throttling import ScopedRateThrottle
+from rest_framework.throttling import ScopedRateThrottle, UserRateThrottle
 from rest_framework.views import APIView
 
 from apps.accounts.permisos import EsAdministrador, EsEmpleado
 from apps.empresas.consultas import empresa_de
 from apps.servicios.models import TipoServicio
+from apps.visitas.coordinacion import revisiones_de_hoy
 from apps.visitas.models import Revision, Visita
 from apps.visitas.serializers import MAX_BYTES_FOTO
 from apps.visitas.services import servicio_para_punto, visita_destino
@@ -78,6 +79,19 @@ def _datos_plano(punto):
             }
             for m in marcadores
         ],
+    }
+
+
+def _revisado_hoy_por(empresa, punto, usuario):
+    """Última revisión de hoy del punto (de cualquier operario) o `None`."""
+    revisiones = revisiones_de_hoy(empresa, [punto.pk]).get(punto.pk)
+    if not revisiones:
+        return None
+    empleado_id, nombre, realizada_en = revisiones[-1]
+    return {
+        "operario": {"id": empleado_id, "nombre": nombre},
+        "realizada_en": realizada_en,
+        "propia": empleado_id == usuario.pk,
     }
 
 
@@ -181,6 +195,7 @@ class ResolverQRView(APIView):
                 "proximo_vencimiento": punto.proximo_vencimiento,
                 "servicio": _datos_servicio(servicio),
                 "en_turno": en_turno,
+                "revisado_hoy_por": _revisado_hoy_por(empresa, punto, request.user),
             },
             "sitio": sitio,
             "cliente": sitio.cliente,
@@ -289,10 +304,18 @@ class MisPuntosView(APIView):
         return Response(MiPuntoSerializer(puntos, many=True).data)
 
 
+class ThrottleDatosSinConexion(UserRateThrottle):
+    """Cupo por usuario de `me/datos-sin-conexion/`; un 304 también lo consume."""
+
+    scope = "datos_sin_conexion"
+    rate = "30/hour"
+
+
 class DatosSinConexionView(APIView):
     """Puntos activos y servicios de la empresa para trabajar sin conexión."""
 
     permission_classes = [EsEmpleado | EsAdministrador]
+    throttle_classes = [ThrottleDatosSinConexion]
 
     @extend_schema(
         summary="Datos para trabajar sin conexión",
@@ -302,7 +325,8 @@ class DatosSinConexionView(APIView):
             "SHA-256 hexadecimal de su `qr_codigo` (UUID en minúsculas con "
             "guiones), nunca el código. Devuelve un `ETag`; con `If-None-Match` "
             "igual responde 304 sin cuerpo. Ambas respuestas llevan "
-            "`Cache-Control: private, no-store`."
+            "`Cache-Control: private, no-store`. Máximo 30 pedidos por hora y usuario "
+            "(el 304 también cuenta); superado, 429 con `Retry-After`."
         ),
         responses={
             200: DatosSinConexionSerializer,

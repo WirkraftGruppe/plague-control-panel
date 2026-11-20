@@ -63,6 +63,19 @@ class ServicioQRSerializer(serializers.Serializer):
     esquema_visita = CampoEsquemaSerializer(many=True)
 
 
+class OperarioQRSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    nombre = serializers.CharField()
+
+
+class RevisadoHoyPorSerializer(serializers.Serializer):
+    """Última revisión de hoy del punto: quién, cuándo y si es del que consulta."""
+
+    operario = OperarioQRSerializer()
+    realizada_en = serializers.DateTimeField()
+    propia = serializers.BooleanField()
+
+
 class PuntoQRSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     nombre = serializers.CharField()
@@ -72,6 +85,7 @@ class PuntoQRSerializer(serializers.Serializer):
     proximo_vencimiento = serializers.DateField(allow_null=True)
     servicio = ServicioQRSerializer(allow_null=True)
     en_turno = serializers.BooleanField()
+    revisado_hoy_por = RevisadoHoyPorSerializer(allow_null=True)
 
 
 class ResolverQRSerializer(serializers.Serializer):
