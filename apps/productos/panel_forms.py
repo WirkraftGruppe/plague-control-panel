@@ -19,12 +19,21 @@ class ProductoForm(FormularioDeEmpresa):
             "principio_activo",
             "registro",
             "presentacion",
-            "unidad_dosis_por_defecto",
+            "dosis_habitual",
+            "unidad_dosis_habitual",
+            "dosis_variable",
             "unidad_base",
             "contenido_por_envase",
             "modo_unidad",
             "activo",
         ]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["dosis_habitual"].help_text = (
+            "Dosis: concentración de la preparación (p. ej. 5 ml/l). "
+            "Cantidad: lo que se descuenta del stock en cada aplicación."
+        )
 
     def clean_unidad_base(self):
         unidad = self.cleaned_data["unidad_base"]

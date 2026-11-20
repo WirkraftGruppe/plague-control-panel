@@ -1,6 +1,6 @@
 # Contrato de la API v1
 
-Actualizado: 2026-11-18
+Actualizado: 2026-11-20
 
 Resumen legible para la app móvil de Detach. La fuente completa (cuerpos, campos,
 códigos de error) es `docs/api/openapi-v1.yaml`; este archivo agrega, por ruta, el
@@ -22,7 +22,17 @@ límite de pedidos (throttle) y el rol que la puede usar. Todas las rutas cuelga
 - **Catálogo de productos** (`GET /api/v1/productos/`): cada producto trae `unidad_base`
   (unidad en que se lleva el stock), `modo_unidad` (`unica` o `equivalentes`) y
   `unidades_permitidas` (las unidades en que se puede declarar una cantidad: solo la base
-  en `unica`; todas las de su magnitud en `equivalentes`).
+  en `unica`; todas las de su magnitud en `equivalentes`). Trae además la dosis que define el
+  administrador (`dosis_habitual` y `unidad_dosis_habitual`, o `null` si no la cargó),
+  `dosis_variable` (booleano) y `ultimo_lote`: el lote de la aplicación más reciente del
+  producto en la empresa, o `null`. Como `ultimo_lote` sale de lo aplicado, el `ETag` del
+  catálogo cambia cuando alguien aplica el producto con un lote nuevo.
+- **Dosis** (`dosis` y `unidad_dosis` de cada ítem de `productos_aplicados`, ambas opcionales):
+  si el producto no es `dosis_variable`, el servidor guarda siempre su dosis habitual (o nada,
+  si no la tiene) e ignora lo enviado; con `dosis_variable`, guarda la enviada o, si falta,
+  la habitual. `lote` sigue siendo obligatorio: un lote vacío da 400 en
+  `campos."productos_aplicados.<i>.lote"`. La lectura (la respuesta de `revisiones/` y
+  `me/historial/`) devuelve `dosis` y `unidad_dosis` de cada producto, o `null` si no hay.
 - **Revisiones** (`POST /api/v1/revisiones/`, multipart): `productos_aplicados` es una parte
   multipart con JSON (`encoding` `application/json` en el esquema): un arreglo de objetos;
   cada ítem lleva `producto`, `lote`, `dosis`, `unidad_dosis`,
@@ -32,6 +42,14 @@ límite de pedidos (throttle) y el rol que la puede usar. Todas las rutas cuelga
   unidad base y descuenta el stock en la misma transacción. Los errores de validación
   van anidados por ítem: `productos_aplicados.<i>.<campo>`.
   Un servicio dado de baja da 400, igual que un punto sin servicio.
+  `latitud` y `longitud` son opcionales: sin una de las dos, la revisión se guarda (201) sin
+  coordenadas, sin verificar la distancia ni fijar la ubicación del punto, y queda con una
+  incidencia de falta de ubicación. La respuesta 201 trae `duplicada_hoy` (booleano):
+  verdadero si otro empleado ya había revisado el punto ese mismo día (el de `realizada_en`);
+  la revisión se acepta igual y queda con una incidencia. La visita de un administrador nunca
+  la marca. Son cuatro incidencias nuevas, junto con la de apertura sin escaneo y la de horas
+  inconsistentes; ninguna cambia `proximo_vencimiento` ni el stock, y todas cuentan en
+  "Incidencias sin revisar" del panel con la visita realizada.
 - **Turnos por sitio**: una visita es un turno en un sitio con `items[]` (punto y servicio).
   `POST /api/v1/visitas/abrir/` recibe solo `qr_codigo` (más coordenadas opcionales): abre
   el turno pendiente más antiguo del empleado en el sitio de ese punto o crea una visita
@@ -45,6 +63,21 @@ límite de pedidos (throttle) y el rol que la puede usar. Todas las rutas cuelga
   misma regla que el resolver de QR: `proxima` si vence entre hoy y hoy + los días de aviso de
   su `frecuencia_dias` (`ceil(frecuencia_dias / 4)` entre 1 y 7; sin frecuencia, 7; si el aviso cubre la frecuencia entera, `frecuencia_dias - 1`: con frecuencia 1, `proxima` solo el día que vence). `GET /api/v1/me/visitas/<pk>/` devuelve un turno con la
   forma de un elemento de la lista; uno ajeno, de otra empresa, realizado o inexistente da 404.
+  Cada ítem trae además `revisado_por_otro`: `{operario{nombre}, realizada_en}` con la última
+  revisión de hoy del punto hecha por otro empleado de la empresa, o `null` si nadie más lo
+  revisó hoy (las revisiones propias y las de otros días no cuentan; tampoco las de visitas de
+  administradores ni canceladas). Es solo informativo: no bloquea nada. Lo traen `me/visitas/`,
+  su detalle y las respuestas de apertura.
+- **Abrir sin escanear** (`POST /api/v1/visitas/<pk>/abrir/`): abre el turno pendiente `<pk>`
+  del usuario sin el QR. Quedan marcados con una incidencia de apertura sin escaneo. Cuerpo
+  opcional: solo `abierta_en` (misma regla de hora y atraso que `visitas/abrir/`); la
+  ubicación no se pide ni se guarda, y los campos desconocidos (`latitud`, `longitud`,
+  `precision_m`) se ignoran. Responde con la misma
+  forma que `visitas/abrir/`: 201 si abre el turno, 200 si el usuario ya tenía una visita
+  abierta en el sitio (la devuelve sin cambios). Una visita ajena, de otra empresa o
+  inexistente da 404; 409 si no está pendiente, está programada para un día posterior o su
+  sitio o cliente están inactivos. La revisión sigue exigiendo el `qr_codigo` del punto: sin
+  él, 400. Comparte el cupo `crear_visita`.
 - **Raíz** (`GET /api/v1/`): `{usuario{id, nombre_completo, username}, empresa{id, nombre},
   rol}`; `nombre_completo` cae en `username` si el usuario no tiene nombre cargado y `empresa`
   es `null` para un usuario sin empresa. `usuario` era antes el username como texto.
@@ -74,7 +107,9 @@ límite de pedidos (throttle) y el rol que la puede usar. Todas las rutas cuelga
   `code: "atraso_excedido"`. La carga manual del panel sigue con `ATRASO_MAXIMO_HORAS` (168).
   Un reintento con el mismo `cliente_uuid` ya registrado responde 409 aunque pase el límite:
   la deduplicación va antes que el atraso. Una `cerrada_en` o un `reportado_en`
-  anterior a la apertura (`abierta_en`) da 400 con el error en el campo.
+  anterior a la apertura (`abierta_en`) ya no da 400: se acepta (201 en el reporte, 200 en el
+  cierre), se guarda la hora declarada y la visita queda con una incidencia de horas
+  inconsistentes.
 - **Apertura con `abierta_en`**: el servidor guarda `min(abierta_en, ahora)` y solo reabre
   turnos pendientes con `programada_para` vacía o no posterior al día de `abierta_en`; si no
   hay, crea una visita nueva (el trabajo atrasado no se pega a un turno futuro). Si ya hay
@@ -104,6 +139,8 @@ límite de pedidos (throttle) y el rol que la puede usar. Todas las rutas cuelga
     código escaneado en `abrir` y en `revisiones/`, porque el QR es la prueba de presencia.
   - Cada servicio: `{id, nombre, slug, esquema_punto, esquema_visita}`, igual que en el
     resolver de QR.
+  - Límite: 30 pedidos por hora y usuario, y el 304 también cuenta; superado, 429 con
+    `Retry-After`.
   - Lleva `ETag`; con `If-None-Match` igual responde 304 sin cuerpo. El 200 y el 304 llevan
     `Cache-Control: private, no-store`: la app guarda el ETag y los datos en su almacenamiento,
     no en una caché HTTP compartida.
@@ -131,8 +168,10 @@ límite de pedidos (throttle) y el rol que la puede usar. Todas las rutas cuelga
   empresa sin logo dan 404.
 - **Resolver un QR** (`POST /api/v1/qr/<codigo>/resolver/`): el `punto` trae `estado`
   (`al_dia`, `proxima`, `vencida` o `sin_programar`; `proxima` según los días de aviso de su
-  `frecuencia_dias`, como en `me/visitas/`), `proximo_vencimiento`, `en_turno` y
-  `servicio` (`{id, nombre, slug, esquema_punto, esquema_visita}` o `null`). `visita_destino`
+  `frecuencia_dias`, como en `me/visitas/`), `proximo_vencimiento`, `en_turno`,
+  `servicio` (`{id, nombre, slug, esquema_punto, esquema_visita}` o `null`) y `revisado_hoy_por`:
+  `{operario{id, nombre}, realizada_en, propia}` con la última revisión de hoy del punto (de
+  cualquier empleado de la empresa; `propia` indica si es del usuario) o `null`. `visita_destino`
   es el id de la visita en la que se guardará la revisión (la abierta propia del sitio o, si
   no hay, la pendiente que abre `visitas/abrir/`), o `null` si al abrir se crea una nueva.
   `servicio` y `en_turno` se calculan sobre esa visita: el del ítem del punto en ella
@@ -148,8 +187,8 @@ límite de pedidos (throttle) y el rol que la puede usar. Todas las rutas cuelga
   con `servicio` nulo y su revisión fuera de turno da 400 hasta que lo tenga. Un punto con
   plano pero sin `x`/`y` no aparece en `plano.puntos`, y un cliente inactivo da 404.
 - **Throttle**: `-` es sin límite propio. Los cupos salen de `DEFAULT_THROTTLE_RATES`
-  (`token` 10/min, `qr` 30/min, `crear_visita` 120/hora, `alta_campo` 300/hora) y de
-  la renovación de tokens (30/min). Al excederlos la API responde 429, siempre con la
+  (`token` 10/min, `qr` 30/min, `crear_visita` 120/hora, `alta_campo` 300/hora), de
+  la renovación de tokens (30/min) y de `me/datos-sin-conexion/` (30/hora por usuario). Al excederlos la API responde 429, siempre con la
   cabecera `Retry-After` (segundos de espera), también la del balde de fallos de login.
 - **Usuario `plataforma`**: en `auth/token/` y `auth/token/refresh/` recibe 401 con el mismo
   `detalle` que una credencial inválida (no se distingue). `auth/token/` responde 400 si
@@ -178,14 +217,15 @@ límite de pedidos (throttle) y el rol que la puede usar. Todas las rutas cuelga
 | POST | `/api/v1/sitios/<pk>/puntos/` | Administrador | alta_campo, 300/hora | 201 con el punto; 400, 403, 404 |
 | POST | `/api/v1/puntos/<pk>/ubicacion/` | Administrador | alta_campo, 300/hora | 200 con el punto; 400, 403, 404 |
 | GET | `/api/v1/me/puntos/` | Empleado o administrador | - | 200 con los puntos del usuario |
-| GET | `/api/v1/me/datos-sin-conexion/` | Empleado o administrador | - | 200 con los puntos y servicios de la empresa; 304 |
+| GET | `/api/v1/me/datos-sin-conexion/` | Empleado o administrador | datos_sin_conexion, 30/hora por usuario | 200 con los puntos y servicios de la empresa; 304; 429 |
 | GET | `/api/v1/productos/` | Empleado o administrador | - | 200 con el catálogo; 304 |
 | GET | `/api/v1/me/visitas/` | Empleado o administrador | - | 200 con los turnos del usuario y sus ítems |
 | GET | `/api/v1/me/visitas/<pk>/` | Empleado o administrador | - | 200 con el turno; 404 |
 | POST | `/api/v1/visitas/abrir/` | Empleado o administrador | crear_visita, 120/hora | 201 con el turno; 200 si ya estaba abierto; 400 |
+| POST | `/api/v1/visitas/<pk>/abrir/` | Empleado o administrador | crear_visita, 120/hora | 201 con el turno; 200 si ya había una abierta en el sitio; 400, 404, 409 |
 | POST | `/api/v1/visitas/<pk>/cerrar/` | Empleado o administrador | crear_visita, 120/hora | 200 con la visita; 400, 404, 409 (`visita_no_abierta`, `visita_ya_cerrada`) |
 | POST | `/api/v1/visitas/<pk>/no-revisados/` | Empleado o administrador | crear_visita, 120/hora | 201 con el reporte; 400, 404, 409, 413 |
-| POST | `/api/v1/revisiones/` | Empleado o administrador | crear_visita, 120/hora | 201 con la revisión y su servicio; 400, 404, 409, 413 |
+| POST | `/api/v1/revisiones/` | Empleado o administrador | crear_visita, 120/hora | 201 con la revisión, su servicio y `duplicada_hoy`; 400, 404, 409, 413 |
 | GET | `/api/v1/me/historial/` | Empleado | - | 200 con el historial paginado |
 | GET | `/api/v1/fotos/<codigo>/` | Empleado o administrador | - | 200 con la imagen; 403, 404 |
 | GET | `/api/v1/me/empresa/` | Empleado o administrador | - | 200 con el nombre y la URL del logo |

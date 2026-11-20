@@ -1,0 +1,362 @@
+## 2026-11-20 11:04 — tarea T1,T2 de 2026-11-20-coordinacion-operarios.md
+
+- HEAD verificado: b018b02
+- Contrato: intacto (congelado en 794af57)
+- Criterios:
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.productos.tests.test_dosis_habitual.DosisHabitualTests.test_dosis_sin_unidad_no_valida --keepdb`
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.productos.tests.test_dosis_habitual.DosisHabitualTests.test_sin_dosis_habitual_ni_variable_no_valida --keepdb`
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.productos.tests.test_dosis_habitual.DosisHabitualTests.test_panel_edita_dosis_habitual_y_variable --keepdb`
+  - PASA (exit 0, nuevo: —) `T1 [grep-1] grep -n "update.dosis_variable=True" apps/productos/migrations/0002_dosis_habitual.py`
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.productos.tests.test_dosis_habitual.CatalogoDosisTests.test_catalogo_trae_dosis_y_ultimo_lote_null --keepdb`
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.productos.tests.test_dosis_habitual.CatalogoDosisTests.test_ultimo_lote_L2291_y_etag_cambia --keepdb`
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.productos.tests.test_dosis_habitual.CatalogoDosisTests.test_ultimo_lote_no_cruza_empresas --keepdb`
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.productos.tests.test_dosis_habitual.CatalogoDosisTests.test_consultas_iguales_con_5_y_50_productos --keepdb`
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.panel.tests.test_cargar_demo.CargarDemoCoordinacionTests.test_dos_operarios_comparten_un_punto --keepdb`
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.panel.tests.test_cargar_demo.CargarDemoCoordinacionTests.test_productos_con_y_sin_dosis_y_uno_variable --keepdb`
+  - PASA (exit 1, nuevo: —) `T1 [grep-0] grep -n "unidad_dosis_por_defecto" apps/productos/models.py apps/productos/serializers.py apps/productos/panel_forms.py apps/panel/demo_historia.py apps/panel/management/commands/cargar_demo.py`
+  - PASA (exit 0, nuevo: —) `T1 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py makemigrations --check --dry-run`
+  - PASA (exit 0, nuevo: —) `T1 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.productos apps.panel --keepdb`
+  - PASA (exit 0, nuevo: —) `T1 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 550 --subtarea T1`
+  - PASA (exit 0, nuevo: —) `T2 [cmd] git log --oneline plan/coordinacion-operarios | grep -q "T1: integra coordinacion-operarios-T1"`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 96.1 s
+- Veredicto: PASA
+
+## 2026-11-20 11:43 — tarea T3 de 2026-11-20-coordinacion-operarios.md
+
+- HEAD verificado: 59a152e
+- Contrato: modificado y aceptado (92a9e82, decisión del usuario)
+- Criterios:
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_coordinacion.RevisionesDeHoyTests.test_solo_hoy_y_que_cuentan_como_servicio --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_coordinacion.RevisionesDeHoyTests.test_no_cruza_empresas --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_coordinacion.RevisionesDeHoyTests.test_una_consulta --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_coordinacion.AsignadosAOtrosTests.test_pendiente_o_abierta_de_otro_empleado --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_coordinacion.AsignadosAOtrosTests.test_excluye_realizadas_canceladas_y_propias --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_dosis_registro.DosisRegistroTests.test_sin_dosis_variable_y_sin_dosis_guarda_habitual --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_dosis_registro.DosisRegistroTests.test_sin_dosis_variable_ignora_dosis_enviada --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_dosis_registro.DosisRegistroTests.test_con_dosis_variable_guarda_la_enviada --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_dosis_registro.DosisRegistroTests.test_con_dosis_variable_sin_dosis_guarda_habitual --keepdb`
+  - PASA (exit 0, nuevo: —) `T3 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py makemigrations --check --dry-run`
+  - PASA (exit 0, nuevo: —) `T3 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas --keepdb`
+  - PASA (exit 0, nuevo: —) `T3 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 800 --subtarea T3`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 38.4 s
+- Veredicto: PASA
+
+## 2026-11-20 11:46 — tarea T10,T4 de 2026-11-20-coordinacion-operarios.md
+
+- HEAD verificado: 834d4a4
+- Contrato: modificado y aceptado (92a9e82, decisión del usuario)
+- Criterios:
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.HorasInconsistentesTests.test_reporte_un_minuto_antes_de_abierta_201_con_incidencia --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.HorasInconsistentesTests.test_cierre_un_minuto_antes_de_abierta_200_con_incidencia --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.HorasInconsistentesTests.test_no_cambia_proximo_vencimiento_ni_stock --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.SinUbicacionTests.test_servicio_guarda_revision_sin_coordenadas_con_incidencia --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.SinUbicacionTests.test_sin_coordenadas_no_fija_ubicacion_del_sitio --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.DuplicadaTests.test_segunda_del_dia_por_otro_marca_incidencia --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.DuplicadaTests.test_visita_de_administrador_no_marca --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.DuplicadaTests.test_revision_de_ayer_no_marca --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.DuplicadaTests.test_sin_conexion_compara_con_el_dia_de_realizada_en --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.AperturaSinEscaneoTests.test_abre_pendiente_propio_con_incidencia --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.AperturaSinEscaneoTests.test_con_otra_abierta_en_el_sitio_devuelve_esa --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.AperturaSinEscaneoTests.test_rechaza_programada_futura_y_sitio_inactivo --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.AperturaSinEscaneoTests.test_ajena_o_de_otra_empresa_no_existe --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.AperturaSinEscaneoTests.test_vuelta_a_pendiente_baja_la_incidencia --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.ConteoIncidenciasTests.test_cuatro_incidencias_cuentan_y_marcar_revisada_las_saca --keepdb`
+  - PASA (exit 0, nuevo: —) `T10 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 300 --subtarea T10`
+  - PASA (exit 0, nuevo: —) `T4 [cmd] git log --oneline plan/coordinacion-operarios | grep -q "T3: integra coordinacion-operarios-T3"`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 34.8 s
+- Veredicto: PASA
+
+## 2026-11-20 11:56 — tarea T6 de 2026-11-20-coordinacion-operarios.md
+
+- HEAD verificado: b6128be
+- Contrato: modificado y aceptado (92a9e82, decisión del usuario)
+- Criterios:
+  - PASA (exit 0, nuevo: sí) `T6 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_coordinacion.NuevoTurnoAsignadoTests.test_punto_de_turno_pendiente_de_otro_destildado_con_nombre --keepdb`
+  - PASA (exit 0, nuevo: sí) `T6 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_coordinacion.NuevoTurnoAsignadoTests.test_turno_se_crea_incluyendo_punto_asignado --keepdb`
+  - PASA (exit 0, nuevo: sí) `T6 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_coordinacion.FichaTurnoIncidenciasTests.test_revision_sin_coordenadas_senalada --keepdb`
+  - PASA (exit 0, nuevo: sí) `T6 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_coordinacion.FichaTurnoIncidenciasTests.test_horas_apertura_y_duplicada_senaladas --keepdb`
+  - PASA (exit 0, nuevo: sí) `T6 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_coordinacion.FichaTurnoIncidenciasTests.test_dosis_vacia_no_muestra_none --keepdb`
+  - PASA (exit 0, nuevo: sí) `T6 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_coordinacion.CargarVisitaDosisTests.test_lote_precargado_y_dosis_solo_en_variable --keepdb`
+  - PASA (exit 0, nuevo: —) `T6 [grep-1] grep -n "data-asignado" apps/visitas/static/visitas/nuevo_turno.js`
+  - PASA (exit 0, nuevo: —) `T6 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas --keepdb`
+  - PASA (exit 0, nuevo: —) `T6 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 500 --subtarea T6`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 31.5 s
+- Veredicto: PASA
+
+## 2026-11-20 12:02 — tarea T5,T7 de 2026-11-20-coordinacion-operarios.md
+
+- HEAD verificado: e06c285
+- Contrato: modificado y aceptado (b7dffee, decisión del usuario)
+- Criterios:
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_resolver_revisado_hoy.RevisadoHoyTests.test_revisado_hoy_por_otro_trae_nombre_y_propia_false --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_resolver_revisado_hoy.RevisadoHoyTests.test_revisado_ayer_es_null --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_resolver_revisado_hoy.RevisadoHoyTests.test_revisado_hoy_por_el_mismo_usuario_propia_true --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_resolver_revisado_hoy.RevisadoHoyTests.test_visita_de_administrador_no_cuenta --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_resolver_revisado_hoy.RevisadoHoyTests.test_datos_sin_conexion_sin_nombres_ni_horas --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_datos_sin_conexion_limite.LimiteDatosSinConexionTests.test_pedido_31_da_429_con_retry_after --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_datos_sin_conexion_limite.LimiteDatosSinConexionTests.test_304_cuenta_para_el_limite --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_datos_sin_conexion_limite.LimiteDatosSinConexionTests.test_cupo_es_por_usuario --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_panel_ficha_coordinacion.FichaSitioCoordinacionTests.test_turno_con_revision_duplicada_queda_senalado --keepdb`
+  - PASA (exit 0, nuevo: —) `T5 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios --keepdb`
+  - PASA (exit 0, nuevo: —) `T5 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 350 --subtarea T5`
+  - PASA (exit 0, nuevo: —) `T7 [cmd] git log --oneline plan/coordinacion-operarios | grep -q "T5: integra coordinacion-operarios-T5"`
+  - PASA (exit 0, nuevo: —) `T7 [cmd] git log --oneline plan/coordinacion-operarios | grep -q "T6: integra coordinacion-operarios-T6"`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 39.7 s
+- Veredicto: PASA
+
+## 2026-11-20 12:21 — tarea T8 de 2026-11-20-coordinacion-operarios.md
+
+- HEAD verificado: 6cf68a7
+- Contrato: modificado y aceptado (bdf0cf5, decisión del usuario)
+- Criterios:
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.RevisionApiTests.test_segunda_del_dia_por_otro_201_duplicada_hoy_true --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.RevisionApiTests.test_visita_de_administrador_duplicada_hoy_false --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.RevisionApiTests.test_sin_coordenadas_201_con_incidencia --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.RevisionApiTests.test_sin_dosis_variable_sin_dosis_201_guarda_habitual --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.RevisionApiTests.test_sin_lote_400_en_productos_aplicados_i_lote --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.AbrirSinEscaneoApiTests.test_turno_pendiente_propio_se_abre_con_incidencia --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.AbrirSinEscaneoApiTests.test_turno_ajeno_404 --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.AbrirSinEscaneoApiTests.test_turno_de_otra_empresa_404 --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.AbrirSinEscaneoApiTests.test_turno_no_pendiente_409 --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.AbrirSinEscaneoApiTests.test_revision_sin_qr_codigo_sigue_400 --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.RevisadoPorOtroTests.test_item_revisado_hoy_por_otro_trae_revisado_por_otro --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.RevisadoPorOtroTests.test_revision_propia_o_de_ayer_es_null --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.RevisadoPorOtroTests.test_consultas_iguales_con_5_y_50_items --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.RevisadoPorOtroTests.test_detalle_trae_revisado_por_otro --keepdb`
+  - PASA (exit 0, nuevo: —) `T8 [grep-1] grep -n "revisado_hoy_por" docs/contrato-api.md`
+  - PASA (exit 0, nuevo: —) `T8 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas apps.api --keepdb`
+  - PASA (exit 0, nuevo: —) `T8 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 650 --subtarea T8`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 48.3 s
+- Veredicto: PASA
+
+## 2026-11-20 12:21 — tarea T11,T9 de 2026-11-20-coordinacion-operarios.md
+
+- HEAD verificado: 40c3427
+- Contrato: modificado y aceptado (bdf0cf5, decisión del usuario)
+- Criterios:
+  - PASA (exit 0, nuevo: —) `T11 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py spectacular --validate --file "$TEMP/openapi-coordinacion.yaml" && diff -q --strip-trailing-cr "$TEMP/openapi-coordinacion.yaml" docs/api/openapi-v1.yaml`
+  - PASA (exit 0, nuevo: —) `T11 [grep-1] grep -n "dosis_variable" docs/01-modelo-y-arquitectura.md`
+  - PASA (exit 1, nuevo: —) `T11 [grep-0] grep -n "unidad_dosis_por_defecto" docs/contrato-api.md docs/api/openapi-v1.yaml docs/01-modelo-y-arquitectura.md`
+  - PASA (exit 0, nuevo: —) `T11 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 350 --subtarea T11`
+  - PASA (exit 0, nuevo: —) `T9 [cmd] git log --oneline plan/coordinacion-operarios | grep -q "T8: integra coordinacion-operarios-T8"`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 2.1 s
+- Veredicto: PASA
+
+## 2026-11-20 12:29 — todo 2026-11-20-coordinacion-operarios.md
+
+- HEAD verificado: 94c279e
+- Contrato: modificado y aceptado (bdf0cf5, decisión del usuario)
+- Criterios:
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.productos.tests.test_dosis_habitual.DosisHabitualTests.test_dosis_sin_unidad_no_valida --keepdb`
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.productos.tests.test_dosis_habitual.DosisHabitualTests.test_sin_dosis_habitual_ni_variable_no_valida --keepdb`
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.productos.tests.test_dosis_habitual.DosisHabitualTests.test_panel_edita_dosis_habitual_y_variable --keepdb`
+  - PASA (exit 0, nuevo: —) `T1 [grep-1] grep -n "update.dosis_variable=True" apps/productos/migrations/0002_dosis_habitual.py`
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.productos.tests.test_dosis_habitual.CatalogoDosisTests.test_catalogo_trae_dosis_y_ultimo_lote_null --keepdb`
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.productos.tests.test_dosis_habitual.CatalogoDosisTests.test_ultimo_lote_L2291_y_etag_cambia --keepdb`
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.productos.tests.test_dosis_habitual.CatalogoDosisTests.test_ultimo_lote_no_cruza_empresas --keepdb`
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.productos.tests.test_dosis_habitual.CatalogoDosisTests.test_consultas_iguales_con_5_y_50_productos --keepdb`
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.panel.tests.test_cargar_demo.CargarDemoCoordinacionTests.test_dos_operarios_comparten_un_punto --keepdb`
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.panel.tests.test_cargar_demo.CargarDemoCoordinacionTests.test_productos_con_y_sin_dosis_y_uno_variable --keepdb`
+  - PASA (exit 1, nuevo: —) `T1 [grep-0] grep -n "unidad_dosis_por_defecto" apps/productos/models.py apps/productos/serializers.py apps/productos/panel_forms.py apps/panel/demo_historia.py apps/panel/management/commands/cargar_demo.py`
+  - PASA (exit 0, nuevo: —) `T1 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py makemigrations --check --dry-run`
+  - PASA (exit 0, nuevo: —) `T1 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.productos apps.panel --keepdb`
+  - PASA (exit 0, nuevo: —) `T1 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 550 --subtarea T1`
+  - PASA (exit 0, nuevo: —) `T2 [cmd] git log --oneline plan/coordinacion-operarios | grep -q "T1: integra coordinacion-operarios-T1"`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_coordinacion.RevisionesDeHoyTests.test_solo_hoy_y_que_cuentan_como_servicio --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_coordinacion.RevisionesDeHoyTests.test_no_cruza_empresas --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_coordinacion.RevisionesDeHoyTests.test_una_consulta --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_coordinacion.AsignadosAOtrosTests.test_pendiente_o_abierta_de_otro_empleado --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_coordinacion.AsignadosAOtrosTests.test_excluye_realizadas_canceladas_y_propias --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_dosis_registro.DosisRegistroTests.test_sin_dosis_variable_y_sin_dosis_guarda_habitual --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_dosis_registro.DosisRegistroTests.test_sin_dosis_variable_ignora_dosis_enviada --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_dosis_registro.DosisRegistroTests.test_con_dosis_variable_guarda_la_enviada --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_dosis_registro.DosisRegistroTests.test_con_dosis_variable_sin_dosis_guarda_habitual --keepdb`
+  - PASA (exit 0, nuevo: —) `T3 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py makemigrations --check --dry-run`
+  - PASA (exit 0, nuevo: —) `T3 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas --keepdb`
+  - PASA (exit 0, nuevo: —) `T3 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 800 --subtarea T3`
+  - PASA (exit 0, nuevo: —) `T4 [cmd] git log --oneline plan/coordinacion-operarios | grep -q "T3: integra coordinacion-operarios-T3"`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_resolver_revisado_hoy.RevisadoHoyTests.test_revisado_hoy_por_otro_trae_nombre_y_propia_false --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_resolver_revisado_hoy.RevisadoHoyTests.test_revisado_ayer_es_null --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_resolver_revisado_hoy.RevisadoHoyTests.test_revisado_hoy_por_el_mismo_usuario_propia_true --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_resolver_revisado_hoy.RevisadoHoyTests.test_visita_de_administrador_no_cuenta --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_resolver_revisado_hoy.RevisadoHoyTests.test_datos_sin_conexion_sin_nombres_ni_horas --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_datos_sin_conexion_limite.LimiteDatosSinConexionTests.test_pedido_31_da_429_con_retry_after --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_datos_sin_conexion_limite.LimiteDatosSinConexionTests.test_304_cuenta_para_el_limite --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_datos_sin_conexion_limite.LimiteDatosSinConexionTests.test_cupo_es_por_usuario --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_panel_ficha_coordinacion.FichaSitioCoordinacionTests.test_turno_con_revision_duplicada_queda_senalado --keepdb`
+  - PASA (exit 0, nuevo: —) `T5 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios --keepdb`
+  - PASA (exit 0, nuevo: —) `T5 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 350 --subtarea T5`
+  - PASA (exit 0, nuevo: sí) `T6 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_coordinacion.NuevoTurnoAsignadoTests.test_punto_de_turno_pendiente_de_otro_destildado_con_nombre --keepdb`
+  - PASA (exit 0, nuevo: sí) `T6 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_coordinacion.NuevoTurnoAsignadoTests.test_turno_se_crea_incluyendo_punto_asignado --keepdb`
+  - PASA (exit 0, nuevo: sí) `T6 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_coordinacion.FichaTurnoIncidenciasTests.test_revision_sin_coordenadas_senalada --keepdb`
+  - PASA (exit 0, nuevo: sí) `T6 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_coordinacion.FichaTurnoIncidenciasTests.test_horas_apertura_y_duplicada_senaladas --keepdb`
+  - PASA (exit 0, nuevo: sí) `T6 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_coordinacion.FichaTurnoIncidenciasTests.test_dosis_vacia_no_muestra_none --keepdb`
+  - PASA (exit 0, nuevo: sí) `T6 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_coordinacion.CargarVisitaDosisTests.test_lote_precargado_y_dosis_solo_en_variable --keepdb`
+  - PASA (exit 0, nuevo: —) `T6 [grep-1] grep -n "data-asignado" apps/visitas/static/visitas/nuevo_turno.js`
+  - PASA (exit 0, nuevo: —) `T6 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas --keepdb`
+  - PASA (exit 0, nuevo: —) `T6 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 500 --subtarea T6`
+  - PASA (exit 0, nuevo: —) `T7 [cmd] git log --oneline plan/coordinacion-operarios | grep -q "T5: integra coordinacion-operarios-T5"`
+  - PASA (exit 0, nuevo: —) `T7 [cmd] git log --oneline plan/coordinacion-operarios | grep -q "T6: integra coordinacion-operarios-T6"`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.RevisionApiTests.test_segunda_del_dia_por_otro_201_duplicada_hoy_true --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.RevisionApiTests.test_visita_de_administrador_duplicada_hoy_false --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.RevisionApiTests.test_sin_coordenadas_201_con_incidencia --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.RevisionApiTests.test_sin_dosis_variable_sin_dosis_201_guarda_habitual --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.RevisionApiTests.test_sin_lote_400_en_productos_aplicados_i_lote --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.AbrirSinEscaneoApiTests.test_turno_pendiente_propio_se_abre_con_incidencia --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.AbrirSinEscaneoApiTests.test_turno_ajeno_404 --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.AbrirSinEscaneoApiTests.test_turno_de_otra_empresa_404 --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.AbrirSinEscaneoApiTests.test_turno_no_pendiente_409 --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.AbrirSinEscaneoApiTests.test_revision_sin_qr_codigo_sigue_400 --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.RevisadoPorOtroTests.test_item_revisado_hoy_por_otro_trae_revisado_por_otro --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.RevisadoPorOtroTests.test_revision_propia_o_de_ayer_es_null --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.RevisadoPorOtroTests.test_consultas_iguales_con_5_y_50_items --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.RevisadoPorOtroTests.test_detalle_trae_revisado_por_otro --keepdb`
+  - PASA (exit 0, nuevo: —) `T8 [grep-1] grep -n "revisado_hoy_por" docs/contrato-api.md`
+  - PASA (exit 0, nuevo: —) `T8 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas apps.api --keepdb`
+  - PASA (exit 0, nuevo: —) `T8 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 650 --subtarea T8`
+  - PASA (exit 0, nuevo: —) `T9 [cmd] git log --oneline plan/coordinacion-operarios | grep -q "T8: integra coordinacion-operarios-T8"`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.HorasInconsistentesTests.test_reporte_un_minuto_antes_de_abierta_201_con_incidencia --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.HorasInconsistentesTests.test_cierre_un_minuto_antes_de_abierta_200_con_incidencia --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.HorasInconsistentesTests.test_no_cambia_proximo_vencimiento_ni_stock --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.SinUbicacionTests.test_servicio_guarda_revision_sin_coordenadas_con_incidencia --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.SinUbicacionTests.test_sin_coordenadas_no_fija_ubicacion_del_sitio --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.DuplicadaTests.test_segunda_del_dia_por_otro_marca_incidencia --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.DuplicadaTests.test_visita_de_administrador_no_marca --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.DuplicadaTests.test_revision_de_ayer_no_marca --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.DuplicadaTests.test_sin_conexion_compara_con_el_dia_de_realizada_en --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.AperturaSinEscaneoTests.test_abre_pendiente_propio_con_incidencia --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.AperturaSinEscaneoTests.test_con_otra_abierta_en_el_sitio_devuelve_esa --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.AperturaSinEscaneoTests.test_rechaza_programada_futura_y_sitio_inactivo --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.AperturaSinEscaneoTests.test_ajena_o_de_otra_empresa_no_existe --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.AperturaSinEscaneoTests.test_vuelta_a_pendiente_baja_la_incidencia --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.ConteoIncidenciasTests.test_cuatro_incidencias_cuentan_y_marcar_revisada_las_saca --keepdb`
+  - PASA (exit 0, nuevo: —) `T10 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 300 --subtarea T10`
+  - PASA (exit 0, nuevo: —) `T11 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py spectacular --validate --file "$TEMP/openapi-coordinacion.yaml" && diff -q --strip-trailing-cr "$TEMP/openapi-coordinacion.yaml" docs/api/openapi-v1.yaml`
+  - PASA (exit 0, nuevo: —) `T11 [grep-1] grep -n "dosis_variable" docs/01-modelo-y-arquitectura.md`
+  - PASA (exit 1, nuevo: —) `T11 [grep-0] grep -n "unidad_dosis_por_defecto" docs/contrato-api.md docs/api/openapi-v1.yaml docs/01-modelo-y-arquitectura.md`
+  - PASA (exit 0, nuevo: —) `T11 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 350 --subtarea T11`
+  - PASA (exit 0, nuevo: —) `cierre global [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py check`
+  - PASA (exit 0, nuevo: —) `cierre global [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py makemigrations --check --dry-run`
+  - PASA (exit 0, nuevo: —) `cierre global [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test --keepdb`
+  - PASA (exit 0, nuevo: —) `cierre global [cmd] ./venv/Scripts/python.exe -m ruff check .`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; modificados y sin seguimiento; se excluyen docs/planes, estado, bitácora, decisiones y metodo)`
+- Omitido (no toca .claude/, docs/plantilla-plan.md): `py -3 -m pytest .claude/hooks -q`
+- duración: 424.1 s
+- Veredicto: PASA
+
+## 2026-11-20 12:38 — todo 2026-11-20-coordinacion-operarios.md
+
+- HEAD verificado: 511c902
+- Contrato: modificado y aceptado (bdf0cf5, decisión del usuario)
+- Criterios:
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.productos.tests.test_dosis_habitual.DosisHabitualTests.test_dosis_sin_unidad_no_valida --keepdb`
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.productos.tests.test_dosis_habitual.DosisHabitualTests.test_sin_dosis_habitual_ni_variable_no_valida --keepdb`
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.productos.tests.test_dosis_habitual.DosisHabitualTests.test_panel_edita_dosis_habitual_y_variable --keepdb`
+  - PASA (exit 0, nuevo: —) `T1 [grep-1] grep -n "update.dosis_variable=True" apps/productos/migrations/0002_dosis_habitual.py`
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.productos.tests.test_dosis_habitual.CatalogoDosisTests.test_catalogo_trae_dosis_y_ultimo_lote_null --keepdb`
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.productos.tests.test_dosis_habitual.CatalogoDosisTests.test_ultimo_lote_L2291_y_etag_cambia --keepdb`
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.productos.tests.test_dosis_habitual.CatalogoDosisTests.test_ultimo_lote_no_cruza_empresas --keepdb`
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.productos.tests.test_dosis_habitual.CatalogoDosisTests.test_consultas_iguales_con_5_y_50_productos --keepdb`
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.panel.tests.test_cargar_demo.CargarDemoCoordinacionTests.test_dos_operarios_comparten_un_punto --keepdb`
+  - PASA (exit 0, nuevo: sí) `T1 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.panel.tests.test_cargar_demo.CargarDemoCoordinacionTests.test_productos_con_y_sin_dosis_y_uno_variable --keepdb`
+  - PASA (exit 1, nuevo: —) `T1 [grep-0] grep -n "unidad_dosis_por_defecto" apps/productos/models.py apps/productos/serializers.py apps/productos/panel_forms.py apps/panel/demo_historia.py apps/panel/management/commands/cargar_demo.py`
+  - PASA (exit 0, nuevo: —) `T1 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py makemigrations --check --dry-run`
+  - PASA (exit 0, nuevo: —) `T1 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.productos apps.panel --keepdb`
+  - PASA (exit 0, nuevo: —) `T1 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 550 --subtarea T1`
+  - PASA (exit 0, nuevo: —) `T2 [cmd] git log --oneline plan/coordinacion-operarios | grep -q "T1: integra coordinacion-operarios-T1"`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_coordinacion.RevisionesDeHoyTests.test_solo_hoy_y_que_cuentan_como_servicio --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_coordinacion.RevisionesDeHoyTests.test_no_cruza_empresas --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_coordinacion.RevisionesDeHoyTests.test_una_consulta --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_coordinacion.AsignadosAOtrosTests.test_pendiente_o_abierta_de_otro_empleado --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_coordinacion.AsignadosAOtrosTests.test_excluye_realizadas_canceladas_y_propias --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_dosis_registro.DosisRegistroTests.test_sin_dosis_variable_y_sin_dosis_guarda_habitual --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_dosis_registro.DosisRegistroTests.test_sin_dosis_variable_ignora_dosis_enviada --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_dosis_registro.DosisRegistroTests.test_con_dosis_variable_guarda_la_enviada --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_dosis_registro.DosisRegistroTests.test_con_dosis_variable_sin_dosis_guarda_habitual --keepdb`
+  - PASA (exit 0, nuevo: —) `T3 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py makemigrations --check --dry-run`
+  - PASA (exit 0, nuevo: —) `T3 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas --keepdb`
+  - PASA (exit 0, nuevo: —) `T3 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 800 --subtarea T3`
+  - PASA (exit 0, nuevo: —) `T4 [cmd] git log --oneline plan/coordinacion-operarios | grep -q "T3: integra coordinacion-operarios-T3"`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_resolver_revisado_hoy.RevisadoHoyTests.test_revisado_hoy_por_otro_trae_nombre_y_propia_false --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_resolver_revisado_hoy.RevisadoHoyTests.test_revisado_ayer_es_null --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_resolver_revisado_hoy.RevisadoHoyTests.test_revisado_hoy_por_el_mismo_usuario_propia_true --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_resolver_revisado_hoy.RevisadoHoyTests.test_visita_de_administrador_no_cuenta --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_resolver_revisado_hoy.RevisadoHoyTests.test_datos_sin_conexion_sin_nombres_ni_horas --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_datos_sin_conexion_limite.LimiteDatosSinConexionTests.test_pedido_31_da_429_con_retry_after --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_datos_sin_conexion_limite.LimiteDatosSinConexionTests.test_304_cuenta_para_el_limite --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_datos_sin_conexion_limite.LimiteDatosSinConexionTests.test_cupo_es_por_usuario --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_panel_ficha_coordinacion.FichaSitioCoordinacionTests.test_turno_con_revision_duplicada_queda_senalado --keepdb`
+  - PASA (exit 0, nuevo: —) `T5 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios --keepdb`
+  - PASA (exit 0, nuevo: —) `T5 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 350 --subtarea T5`
+  - PASA (exit 0, nuevo: sí) `T6 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_coordinacion.NuevoTurnoAsignadoTests.test_punto_de_turno_pendiente_de_otro_destildado_con_nombre --keepdb`
+  - PASA (exit 0, nuevo: sí) `T6 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_coordinacion.NuevoTurnoAsignadoTests.test_turno_se_crea_incluyendo_punto_asignado --keepdb`
+  - PASA (exit 0, nuevo: sí) `T6 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_coordinacion.FichaTurnoIncidenciasTests.test_revision_sin_coordenadas_senalada --keepdb`
+  - PASA (exit 0, nuevo: sí) `T6 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_coordinacion.FichaTurnoIncidenciasTests.test_horas_apertura_y_duplicada_senaladas --keepdb`
+  - PASA (exit 0, nuevo: sí) `T6 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_coordinacion.FichaTurnoIncidenciasTests.test_dosis_vacia_no_muestra_none --keepdb`
+  - PASA (exit 0, nuevo: sí) `T6 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_coordinacion.CargarVisitaDosisTests.test_lote_precargado_y_dosis_solo_en_variable --keepdb`
+  - PASA (exit 0, nuevo: —) `T6 [grep-1] grep -n "data-asignado" apps/visitas/static/visitas/nuevo_turno.js`
+  - PASA (exit 0, nuevo: —) `T6 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas --keepdb`
+  - PASA (exit 0, nuevo: —) `T6 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 500 --subtarea T6`
+  - PASA (exit 0, nuevo: —) `T7 [cmd] git log --oneline plan/coordinacion-operarios | grep -q "T5: integra coordinacion-operarios-T5"`
+  - PASA (exit 0, nuevo: —) `T7 [cmd] git log --oneline plan/coordinacion-operarios | grep -q "T6: integra coordinacion-operarios-T6"`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.RevisionApiTests.test_segunda_del_dia_por_otro_201_duplicada_hoy_true --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.RevisionApiTests.test_visita_de_administrador_duplicada_hoy_false --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.RevisionApiTests.test_sin_coordenadas_201_con_incidencia --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.RevisionApiTests.test_sin_dosis_variable_sin_dosis_201_guarda_habitual --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.RevisionApiTests.test_sin_lote_400_en_productos_aplicados_i_lote --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.AbrirSinEscaneoApiTests.test_turno_pendiente_propio_se_abre_con_incidencia --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.AbrirSinEscaneoApiTests.test_turno_ajeno_404 --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.AbrirSinEscaneoApiTests.test_turno_de_otra_empresa_404 --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.AbrirSinEscaneoApiTests.test_turno_no_pendiente_409 --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.AbrirSinEscaneoApiTests.test_revision_sin_qr_codigo_sigue_400 --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.RevisadoPorOtroTests.test_item_revisado_hoy_por_otro_trae_revisado_por_otro --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.RevisadoPorOtroTests.test_revision_propia_o_de_ayer_es_null --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.RevisadoPorOtroTests.test_consultas_iguales_con_5_y_50_items --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.RevisadoPorOtroTests.test_detalle_trae_revisado_por_otro --keepdb`
+  - PASA (exit 0, nuevo: —) `T8 [grep-1] grep -n "revisado_hoy_por" docs/contrato-api.md`
+  - PASA (exit 0, nuevo: —) `T8 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas apps.api --keepdb`
+  - PASA (exit 0, nuevo: —) `T8 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 650 --subtarea T8`
+  - PASA (exit 0, nuevo: —) `T9 [cmd] git log --oneline plan/coordinacion-operarios | grep -q "T8: integra coordinacion-operarios-T8"`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.HorasInconsistentesTests.test_reporte_un_minuto_antes_de_abierta_201_con_incidencia --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.HorasInconsistentesTests.test_cierre_un_minuto_antes_de_abierta_200_con_incidencia --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.HorasInconsistentesTests.test_no_cambia_proximo_vencimiento_ni_stock --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.SinUbicacionTests.test_servicio_guarda_revision_sin_coordenadas_con_incidencia --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.SinUbicacionTests.test_sin_coordenadas_no_fija_ubicacion_del_sitio --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.DuplicadaTests.test_segunda_del_dia_por_otro_marca_incidencia --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.DuplicadaTests.test_visita_de_administrador_no_marca --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.DuplicadaTests.test_revision_de_ayer_no_marca --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.DuplicadaTests.test_sin_conexion_compara_con_el_dia_de_realizada_en --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.AperturaSinEscaneoTests.test_abre_pendiente_propio_con_incidencia --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.AperturaSinEscaneoTests.test_con_otra_abierta_en_el_sitio_devuelve_esa --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.AperturaSinEscaneoTests.test_rechaza_programada_futura_y_sitio_inactivo --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.AperturaSinEscaneoTests.test_ajena_o_de_otra_empresa_no_existe --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.AperturaSinEscaneoTests.test_vuelta_a_pendiente_baja_la_incidencia --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.ConteoIncidenciasTests.test_cuatro_incidencias_cuentan_y_marcar_revisada_las_saca --keepdb`
+  - PASA (exit 0, nuevo: —) `T10 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 300 --subtarea T10`
+  - PASA (exit 0, nuevo: —) `T11 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py spectacular --validate --file "$TEMP/openapi-coordinacion.yaml" && diff -q --strip-trailing-cr "$TEMP/openapi-coordinacion.yaml" docs/api/openapi-v1.yaml`
+  - PASA (exit 0, nuevo: —) `T11 [grep-1] grep -n "dosis_variable" docs/01-modelo-y-arquitectura.md`
+  - PASA (exit 1, nuevo: —) `T11 [grep-0] grep -n "unidad_dosis_por_defecto" docs/contrato-api.md docs/api/openapi-v1.yaml docs/01-modelo-y-arquitectura.md`
+  - PASA (exit 0, nuevo: —) `T11 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 350 --subtarea T11`
+  - PASA (exit 0, nuevo: —) `cierre global [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py check`
+  - PASA (exit 0, nuevo: —) `cierre global [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py makemigrations --check --dry-run`
+  - PASA (exit 0, nuevo: —) `cierre global [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test --keepdb`
+  - PASA (exit 0, nuevo: —) `cierre global [cmd] ./venv/Scripts/python.exe -m ruff check .`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; modificados y sin seguimiento; se excluyen docs/planes, estado, bitácora, decisiones y metodo)`
+- Omitido (no toca .claude/, docs/plantilla-plan.md): `py -3 -m pytest .claude/hooks -q`
+- duración: 423.8 s
+- Veredicto: PASA
+

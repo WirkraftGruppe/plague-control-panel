@@ -60,17 +60,23 @@ class CampoJSON(serializers.CharField):
         return valor
 
 
-class AbrirVisitaSerializer(serializers.Serializer):
-    """Entrada de `POST visitas/abrir/`: el QR escaneado en el sitio y, opcionales,
-    las coordenadas del teléfono para verificar la ubicación."""
+class AbrirTurnoSerializer(serializers.Serializer):
+    """Entrada de `POST visitas/<pk>/abrir/`: solo la hora de apertura. La ubicación no
+    se pide ni se guarda; los campos desconocidos se ignoran."""
 
-    qr_codigo = serializers.UUIDField()
     abierta_en = serializers.DateTimeField(
         required=False,
         allow_null=True,
         default=None,
         help_text="Hora en que el empleado abrió, si estaba sin conexión.",
     )
+
+
+class AbrirVisitaSerializer(AbrirTurnoSerializer):
+    """Entrada de `POST visitas/abrir/`: el QR escaneado en el sitio y, opcionales,
+    las coordenadas del teléfono para verificar la ubicación."""
+
+    qr_codigo = serializers.UUIDField()
     latitud = serializers.DecimalField(
         max_digits=9,
         decimal_places=6,
@@ -104,12 +110,15 @@ ESQUEMA_PRODUCTOS_APLICADOS = {
     "type": "array",
     "items": {
         "type": "object",
-        "required": ["producto", "dosis", "unidad_dosis", "cantidad", "unidad"],
+        "required": ["producto", "lote", "cantidad", "unidad"],
         "properties": {
             "producto": {"type": "integer", "description": "Id del catálogo."},
             "lote": {"type": "string"},
-            "dosis": {"type": "number"},
-            "unidad_dosis": {"type": "string"},
+            "dosis": {
+                "type": "number",
+                "description": "Opcional: solo vale con un producto `dosis_variable`.",
+            },
+            "unidad_dosis": {"type": "string", "description": "Opcional."},
             "cantidad": {"type": "number"},
             "unidad": {"type": "string", "description": "Unidad de la cantidad."},
         },
@@ -141,12 +150,19 @@ class CrearRevisionSerializer(serializers.Serializer):
         decimal_places=6,
         min_value=Decimal("-90"),
         max_value=Decimal("90"),
+        required=False,
+        allow_null=True,
+        default=None,
+        help_text="Opcional: sin coordenadas la revisión se guarda con una incidencia.",
     )
     longitud = serializers.DecimalField(
         max_digits=9,
         decimal_places=6,
         min_value=Decimal("-180"),
         max_value=Decimal("180"),
+        required=False,
+        allow_null=True,
+        default=None,
     )
     precision_m = serializers.DecimalField(
         max_digits=7,
@@ -289,14 +305,39 @@ class PuntoItemSerializer(serializers.Serializer):
         )
 
 
+class OperarioNombreSerializer(serializers.Serializer):
+    nombre = serializers.CharField()
+
+
+class RevisadoPorOtroSerializer(serializers.Serializer):
+    """Última revisión de hoy del punto hecha por otro empleado de la empresa."""
+
+    operario = OperarioNombreSerializer()
+    realizada_en = serializers.DateTimeField()
+
+
 class ItemTurnoSerializer(serializers.Serializer):
-    """Punto del turno con su servicio; `revisado` si ya tiene una revisión y
-    `no_revisado` con el motivo si se lo reportó como no revisado."""
+    """Punto del turno con su servicio; `revisado` si ya tiene una revisión,
+    `no_revisado` con el motivo si se lo reportó como no revisado y
+    `revisado_por_otro` si otro empleado lo revisó hoy."""
 
     punto = PuntoItemSerializer()
     servicio = ServicioResumenSerializer()
     revisado = serializers.BooleanField()
     no_revisado = serializers.CharField(allow_null=True)
+    revisado_por_otro = serializers.SerializerMethodField()
+
+    @extend_schema_field(RevisadoPorOtroSerializer(allow_null=True))
+    def get_revisado_por_otro(self, item):
+        """Sale del contexto `revisado_por_otro` (`{punto_id: (nombre, hora)}`)."""
+        revisado = self.context.get("revisado_por_otro", {}).get(item.punto_id)
+        if revisado is None:
+            return None
+        nombre, realizada_en = revisado
+        return {
+            "operario": {"nombre": nombre},
+            "realizada_en": serializers.DateTimeField().to_representation(realizada_en),
+        }
 
 
 class VisitaActivaSerializer(serializers.ModelSerializer):
@@ -318,11 +359,23 @@ class VisitaActivaSerializer(serializers.ModelSerializer):
         for item in items:
             item.revisado = item.punto_id in revisados
             item.no_revisado = reportados.get(item.punto_id)
-        contexto = {"hoy": self.context.setdefault("hoy", timezone.localdate())}
+        contexto = {
+            "hoy": self.context.setdefault("hoy", timezone.localdate()),
+            "revisado_por_otro": self.context.get("revisado_por_otro", {}),
+        }
         return ItemTurnoSerializer(items, many=True, context=contexto).data
 
 
 class ProductoAplicadoSerializer(serializers.ModelSerializer):
+    """`dosis` y `unidad_dosis` son `null` si el producto no tiene dosis."""
+
+    unidad_dosis = serializers.CharField(read_only=True, allow_null=True)
+
+    def to_representation(self, instance):
+        datos = super().to_representation(instance)
+        datos["unidad_dosis"] = datos["unidad_dosis"] or None
+        return datos
+
     class Meta:
         model = ProductoAplicado
         fields = [
@@ -373,6 +426,18 @@ class RevisionSerializer(serializers.ModelSerializer):
         return [
             reverse("api:visitas:foto", args=[f.codigo]) for f in revision.fotos.all()
         ]
+
+
+class RevisionCreadaSerializer(RevisionSerializer):
+    """Respuesta 201 de `POST revisiones/`: suma `duplicada_hoy`."""
+
+    duplicada_hoy = serializers.BooleanField(
+        source="incidencia_duplicada", read_only=True
+    )
+
+    class Meta(RevisionSerializer.Meta):
+        fields = [*RevisionSerializer.Meta.fields, "duplicada_hoy"]
+        read_only_fields = fields
 
 
 class NoRevisadoSerializer(serializers.ModelSerializer):

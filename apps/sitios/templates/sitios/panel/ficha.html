@@ -69,6 +69,13 @@
 {% elif pestana == "datos" %}
   {% include "sitios/panel/_pestana_datos.html" %}
 {% else %}
+  {% if turnos_duplicados %}
+  <ul class="texto-secundario" id="turnos-duplicados">
+    {% for turno in turnos_duplicados %}
+    <li><a href="{% url 'panel:visitas:ficha' turno.pk %}">Turno {{ turno.pk }}</a>: Punto revisado por dos operarios el mismo día</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
   {% include "sitios/panel/_pestana_turnos.html" %}
 {% endif %}
 

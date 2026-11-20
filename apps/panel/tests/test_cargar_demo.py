@@ -204,8 +204,10 @@ class CargarDemoClienteTests(TestCase):
             .filter(incidencia_ubicacion=True)
             .exists()
         )
-        for rol in (User.Rol.ADMINISTRADOR, User.Rol.EMPLEADO):
-            self.assertEqual(User.objects.filter(empresa=demo, rol=rol).count(), 1)
+        # La primera empresa tiene un administrador y dos operarios.
+        for rol, cantidad in ((User.Rol.ADMINISTRADOR, 1), (User.Rol.EMPLEADO, 2)):
+            usuarios = User.objects.filter(empresa=demo, rol=rol)
+            self.assertEqual(usuarios.count(), cantidad)
         self.assertEqual(User.objects.filter(rol=User.Rol.PLATAFORMA).count(), 1)
         for revision in Revision.objects.de_empresa(_empresa_demo()).all():
             self.assertGreaterEqual(revision.fotos.count(), 1)
@@ -428,7 +430,9 @@ class CargarDemoTurnosTests(TestCase):
         for visita in Visita.objects.de_empresa(_empresa_demo()).all():
             self.assertTrue(visita.items.exists(), visita)
         demo = Empresa.objects.get(nombre=EMPRESA_DEMO)
-        pendiente = Visita.objects.de_empresa(demo).get(estado=Visita.Estado.PENDIENTE)
+        pendiente = Visita.objects.de_empresa(demo).get(
+            estado=Visita.Estado.PENDIENTE, empleado__username="demo-empleado"
+        )
         self.assertGreater(pendiente.programada_para, timezone.localdate())
         self.assertEqual(pendiente.asignada_por.username, "demo-admin")
         self.assertEqual(pendiente.items.count(), pendiente.sitio.puntos.count())
@@ -502,3 +506,39 @@ class DosEmpresasDemoTests(TestCase):
         admin = User.objects.get(username="demo-admin")
         # Se usa la empresa demo más antigua y el administrador sigue en ella.
         self.assertEqual(admin.empresa_id, self.empresa_a.pk)
+
+
+@override_settings(MEDIA_ROOT=MEDIA_DEMO, DEBUG=True)
+class CargarDemoCoordinacionTests(TestCase):
+    """Datos para coordinar operarios: segundo operario y dosis de los productos."""
+
+    @classmethod
+    def setUpTestData(cls):
+        call_command("cargar_demo", stdout=StringIO())
+
+    def test_dos_operarios_comparten_un_punto(self):
+        pendientes = Visita.objects.de_empresa(_empresa_demo()).filter(
+            estado=Visita.Estado.PENDIENTE
+        )
+        por_sitio = {}
+        for visita in pendientes:
+            por_sitio.setdefault(visita.sitio_id, []).append(visita)
+        (visitas,) = [v for v in por_sitio.values() if len(v) == 2]
+        primera, segunda = visitas
+        self.assertNotEqual(primera.empleado_id, segunda.empleado_id)
+        puntos = [
+            set(v.items.values_list("punto_id", flat=True)) for v in (primera, segunda)
+        ]
+        self.assertTrue(puntos[0] & puntos[1])
+        self.assertEqual(
+            {primera.empleado.username, segunda.empleado.username},
+            {"demo-empleado", "demo-empleado-2"},
+        )
+
+    def test_productos_con_y_sin_dosis_y_uno_variable(self):
+        productos = Producto.objects.de_empresa(_empresa_demo())
+        self.assertTrue(productos.filter(dosis_habitual__isnull=False).exists())
+        self.assertTrue(productos.filter(dosis_habitual__isnull=True).exists())
+        self.assertTrue(productos.filter(dosis_variable=True).exists())
+        for producto in productos:
+            producto.full_clean()

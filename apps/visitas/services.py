@@ -16,6 +16,7 @@ from apps.productos.models import Producto
 from apps.productos.services import registrar_consumo
 from apps.servicios.models import TipoServicio
 from apps.sitios.models import PuntoControl, Sitio
+from apps.visitas.coordinacion import revisiones_del_dia
 from apps.visitas.imagenes import procesar_imagen
 from apps.visitas.models import (
     Foto,
@@ -181,6 +182,21 @@ def _errores_de_cantidad(aplicado, producto):
     return errores
 
 
+def _dosis_del_producto(producto, item):
+    """Dosis y unidad que se guardan para un producto aplicado.
+
+    Sin `dosis_variable` manda la habitual del producto (o nada) y se ignora lo
+    enviado; con `dosis_variable` se guarda lo enviado o, si falta, la habitual.
+    """
+    habitual = (producto.dosis_habitual, producto.unidad_dosis_habitual or "")
+    if not producto.dosis_variable:
+        return habitual
+    enviada = item.get("dosis")
+    if enviada is None or enviada == "":
+        return habitual
+    return enviada, item.get("unidad_dosis") or ""
+
+
 def _armar_productos(productos_aplicados, empresa_id):
     """Valida cada producto aplicado; devuelve (instancias sin guardar, errores).
 
@@ -201,11 +217,12 @@ def _armar_productos(productos_aplicados, empresa_id):
         if producto is None:
             errores[posicion] = {"producto": ["No existe o está inactivo."]}
             continue
+        dosis, unidad_dosis = _dosis_del_producto(producto, item)
         aplicado = ProductoAplicado(
             producto=producto,
             lote=item.get("lote") or "",
-            dosis=item.get("dosis"),
-            unidad_dosis=item.get("unidad_dosis") or "",
+            dosis=dosis,
+            unidad_dosis=unidad_dosis,
             unidad=item.get("unidad") or "",
             cantidad=item.get("cantidad"),
         )
@@ -525,6 +542,70 @@ def abrir_visita(
         return visita, True
 
 
+class AperturaNoPermitida(ValidationError):
+    """El turno no se puede abrir sin escanear (no pendiente, futuro o inactivo)."""
+
+    def __init__(self):
+        super().__init__({"visita": "No se puede abrir este turno sin escanear el QR."})
+
+
+def abrir_turno_sin_escaneo(visita_pk, usuario, abierta_en=None):
+    """Abre un turno pendiente propio sin el QR y lo marca con la incidencia.
+
+    Levanta `Visita.DoesNotExist` si la visita no existe, es ajena o de otra empresa.
+    Bloquea en el orden Sitio -> Visita, como `abrir_visita`. Si el empleado ya tiene
+    una visita abierta en el sitio la devuelve sin cambios. Exige el turno pendiente,
+    sin programar o programado hasta el día de la apertura, con sitio y cliente
+    activos (`AperturaNoPermitida`). Guarda `min(abierta_en, ahora)`, validada con
+    `validar_hora_cliente`. No guarda ubicación. Devuelve la visita.
+    """
+    empresa_id = usuario.empresa_id
+    with transaction.atomic():
+        sitio_id = (
+            Visita.objects.de_empresa(empresa_id)
+            .filter(pk=visita_pk, empleado=usuario)
+            .values_list("sitio_id", flat=True)
+            .get()
+        )
+        Sitio.objects.de_empresa(empresa_id).select_for_update(of=("self",)).get(
+            pk=sitio_id
+        )
+        visita = (
+            Visita.objects.de_empresa(empresa_id)
+            .select_for_update()
+            .select_related("sitio__cliente")
+            .get(pk=visita_pk, empleado=usuario)
+        )
+        abierta = (
+            Visita.objects.de_empresa(empresa_id)
+            .select_for_update()
+            .filter(sitio_id=sitio_id, empleado=usuario, estado=Visita.Estado.ABIERTA)
+            .order_by("pk")
+            .first()
+        )
+        if abierta is not None:
+            return abierta
+        if abierta_en is not None:
+            validar_hora_cliente(abierta_en, "abierta_en")
+        ahora = timezone.now()
+        apertura = ahora if abierta_en is None else min(abierta_en, ahora)
+        if (
+            visita.estado != Visita.Estado.PENDIENTE
+            or not (visita.sitio.activo and visita.sitio.cliente.activo)
+            or (
+                visita.programada_para is not None
+                and visita.programada_para > timezone.localdate(apertura)
+            )
+        ):
+            raise AperturaNoPermitida()
+        visita.estado = Visita.Estado.ABIERTA
+        visita.abierta_en = apertura
+        visita.abierta_recibida_en = ahora
+        visita.incidencia_apertura_sin_escaneo = True
+        visita.save()
+        return visita
+
+
 def _fijar_ubicacion_por_escaneo(punto, revision, usuario):
     """El primer escaneo de un punto sin coordenadas las fija, sea cual sea el rol.
 
@@ -657,6 +738,22 @@ def _servicio_de_la_revision(visita, punto, enviado=None):
     return servicio, not en_turno, False
 
 
+def _es_duplicada_del_dia(visita, punto, realizada_en):
+    """Otro empleado ya revisó el punto el día local de `realizada_en`.
+
+    Solo aplica a visitas que cuentan como servicio: la de un administrador no marca.
+    """
+    if not visita.cuenta_como_servicio:
+        return False
+    previas = revisiones_del_dia(
+        visita.empresa_id, [punto.pk], timezone.localdate(realizada_en)
+    )
+    return any(
+        empleado_id != visita.empleado_id
+        for empleado_id, _, _ in previas.get(punto.pk, [])
+    )
+
+
 def _guardar_revision(
     *,
     visita,
@@ -681,7 +778,7 @@ def _guardar_revision(
     servicio, fuera_de_turno, incidencia_servicio = _servicio_de_la_revision(
         visita, punto, servicio_enviado
     )
-    errores = _validar_coordenadas(latitud, longitud, obligatorias=True)
+    errores = _validar_coordenadas(latitud, longitud)
     esquema = servicio.esquema_planilla("punto")
     errores_evidencia, aplicados = _validar_evidencia(
         esquema, datos, productos_aplicados, visita.empresa_id
@@ -697,7 +794,13 @@ def _guardar_revision(
     if errores:
         raise ValidationError(errores)
 
-    distancia, incidencia_ubicacion = verificar(punto, latitud, longitud)
+    # Sin coordenadas la revisión se acepta marcada: no hay distancia que verificar.
+    sin_ubicacion = latitud is None or longitud is None
+    if sin_ubicacion:
+        latitud = longitud = None
+        distancia, incidencia_ubicacion = None, False
+    else:
+        distancia, incidencia_ubicacion = verificar(punto, latitud, longitud)
     revision = Revision.objects.create(
         visita=visita,
         punto=punto,
@@ -713,6 +816,8 @@ def _guardar_revision(
         precision_m=precision_m,
         distancia_m=distancia,
         incidencia_ubicacion=incidencia_ubicacion,
+        incidencia_sin_ubicacion=sin_ubicacion,
+        incidencia_duplicada=_es_duplicada_del_dia(visita, punto, realizada_en),
         datos=datos,
         esquema_planilla=esquema,
         observaciones=observaciones,
@@ -720,7 +825,8 @@ def _guardar_revision(
         incidencia_detalle=incidencia_detalle,
     )
     _guardar_fotos_y_productos(revision, fotos, aplicados, guardadas, empleado)
-    _fijar_ubicacion_por_escaneo(punto, revision, empleado)
+    if not sin_ubicacion:
+        _fijar_ubicacion_por_escaneo(punto, revision, empleado)
     actualizar_vencimiento(punto)
     return revision
 
@@ -909,13 +1015,9 @@ def registrar_no_revisado(
                 and visita.abierta_en
                 and reportado_en < visita.abierta_en
             ):
-                raise ValidationError(
-                    {
-                        "reportado_en": [
-                            "La hora del reporte no puede ser anterior a la apertura."
-                        ]
-                    }
-                )
+                # Hora inconsistente: se guarda la declarada y se marca la visita.
+                visita.incidencia_horas = True
+                visita.save(update_fields=["incidencia_horas", "actualizado"])
             errores = _validar_coordenadas(latitud, longitud)
             if motivo not in PuntoNoRevisado.Motivo.values:
                 errores["motivo"] = ["Motivo inválido."]
@@ -957,17 +1059,26 @@ def condicion_incidencia_sin_revisar():
     """`Q` sobre `Visita`: incidencia pendiente de revisar.
 
     Cuenta la incidencia declarada y la visita realizada con puntos no revisados o
-    con alguna revisión de un servicio distinto del asignado.
+    con alguna revisión de un servicio distinto del asignado, duplicada o sin
+    ubicación, y la visita realizada con horas inconsistentes o abierta sin escaneo.
     """
     con_reportes = Exists(PuntoNoRevisado.objects.filter(visita=OuterRef("pk")))
     con_servicio = Exists(
         Revision.objects.filter(visita=OuterRef("pk"), incidencia_servicio=True)
+    )
+    con_revision_marcada = Exists(
+        Revision.objects.filter(visita=OuterRef("pk")).filter(
+            Q(incidencia_duplicada=True) | Q(incidencia_sin_ubicacion=True)
+        )
     )
     realizada = Q(estado=Visita.Estado.REALIZADA)
     return Q(incidencia_revisada_en__isnull=True) & (
         Q(incidencia=True)
         | (realizada & Q(con_reportes))
         | (realizada & Q(con_servicio))
+        | (realizada & Q(incidencia_horas=True))
+        | (realizada & Q(incidencia_apertura_sin_escaneo=True))
+        | (realizada & Q(con_revision_marcada))
     )
 
 
@@ -984,6 +1095,7 @@ def _cerrar_sin_revisiones(visita):
     else:
         visita.estado = Visita.Estado.CANCELADA
         visita.cierre = Visita.Cierre.SISTEMA
+    visita.incidencia_apertura_sin_escaneo = False
     visita.full_clean()
     visita.save()
     return visita
@@ -1036,7 +1148,8 @@ def cerrar_visita(
     `VisitaYaCerrada`. El empleado sobre una visita pendiente o cancelada recibe
     `VisitaNoAbierta`. El cierre del empleado guarda `cerrada_recibida_en` (hora del
     servidor); los demás cierres la dejan nula. Si el empleado manda `cerrada_en`,
-    se valida con `validar_hora_cliente` y no puede ser anterior a `abierta_en`.
+    se valida con `validar_hora_cliente`; si es anterior a `abierta_en` se guarda y
+    la visita queda con `incidencia_horas`.
     """
     if cierre not in Visita.Cierre.values:
         raise ValidationError({"cierre": "Tipo de cierre inválido."})
@@ -1109,13 +1222,8 @@ def cerrar_visita(
         elif cierre == Visita.Cierre.EMPLEADO:
             validar_hora_cliente(cerrada_en, "cerrada_en")
             if visita_bd.abierta_en and cerrada_en < visita_bd.abierta_en:
-                raise ValidationError(
-                    {
-                        "cerrada_en": [
-                            "La hora de cierre no puede ser anterior a la apertura."
-                        ]
-                    }
-                )
+                # Hora inconsistente: se guarda la declarada y se marca la visita.
+                visita_bd.incidencia_horas = True
         if cerrada_en > timezone.now() + TOLERANCIA_FUTURO:
             raise ValidationError("La fecha de cierre no puede ser futura.")
         servicios = (
@@ -1325,7 +1433,8 @@ def marcar_incidencia_revisada(visita, administrador):
 
     Vale para la incidencia declarada y para la de ubicación (en la visita o en
     alguna de sus revisiones), para los puntos no revisados y para las revisiones con
-    un servicio distinto del asignado: comparten la marca de revisión. Bloquea la
+    un servicio distinto del asignado, duplicadas o sin ubicación, y para las horas
+    inconsistentes y la apertura sin escaneo: comparten la marca de revisión. Bloquea la
     fila para que dos administradores no la revisen a la vez.
     """
     with transaction.atomic():
@@ -1342,7 +1451,20 @@ def marcar_incidencia_revisada(visita, administrador):
         )
         con_reportes = visita.no_revisados.exists()
         con_servicio = visita.revisiones.filter(incidencia_servicio=True).exists()
-        if not (visita.incidencia or con_ubicacion or con_reportes or con_servicio):
+        con_marcas = (
+            visita.incidencia_horas
+            or visita.incidencia_apertura_sin_escaneo
+            or visita.revisiones.filter(
+                Q(incidencia_duplicada=True) | Q(incidencia_sin_ubicacion=True)
+            ).exists()
+        )
+        if not (
+            visita.incidencia
+            or con_ubicacion
+            or con_reportes
+            or con_servicio
+            or con_marcas
+        ):
             raise ValidationError("La visita no tiene incidencia para revisar.")
         if visita.incidencia_revisada_en is not None:
             raise ValidationError("La incidencia ya fue revisada.")

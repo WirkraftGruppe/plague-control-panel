@@ -83,7 +83,7 @@ class GeneradorHistoria:
             producto=producto,
             lote=f"LOTE-DEMO-{numero % 7 + 1:03d}",
             dosis=Decimal("2.500"),
-            unidad_dosis=producto.unidad_dosis_por_defecto or "g",
+            unidad_dosis=producto.unidad_dosis_habitual or "g",
             unidad=unidad,
             cantidad=cantidad,
             cantidad_base=convertir(cantidad, unidad, producto.unidad_base),
@@ -183,11 +183,11 @@ class GeneradorHistoria:
         )
         return visita
 
-    def pendiente(self, sitio, items, fecha):
+    def pendiente(self, sitio, items, fecha, empleado=None):
         """Turno programado para `fecha`, asignado por el administrador."""
         return crear_turno(
             sitio=sitio,
-            empleado=self.empleado,
+            empleado=empleado or self.empleado,
             programada_para=fecha,
             items=items,
             asignada_por=self.administrador,

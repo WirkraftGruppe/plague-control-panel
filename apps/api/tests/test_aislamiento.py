@@ -29,6 +29,7 @@ OBJETO_POR_RUTA = (
     (r"^/api/v1/sitios/@PK@/puntos/", "sitio"),
     (r"^/api/v1/puntos/@PK@/ubicacion/", "punto"),
     (r"^/api/v1/me/visitas/@PK@/", "visita"),
+    (r"^/api/v1/visitas/@PK@/abrir/", "visita"),
     (r"^/api/v1/visitas/@PK@/cerrar/", "visita"),
     (r"^/api/v1/visitas/@PK@/no-revisados/", "visita"),
     (r"^/api/v1/empresas/@PK@/logo/", "empresa"),

@@ -10,6 +10,7 @@ from rest_framework.views import APIView
 from apps.accounts.permisos import EsAdministrador, EsEmpleado
 from apps.empresas.consultas import empresa_de
 
+from .consultas import ultimo_lote_subquery
 from .models import Producto
 from .serializers import ProductoSerializer
 
@@ -33,6 +34,7 @@ class CatalogoView(APIView):
     def get(self, request):
         """Devuelve los productos activos o 304 si el ETag del cliente coincide."""
         productos = Producto.objects.de_empresa(empresa_de(request)).filter(activo=True)
+        productos = productos.annotate(ultimo_lote=ultimo_lote_subquery())
         datos = ProductoSerializer(productos, many=True).data
         contenido = json.dumps(datos, sort_keys=True, ensure_ascii=False)
         etag = '"%s"' % hashlib.sha256(contenido.encode("utf-8")).hexdigest()

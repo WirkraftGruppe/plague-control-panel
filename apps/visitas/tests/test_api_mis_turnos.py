@@ -63,6 +63,7 @@ class MisTurnosApiTests(ApiVisitasBase):
                     "servicio": {"id": self.tipo.id, "nombre": "Desratización"},
                     "revisado": False,
                     "no_revisado": None,
+                    "revisado_por_otro": None,
                 },
                 {
                     "punto": {
@@ -75,6 +76,7 @@ class MisTurnosApiTests(ApiVisitasBase):
                     "servicio": {"id": self.fumiga.id, "nombre": "Fumigación"},
                     "revisado": True,
                     "no_revisado": None,
+                    "revisado_por_otro": None,
                 },
             ],
         )

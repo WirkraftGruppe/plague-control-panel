@@ -198,17 +198,16 @@ class HoraAnteriorApiTests(BaseSinConexionApi):
         super().setUp()
         self.visita = self._abierta(abierta_en=hace(hours=5))
 
-    def test_cerrada_en_anterior_a_abierta_en_400_en_el_campo(self):
+    def test_cerrada_en_anterior_a_abierta_en_cierra_con_incidencia(self):
         self._post(self.visita, realizada_en=hace(hours=3).isoformat())
         r = self._cerrar(self.visita, cuerpo={"cerrada_en": hace(hours=6).isoformat()})
-        self.assertEqual(r.status_code, 400, r.content)
-        self.assertIn("cerrada_en", r.data["campos"])
-        self.assertEqual(
-            Visita.objects.de_empresa(una_empresa()).get(pk=self.visita.pk).estado,
-            Visita.Estado.ABIERTA,
-        )
+        self.assertEqual(r.status_code, 200, r.content)
+        visita = Visita.objects.de_empresa(una_empresa()).get(pk=self.visita.pk)
+        self.assertEqual(visita.estado, Visita.Estado.REALIZADA)
+        self.assertTrue(visita.incidencia_horas)
 
-    def test_reportado_en_anterior_a_abierta_en_400_en_el_campo(self):
+    def test_reportado_en_anterior_a_abierta_en_se_guarda_con_incidencia(self):
         r = self._reportar(self.visita, reportado_en=hace(hours=6).isoformat())
-        self.assertEqual(r.status_code, 400, r.content)
-        self.assertIn("reportado_en", r.data["campos"])
+        self.assertEqual(r.status_code, 201, r.content)
+        visita = Visita.objects.de_empresa(una_empresa()).get(pk=self.visita.pk)
+        self.assertTrue(visita.incidencia_horas)

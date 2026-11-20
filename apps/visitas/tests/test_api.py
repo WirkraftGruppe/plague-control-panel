@@ -382,13 +382,16 @@ class CrearRevisionTests(ApiVisitasBase):
         r = self._enviar(fotos=None)
         self.assertEqual(r.status_code, 201, r.content)
 
-    def test_coordenadas_obligatorias(self):
+    def test_coordenadas_opcionales_con_una_sola_se_acepta_con_incidencia(self):
         for campo in ("latitud", "longitud"):
             with self.subTest(campo=campo):
-                r = self._enviar(**{campo: None})
-                self.assertEqual(r.status_code, 400, r.content)
-                self.assertIn(campo, r.data["campos"])
-        self.assertFalse(Revision.objects.de_empresa(una_empresa()).exists())
+                r = self._enviar(**{campo: None}, cliente_uuid=str(uuid4()))
+                self.assertEqual(r.status_code, 201, r.content)
+                revision = Revision.objects.de_empresa(una_empresa()).get(
+                    pk=r.data["id"]
+                )
+                self.assertTrue(revision.incidencia_sin_ubicacion)
+                self.assertIsNone(revision.latitud)
 
     def test_mas_de_dos_fotos_da_400(self):
         r = self._enviar(fotos=[jpeg_chico() for _ in range(3)])
