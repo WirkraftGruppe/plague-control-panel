@@ -36,6 +36,7 @@ class UnidadBloqueadaTests(TestCase):
                 "unidad_base": "l",
                 "contenido_por_envase": "5",
                 "modo_unidad": modo,
+                "dosis_variable": "on",
                 "activo": "on",
             },
             instance=Producto.objects.de_empresa(self.empresa).get(pk=self.producto.pk),

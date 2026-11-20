@@ -20,6 +20,7 @@ from apps.panel.demo_datos import (
     CLIENTES,
     DESFASES,
     DIAS_DE_HISTORIA,
+    EMPLEADO_DEMO_2,
     EMPRESA_DEMO,
     EMPRESA_DEMO_B,
     FRECUENCIAS,
@@ -80,6 +81,13 @@ class Command(BaseCommand):
                 for nombre, admin, empleado in EMPRESAS_DEMO:
                     self.empresa = self._empresa(nombre)
                     administrador, empleado = self._usuarios(admin, empleado)
+                    self.empleado_2 = None
+                    if nombre == EMPRESA_DEMO:
+                        self.empleado_2 = self._crear_usuario(
+                            EMPLEADO_DEMO_2,
+                            User.Rol.EMPLEADO,
+                            {"empresa": self.empresa},
+                        )
                     borrados += limpiar_datos_demo(self.empresa)
                     sitios = self._crear_sitios()
                     self._crear_historia(sitios, administrador, empleado)
@@ -201,13 +209,15 @@ class Command(BaseCommand):
         productos = []
         for datos in PRODUCTOS:
             nombre, principio, presentacion, unidad_dosis, registro = datos[:5]
-            base, contenido, modo, envases = datos[5:]
+            base, contenido, modo, envases, dosis, variable = datos[5:]
             producto = Producto.objects.create(
                 empresa=self.empresa,
                 nombre_comercial=f"{nombre}{SUFIJO_PRODUCTO}",
                 principio_activo=principio,
                 presentacion=presentacion,
-                unidad_dosis_por_defecto=unidad_dosis,
+                unidad_dosis_habitual=unidad_dosis,
+                dosis_habitual=dosis,
+                dosis_variable=variable,
                 registro=registro,
                 unidad_base=base,
                 contenido_por_envase=contenido,
@@ -268,6 +278,14 @@ class Command(BaseCommand):
                 generador.jornada(sitio, items, hoy - timedelta(days=atras), lejanos)
             if numero == SITIO_CON_PENDIENTE:
                 generador.pendiente(sitio, items, hoy + timedelta(days=3))
+                if self.empleado_2 is not None:
+                    # Turno de otro operario en el mismo sitio: comparten puntos.
+                    generador.pendiente(
+                        sitio,
+                        items[:2],
+                        hoy + timedelta(days=3),
+                        empleado=self.empleado_2,
+                    )
             if numero == SITIO_CON_ABIERTO:
                 generador.abierto(sitio, items, hoy)
         Cliente.objects.de_empresa(self.empresa).filter(notas=MARCA_DEMO).update(

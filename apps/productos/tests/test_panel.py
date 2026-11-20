@@ -39,6 +39,7 @@ class ProductoPanelTests(TestCase):
                 "unidad_base": "l",
                 "contenido_por_envase": "5",
                 "modo_unidad": "unica",
+                "dosis_variable": "on",
                 "activo": "on",
             },
         )
@@ -56,6 +57,7 @@ class ProductoPanelTests(TestCase):
                 "unidad_base": "l",
                 "contenido_por_envase": "5",
                 "modo_unidad": "unica",
+                "dosis_variable": "on",
             },
         )
         producto.refresh_from_db()
