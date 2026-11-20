@@ -98,13 +98,21 @@ class AbrirSinEscaneoApiTests(ApiVisitasBase):
     def test_turno_pendiente_propio_se_abre_con_incidencia(self):
         visita = self._visita(self.empleado)
         ItemTurno.objects.create(visita=visita, punto=self.punto, servicio=self.tipo)
-        r = self._abrir(visita, latitud="-36.1", longitud="-57.8", precision_m="9")
+        r = self._abrir(visita)
         self.assertEqual(r.status_code, 201, r.content)
         self.assertEqual(r.data["id"], visita.pk)
         self.assertEqual(r.data["estado"], "abierta")
         visita.refresh_from_db()
         self.assertTrue(visita.incidencia_apertura_sin_escaneo)
         self.assertEqual(self._abrir(visita).status_code, 200)
+
+    def test_coordenadas_enviadas_se_ignoran(self):
+        visita = self._visita(self.empleado)
+        r = self._abrir(visita, latitud="-36.1", longitud="-57.8", precision_m="9")
+        self.assertEqual(r.status_code, 201, r.content)
+        visita.refresh_from_db()
+        self.assertIsNone(visita.precision_m)
+        self.assertIsNone(visita.distancia_m)
 
     def test_turno_ajeno_404(self):
         visita = self._visita(self.otro)

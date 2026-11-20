@@ -70,8 +70,9 @@ límite de pedidos (throttle) y el rol que la puede usar. Todas las rutas cuelga
   su detalle y las respuestas de apertura.
 - **Abrir sin escanear** (`POST /api/v1/visitas/<pk>/abrir/`): abre el turno pendiente `<pk>`
   del usuario sin el QR. Quedan marcados con una incidencia de apertura sin escaneo. Cuerpo
-  opcional: `abierta_en` (misma regla de hora y atraso que `visitas/abrir/`), `latitud`,
-  `longitud` y `precision_m` (se guardan sin verificar la distancia). Responde con la misma
+  opcional: solo `abierta_en` (misma regla de hora y atraso que `visitas/abrir/`); la
+  ubicación no se pide ni se guarda, y los campos desconocidos (`latitud`, `longitud`,
+  `precision_m`) se ignoran. Responde con la misma
   forma que `visitas/abrir/`: 201 si abre el turno, 200 si el usuario ya tenía una visita
   abierta en el sitio (la devuelve sin cambios). Una visita ajena, de otra empresa o
   inexistente da 404; 409 si no está pendiente, está programada para un día posterior o su

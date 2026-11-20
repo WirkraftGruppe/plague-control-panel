@@ -61,8 +61,8 @@ class CampoJSON(serializers.CharField):
 
 
 class AbrirTurnoSerializer(serializers.Serializer):
-    """Entrada de `POST visitas/<pk>/abrir/`: la hora de apertura y, opcionales, las
-    coordenadas del teléfono (se guardan sin verificar la distancia)."""
+    """Entrada de `POST visitas/<pk>/abrir/`: solo la hora de apertura. La ubicación no
+    se pide ni se guarda; los campos desconocidos se ignoran."""
 
     abierta_en = serializers.DateTimeField(
         required=False,
@@ -70,6 +70,13 @@ class AbrirTurnoSerializer(serializers.Serializer):
         default=None,
         help_text="Hora en que el empleado abrió, si estaba sin conexión.",
     )
+
+
+class AbrirVisitaSerializer(AbrirTurnoSerializer):
+    """Entrada de `POST visitas/abrir/`: el QR escaneado en el sitio y, opcionales,
+    las coordenadas del teléfono para verificar la ubicación."""
+
+    qr_codigo = serializers.UUIDField()
     latitud = serializers.DecimalField(
         max_digits=9,
         decimal_places=6,
@@ -97,13 +104,6 @@ class AbrirTurnoSerializer(serializers.Serializer):
         allow_null=True,
         default=None,
     )
-
-
-class AbrirVisitaSerializer(AbrirTurnoSerializer):
-    """Entrada de `POST visitas/abrir/`: el QR escaneado en el sitio y, opcionales,
-    las coordenadas del teléfono para verificar la ubicación."""
-
-    qr_codigo = serializers.UUIDField()
 
 
 ESQUEMA_PRODUCTOS_APLICADOS = {

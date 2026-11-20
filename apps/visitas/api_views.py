@@ -247,9 +247,9 @@ class AbrirTurnoSinEscaneoView(APIView):
         description=(
             "Abre el turno pendiente `<pk>` del usuario sin el QR (la prueba de "
             "presencia): la visita queda con la incidencia de apertura sin "
-            'escaneo, que cuenta en "Incidencias sin revisar". `abierta_en`, '
-            "`latitud`, `longitud` y `precision_m` son opcionales; las coordenadas "
-            "se guardan sin verificar la distancia. Si el usuario ya tiene una "
+            'escaneo, que cuenta en "Incidencias sin revisar". El cuerpo '
+            "solo admite `abierta_en` (opcional): la ubicación no se pide ni se "
+            "guarda. Si el usuario ya tiene una "
             "visita abierta en el sitio, la devuelve con 200 sin cambios. Una "
             "revisión sigue exigiendo el `qr_codigo` del punto."
         ),
