@@ -155,7 +155,8 @@ paths:
         servicios activos de la empresa. Cada punto trae `qr_hash`, el SHA-256 hexadecimal
         de su `qr_codigo` (UUID en minúsculas con guiones), nunca el código. Devuelve
         un `ETag`; con `If-None-Match` igual responde 304 sin cuerpo. Ambas respuestas
-        llevan `Cache-Control: private, no-store`.'
+        llevan `Cache-Control: private, no-store`. Máximo 30 pedidos por hora y usuario
+        (el 304 también cuenta); superado, 429 con `Retry-After`.'
       summary: Datos para trabajar sin conexión
       tags:
       - me
@@ -172,6 +173,17 @@ paths:
           description: Los datos no cambiaron.
         '401':
           description: Falta autenticación o es inválida.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Demasiados pedidos; reintentar tras `Retry-After`.
+          headers:
+            Retry-After:
+              description: Segundos de espera antes de reintentar.
+              schema:
+                type: integer
           content:
             application/json:
               schema:
@@ -524,9 +536,13 @@ paths:
         el producto); `fotos` se repite de 0 a 2 veces (hasta 8 MB cada una). Un `cliente_uuid`
         ya registrado responde 409; `revision` y `visita` solo vienen si son del mismo
         empleado. Un administrador que escanea un punto sin coordenadas, con precisión
-        de a lo sumo 50 m, las fija. `servicio` (id, opcional) es el que eligió el
-        empleado: si difiere del que decide el servidor, la revisión lo usa y queda
-        con una incidencia.'
+        de a lo sumo 50 m, las fija. `latitud` y `longitud` son opcionales: sin ellas
+        la revisión se guarda con la incidencia de falta de ubicación. `dosis` y `unidad_dosis`
+        de cada producto son opcionales: un producto sin `dosis_variable` guarda siempre
+        su dosis habitual; con ella, la enviada o, si falta, la habitual. La respuesta
+        trae `duplicada_hoy`: otro empleado ya revisó el punto ese día. `servicio`
+        (id, opcional) es el que eligió el empleado: si difiere del que decide el
+        servidor, la revisión lo usa y queda con una incidencia.'
       summary: Registrar una revisión
       tags:
       - revisiones
@@ -546,14 +562,15 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Revision'
+                $ref: '#/components/schemas/RevisionCreada'
           description: ''
         '400':
           description: 'Validación: QR que no es de un punto del sitio, visita no
-            abierta, coordenadas faltantes, punto sin servicio o con el servicio dado
-            de baja, `servicio` inactivo o de otra empresa, planilla inválida, hora
-            futura o revisión con más horas de atraso que `ATRASO_MAXIMO_APP_HORAS`
-            (`campos.realizada_en` con `code: atraso_excedido`).'
+            abierta, coordenadas fuera de rango, `lote` vacío (`productos_aplicados.<i>.lote`),
+            punto sin servicio o con el servicio dado de baja, `servicio` inactivo
+            o de otra empresa, planilla inválida, hora futura o revisión con más horas
+            de atraso que `ATRASO_MAXIMO_APP_HORAS` (`campos.realizada_en` con `code:
+            atraso_excedido`).'
         '404':
           description: La visita no existe o es de otro usuario.
         '409':
@@ -685,6 +702,74 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /api/v1/visitas/{id}/abrir/:
+    post:
+      operationId: visitas_abrir_turno_create
+      description: 'Abre el turno pendiente `<pk>` del usuario sin el QR (la prueba
+        de presencia): la visita queda con la incidencia de apertura sin escaneo,
+        que cuenta en "Incidencias sin revisar". `abierta_en`, `latitud`, `longitud`
+        y `precision_m` son opcionales; las coordenadas se guardan sin verificar la
+        distancia. Si el usuario ya tiene una visita abierta en el sitio, la devuelve
+        con 200 sin cambios. Una revisión sigue exigiendo el `qr_codigo` del punto.'
+      summary: Abrir un turno sin escanear el QR
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - visitas
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AbrirTurnoRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AbrirTurnoRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AbrirTurnoRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisitaActiva'
+          description: ''
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisitaActiva'
+          description: ''
+        '400':
+          description: '`abierta_en` futura o con atraso excedido, o campos inválidos.'
+        '404':
+          description: La visita no existe, es de otro empleado o de otra empresa.
+        '409':
+          description: 'El turno no se puede abrir sin escanear: no está pendiente,
+            está programado para un día posterior o su sitio o cliente están inactivos.'
+        '401':
+          description: Falta autenticación o es inválida.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Demasiados pedidos; reintentar tras `Retry-After`.
+          headers:
+            Retry-After:
+              description: Segundos de espera antes de reintentar.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/v1/visitas/{id}/cerrar/:
     post:
       operationId: visitas_cerrar_create
@@ -692,8 +777,9 @@ paths:
         de nuevo una visita que ya cerró el mismo usuario devuelve 200 con la visita;
         si la cerró el sistema o un administrador, 409. Cerrar la visita de un administrador
         no cuenta como servicio. `cerrada_en` (opcional) es la hora del cierre si
-        el empleado estaba sin conexión: no puede ser anterior a la apertura, futura
-        ni exceder el atraso máximo.'
+        el empleado estaba sin conexión: no puede ser futura ni exceder el atraso
+        máximo; una anterior a la apertura se guarda y marca la visita con una incidencia
+        de horas.'
       summary: Cerrar una visita
       parameters:
       - in: path
@@ -725,8 +811,8 @@ paths:
           description: ''
         '400':
           description: 'No tiene al menos una revisión o un reporte de punto no revisado,
-            la planilla es inválida o `cerrada_en` es inválida: anterior a la apertura
-            (`campos.cerrada_en`) o futura (`code: atraso_excedido` si excede el atraso).'
+            la planilla es inválida o `cerrada_en` es inválida: futura (`code: atraso_excedido`
+            si excede el atraso).'
         '404':
           description: La visita no existe o es de otro usuario.
         '409':
@@ -787,8 +873,7 @@ paths:
           description: ''
         '400':
           description: 'Punto de otro sitio, inactivo o ya reportado, `reportado_en`
-            futura, anterior a la apertura de la visita (`campos.reportado_en`) o
-            con atraso excedido (`code: atraso_excedido`), o campos inválidos.'
+            futura o con atraso excedido (`code: atraso_excedido`), o campos inválidos.'
         '404':
           description: La visita no existe o es de otro usuario.
         '409':
@@ -878,15 +963,12 @@ paths:
                 $ref: '#/components/schemas/Error'
 components:
   schemas:
-    AbrirVisitaRequest:
+    AbrirTurnoRequest:
       type: object
       description: |-
-        Entrada de `POST visitas/abrir/`: el QR escaneado en el sitio y, opcionales,
-        las coordenadas del teléfono para verificar la ubicación.
+        Entrada de `POST visitas/<pk>/abrir/`: la hora de apertura y, opcionales, las
+        coordenadas del teléfono (se guardan sin verificar la distancia).
       properties:
-        qr_codigo:
-          type: string
-          format: uuid
         abierta_en:
           type: string
           format: date-time
@@ -907,6 +989,35 @@ components:
           format: decimal
           pattern: ^-?\d{0,6}(?:\.\d{0,1})?$
           nullable: true
+    AbrirVisitaRequest:
+      type: object
+      description: |-
+        Entrada de `POST visitas/abrir/`: el QR escaneado en el sitio y, opcionales,
+        las coordenadas del teléfono para verificar la ubicación.
+      properties:
+        abierta_en:
+          type: string
+          format: date-time
+          nullable: true
+          description: Hora en que el empleado abrió, si estaba sin conexión.
+        latitud:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          nullable: true
+        longitud:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          nullable: true
+        precision_m:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,1})?$
+          nullable: true
+        qr_codigo:
+          type: string
+          format: uuid
       required:
       - qr_codigo
     AltaPuntoRequest:
@@ -1061,10 +1172,13 @@ components:
           type: string
           format: decimal
           pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          nullable: true
+          description: 'Opcional: sin coordenadas la revisión se guarda con una incidencia.'
         longitud:
           type: string
           format: decimal
           pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          nullable: true
         precision_m:
           type: string
           format: decimal
@@ -1080,8 +1194,7 @@ components:
             type: object
             required:
             - producto
-            - dosis
-            - unidad_dosis
+            - lote
             - cantidad
             - unidad
             properties:
@@ -1092,8 +1205,10 @@ components:
                 type: string
               dosis:
                 type: number
+                description: 'Opcional: solo vale con un producto `dosis_variable`.'
               unidad_dosis:
                 type: string
+                description: Opcional.
               cantidad:
                 type: number
               unidad:
@@ -1120,8 +1235,6 @@ components:
           maxLength: 2000
       required:
       - cliente_uuid
-      - latitud
-      - longitud
       - qr_codigo
       - realizada_en
       - visita
@@ -1170,8 +1283,9 @@ components:
     ItemTurno:
       type: object
       description: |-
-        Punto del turno con su servicio; `revisado` si ya tiene una revisión y
-        `no_revisado` con el motivo si se lo reportó como no revisado.
+        Punto del turno con su servicio; `revisado` si ya tiene una revisión,
+        `no_revisado` con el motivo si se lo reportó como no revisado y
+        `revisado_por_otro` si otro empleado lo revisó hoy.
       properties:
         punto:
           $ref: '#/components/schemas/PuntoItem'
@@ -1182,10 +1296,16 @@ components:
         no_revisado:
           type: string
           nullable: true
+        revisado_por_otro:
+          allOf:
+          - $ref: '#/components/schemas/RevisadoPorOtro'
+          nullable: true
+          readOnly: true
       required:
       - no_revisado
       - punto
       - revisado
+      - revisado_por_otro
       - servicio
     MiPunto:
       type: object
@@ -1284,6 +1404,23 @@ components:
       - motivo
       - punto
       - visita
+    OperarioNombre:
+      type: object
+      properties:
+        nombre:
+          type: string
+      required:
+      - nombre
+    OperarioQR:
+      type: object
+      properties:
+        id:
+          type: integer
+        nombre:
+          type: string
+      required:
+      - id
+      - nombre
     PaginatedVisitaActivaList:
       type: object
       required:
@@ -1377,11 +1514,26 @@ components:
           type: string
           readOnly: true
           title: Presentación
-        unidad_dosis_por_defecto:
+        dosis_habitual:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,7}(?:\.\d{0,3})?$
+          readOnly: true
+          nullable: true
+          description: Concentración de la preparación (p. ej. 5 ml/l).
+        unidad_dosis_habitual:
           type: string
           readOnly: true
-          title: Unidad de dosis por defecto
+          title: Unidad de dosis habitual
           description: 'Por ejemplo: ml/l.'
+        dosis_variable:
+          type: boolean
+          readOnly: true
+          description: La dosis cambia en cada aplicación y no tiene un valor habitual.
+        ultimo_lote:
+          type: string
+          readOnly: true
+          nullable: true
         unidad_base:
           allOf:
           - $ref: '#/components/schemas/UnidadBaseEnum'
@@ -1408,17 +1560,21 @@ components:
           description: Unidades en que se puede cargar la cantidad aplicada.
           readOnly: true
       required:
+      - dosis_habitual
+      - dosis_variable
       - id
       - modo_unidad
       - nombre_comercial
       - presentacion
       - principio_activo
       - registro
+      - ultimo_lote
       - unidad_base
-      - unidad_dosis_por_defecto
+      - unidad_dosis_habitual
       - unidades_permitidas
     ProductoAplicado:
       type: object
+      description: '`dosis` y `unidad_dosis` son `null` si el producto no tiene dosis.'
       properties:
         producto:
           type: integer
@@ -1431,10 +1587,11 @@ components:
           format: decimal
           pattern: ^-?\d{0,7}(?:\.\d{0,3})?$
           readOnly: true
+          nullable: true
         unidad_dosis:
           type: string
           readOnly: true
-          title: Unidad de la dosis
+          nullable: true
         cantidad:
           type: string
           format: decimal
@@ -1564,6 +1721,10 @@ components:
           nullable: true
         en_turno:
           type: boolean
+        revisado_hoy_por:
+          allOf:
+          - $ref: '#/components/schemas/RevisadoHoyPor'
+          nullable: true
       required:
       - en_turno
       - estado
@@ -1571,6 +1732,7 @@ components:
       - nombre
       - plano
       - proximo_vencimiento
+      - revisado_hoy_por
       - sector
       - servicio
     PuntoResumen:
@@ -1737,6 +1899,35 @@ components:
       - visita_abierta_propia
       - visita_destino
       - visita_pendiente_propia
+    RevisadoHoyPor:
+      type: object
+      description: 'Última revisión de hoy del punto: quién, cuándo y si es del que
+        consulta.'
+      properties:
+        operario:
+          $ref: '#/components/schemas/OperarioQR'
+        realizada_en:
+          type: string
+          format: date-time
+        propia:
+          type: boolean
+      required:
+      - operario
+      - propia
+      - realizada_en
+    RevisadoPorOtro:
+      type: object
+      description: Última revisión de hoy del punto hecha por otro empleado de la
+        empresa.
+      properties:
+        operario:
+          $ref: '#/components/schemas/OperarioNombre'
+        realizada_en:
+          type: string
+          format: date-time
+      required:
+      - operario
+      - realizada_en
     Revision:
       type: object
       description: 'Revisión sin coordenadas ni precisión: no se devuelve la ubicación.'
@@ -1790,6 +1981,75 @@ components:
           readOnly: true
       required:
       - datos
+      - fotos
+      - fuera_de_turno
+      - id
+      - incidencia
+      - incidencia_detalle
+      - observaciones
+      - orden
+      - productos
+      - punto
+      - realizada_en
+      - servicio
+      - visita
+    RevisionCreada:
+      type: object
+      description: 'Respuesta 201 de `POST revisiones/`: suma `duplicada_hoy`.'
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        visita:
+          type: integer
+          readOnly: true
+        punto:
+          allOf:
+          - $ref: '#/components/schemas/PuntoResumen'
+          readOnly: true
+        servicio:
+          allOf:
+          - $ref: '#/components/schemas/ServicioResumen'
+          readOnly: true
+        fuera_de_turno:
+          type: boolean
+          readOnly: true
+        orden:
+          type: integer
+          readOnly: true
+        realizada_en:
+          type: string
+          format: date-time
+          readOnly: true
+        datos:
+          readOnly: true
+          title: Datos de la planilla
+        observaciones:
+          type: string
+          readOnly: true
+        incidencia:
+          type: boolean
+          readOnly: true
+        incidencia_detalle:
+          type: string
+          readOnly: true
+          title: Detalle de la incidencia
+        productos:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductoAplicado'
+          readOnly: true
+        fotos:
+          type: array
+          items:
+            type: string
+          readOnly: true
+        duplicada_hoy:
+          type: boolean
+          readOnly: true
+      required:
+      - datos
+      - duplicada_hoy
       - fotos
       - fuera_de_turno
       - id
