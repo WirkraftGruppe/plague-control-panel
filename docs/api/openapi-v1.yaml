@@ -707,10 +707,10 @@ paths:
       operationId: visitas_abrir_turno_create
       description: 'Abre el turno pendiente `<pk>` del usuario sin el QR (la prueba
         de presencia): la visita queda con la incidencia de apertura sin escaneo,
-        que cuenta en "Incidencias sin revisar". `abierta_en`, `latitud`, `longitud`
-        y `precision_m` son opcionales; las coordenadas se guardan sin verificar la
-        distancia. Si el usuario ya tiene una visita abierta en el sitio, la devuelve
-        con 200 sin cambios. Una revisión sigue exigiendo el `qr_codigo` del punto.'
+        que cuenta en "Incidencias sin revisar". El cuerpo solo admite `abierta_en`
+        (opcional): la ubicación no se pide ni se guarda. Si el usuario ya tiene una
+        visita abierta en el sitio, la devuelve con 200 sin cambios. Una revisión
+        sigue exigiendo el `qr_codigo` del punto.'
       summary: Abrir un turno sin escanear el QR
       parameters:
       - in: path
@@ -966,29 +966,14 @@ components:
     AbrirTurnoRequest:
       type: object
       description: |-
-        Entrada de `POST visitas/<pk>/abrir/`: la hora de apertura y, opcionales, las
-        coordenadas del teléfono (se guardan sin verificar la distancia).
+        Entrada de `POST visitas/<pk>/abrir/`: solo la hora de apertura. La ubicación no
+        se pide ni se guarda; los campos desconocidos se ignoran.
       properties:
         abierta_en:
           type: string
           format: date-time
           nullable: true
           description: Hora en que el empleado abrió, si estaba sin conexión.
-        latitud:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
-          nullable: true
-        longitud:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
-          nullable: true
-        precision_m:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,6}(?:\.\d{0,1})?$
-          nullable: true
     AbrirVisitaRequest:
       type: object
       description: |-
@@ -1000,6 +985,9 @@ components:
           format: date-time
           nullable: true
           description: Hora en que el empleado abrió, si estaba sin conexión.
+        qr_codigo:
+          type: string
+          format: uuid
         latitud:
           type: string
           format: decimal
@@ -1015,9 +1003,6 @@ components:
           format: decimal
           pattern: ^-?\d{0,6}(?:\.\d{0,1})?$
           nullable: true
-        qr_codigo:
-          type: string
-          format: uuid
       required:
       - qr_codigo
     AltaPuntoRequest:
