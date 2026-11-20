@@ -283,7 +283,7 @@ Las olas siguen el grafo de FK: `productos` va antes que `visitas`, y `sitios` l
 
 - **Ola**: 4
 - **Depende de**: T7
-- **Puede tocar**: `apps/visitas/serializers.py`, `apps/visitas/api_views.py`, `apps/visitas/api_urls.py`, `apps/visitas/tests/test_api.py`, `apps/visitas/tests/test_api_coordinacion.py`, `apps/api/tests/test_contrato_doc.py`, `docs/contrato-api.md`, `docs/api/openapi-v1.yaml`, `docs/01-modelo-y-arquitectura.md`
+- **Puede tocar**: `apps/visitas/serializers.py`, `apps/visitas/api_views.py`, `apps/visitas/api_urls.py`, `apps/visitas/tests/test_api.py`, `apps/visitas/tests/test_api_coordinacion.py`, `apps/api/tests/test_contrato_doc.py`, `docs/contrato-api.md`, `apps/visitas/tests/test_api_mis_turnos.py`, `apps/api/tests/test_aislamiento.py`
 - **No puede tocar**: `docs/planes/`, `config/`, `apps/sitios/`, `apps/panel/`, `apps/productos/`, `apps/api/urls.py`, `apps/visitas/models.py`, `apps/visitas/services.py`, `apps/visitas/coordinacion.py`, `apps/visitas/panel_views.py`, migraciones
 - **Skill a leer antes**: `.agents/skills/django-rest-framework/SKILL.md` (views y serializers) y `.agents/skills/api-security-best-practices/SKILL.md` (autorización por objeto)
 - **Worktree**: sí
@@ -321,12 +321,25 @@ Las olas siguen el grafo de FK: `productos` va antes que `visitas`, y `sitios` l
   - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.RevisadoPorOtroTests.test_revision_propia_o_de_ayer_es_null --keepdb`
   - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.RevisadoPorOtroTests.test_consultas_iguales_con_5_y_50_items --keepdb`
   - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.RevisadoPorOtroTests.test_detalle_trae_revisado_por_otro --keepdb`
-  - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py spectacular --validate --file "$TEMP/openapi-coordinacion.yaml" && diff -q --strip-trailing-cr "$TEMP/openapi-coordinacion.yaml" docs/api/openapi-v1.yaml`
   - `[grep-1]` `grep -n "revisado_hoy_por" docs/contrato-api.md`
-  - `[grep-1]` `grep -n "dosis_variable" docs/01-modelo-y-arquitectura.md`
-  - `[grep-0]` `grep -n "unidad_dosis_por_defecto" docs/contrato-api.md docs/api/openapi-v1.yaml docs/01-modelo-y-arquitectura.md`
   - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas apps.api --keepdb`
   - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 650 --subtarea T8`
+
+### T11 — `openapi-v1.yaml` regenerado y doc 01 (Producto, ProductoAplicado e incidencias)
+
+- **Ola**: 4
+- **Depende de**: T8 (worktree propio `coordinacion-operarios-T11`, creado desde `plan/coordinacion-operarios` después de integrar T8; se integra en T9, antes del cierre)
+- **Puede tocar**: `docs/api/openapi-v1.yaml`, `docs/01-modelo-y-arquitectura.md`
+- **No puede tocar**: `docs/planes/`, `config/`, `apps/`, `docs/contrato-api.md`
+- **Skill a leer antes**: ninguna (documentación)
+- **Worktree**: sí (propio)
+- **Presupuesto**: 350 líneas agregadas
+- **Qué hacer**: regenerar `openapi-v1.yaml` con todo integrado y documentar en el doc 01 Producto, ProductoAplicado y las cuatro incidencias; separado de T8 porque T8 midió 804 de 650 (contrato modificado por el usuario el 2026-11-20).
+- **Criterios**:
+  - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py spectacular --validate --file "$TEMP/openapi-coordinacion.yaml" && diff -q --strip-trailing-cr "$TEMP/openapi-coordinacion.yaml" docs/api/openapi-v1.yaml`
+  - `[grep-1]` `grep -n "dosis_variable" docs/01-modelo-y-arquitectura.md`
+  - `[grep-0]` `grep -n "unidad_dosis_por_defecto" docs/contrato-api.md docs/api/openapi-v1.yaml docs/01-modelo-y-arquitectura.md`
+  - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 350 --subtarea T11`
 
 ### T9 — Integración ola 4 y cierre (principal)
 
@@ -355,6 +368,7 @@ commit_base: 794af57
 | T6 | hecha | 5865b5e | PASA (tarea, HEAD b6128be) |
 | T7 | hecha | e06c285 | PASA (tarea T5,T7, HEAD e06c285) |
 | T8 | pendiente | | |
+| T11 | pendiente | | |
 | T9 | pendiente | | |
 
 ### Revisiones
