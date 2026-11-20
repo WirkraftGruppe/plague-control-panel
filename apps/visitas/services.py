@@ -549,14 +549,7 @@ class AperturaNoPermitida(ValidationError):
         super().__init__({"visita": "No se puede abrir este turno sin escanear el QR."})
 
 
-def abrir_turno_sin_escaneo(
-    visita_pk,
-    usuario,
-    latitud=None,
-    longitud=None,
-    precision_m=None,
-    abierta_en=None,
-):
+def abrir_turno_sin_escaneo(visita_pk, usuario, abierta_en=None):
     """Abre un turno pendiente propio sin el QR y lo marca con la incidencia.
 
     Levanta `Visita.DoesNotExist` si la visita no existe, es ajena o de otra empresa.
@@ -564,8 +557,7 @@ def abrir_turno_sin_escaneo(
     una visita abierta en el sitio la devuelve sin cambios. Exige el turno pendiente,
     sin programar o programado hasta el día de la apertura, con sitio y cliente
     activos (`AperturaNoPermitida`). Guarda `min(abierta_en, ahora)`, validada con
-    `validar_hora_cliente`; las coordenadas se guardan si vienen, sin verificar la
-    distancia. Devuelve la visita.
+    `validar_hora_cliente`. No guarda ubicación. Devuelve la visita.
     """
     empresa_id = usuario.empresa_id
     with transaction.atomic():
@@ -610,7 +602,6 @@ def abrir_turno_sin_escaneo(
         visita.abierta_en = apertura
         visita.abierta_recibida_en = ahora
         visita.incidencia_apertura_sin_escaneo = True
-        visita.precision_m = precision_m
         visita.save()
         return visita
 
