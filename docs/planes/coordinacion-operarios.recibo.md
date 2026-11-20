@@ -91,3 +91,26 @@
 - duración: 31.5 s
 - Veredicto: PASA
 
+## 2026-11-20 12:02 — tarea T5,T7 de 2026-11-20-coordinacion-operarios.md
+
+- HEAD verificado: e06c285
+- Contrato: modificado y aceptado (b7dffee, decisión del usuario)
+- Criterios:
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_resolver_revisado_hoy.RevisadoHoyTests.test_revisado_hoy_por_otro_trae_nombre_y_propia_false --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_resolver_revisado_hoy.RevisadoHoyTests.test_revisado_ayer_es_null --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_resolver_revisado_hoy.RevisadoHoyTests.test_revisado_hoy_por_el_mismo_usuario_propia_true --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_resolver_revisado_hoy.RevisadoHoyTests.test_visita_de_administrador_no_cuenta --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_resolver_revisado_hoy.RevisadoHoyTests.test_datos_sin_conexion_sin_nombres_ni_horas --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_datos_sin_conexion_limite.LimiteDatosSinConexionTests.test_pedido_31_da_429_con_retry_after --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_datos_sin_conexion_limite.LimiteDatosSinConexionTests.test_304_cuenta_para_el_limite --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_datos_sin_conexion_limite.LimiteDatosSinConexionTests.test_cupo_es_por_usuario --keepdb`
+  - PASA (exit 0, nuevo: sí) `T5 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios.tests.test_panel_ficha_coordinacion.FichaSitioCoordinacionTests.test_turno_con_revision_duplicada_queda_senalado --keepdb`
+  - PASA (exit 0, nuevo: —) `T5 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.sitios --keepdb`
+  - PASA (exit 0, nuevo: —) `T5 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 350 --subtarea T5`
+  - PASA (exit 0, nuevo: —) `T7 [cmd] git log --oneline plan/coordinacion-operarios | grep -q "T5: integra coordinacion-operarios-T5"`
+  - PASA (exit 0, nuevo: —) `T7 [cmd] git log --oneline plan/coordinacion-operarios | grep -q "T6: integra coordinacion-operarios-T6"`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 39.7 s
+- Veredicto: PASA
+
