@@ -161,14 +161,14 @@ Las olas siguen el grafo de FK: `productos` va antes que `visitas`, y `sitios` l
   - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas --keepdb`
   - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 800 --subtarea T3`
 
-### T3c — Tests de las incidencias nuevas y la apertura sin escaneo (`test_incidencias_nuevas.py`)
+### T10 — Tests de las incidencias nuevas y la apertura sin escaneo (`test_incidencias_nuevas.py`)
 
 - **Ola**: 2
-- **Depende de**: T3 (mismo worktree, `coordinacion-operarios-T3`)
+- **Depende de**: T3 (worktree propio `coordinacion-operarios-T10`, creado desde `plan/coordinacion-operarios` después de integrar T3; se integra en T4, después de T3)
 - **Puede tocar**: `apps/visitas/tests/test_incidencias_nuevas.py`
 - **No puede tocar**: `docs/planes/`, `docs/`, `config/`, `apps/` salvo `apps/visitas/tests/test_incidencias_nuevas.py`
 - **Skill a leer antes**: `.agents/skills/django-conventions/SKILL.md` § Task 8: Testing Django Applications
-- **Worktree**: el de T3
+- **Worktree**: sí (propio)
 - **Presupuesto**: 300 líneas agregadas
 - **Qué hacer**: los tests de horas inconsistentes, sin ubicación, duplicada, apertura sin escaneo y conteo de incidencias de T3, separados de T3 porque no entraban en su presupuesto (contrato modificado por el usuario el 2026-11-20).
 - **Criterios**:
@@ -187,7 +187,7 @@ Las olas siguen el grafo de FK: `productos` va antes que `visitas`, y `sitios` l
   - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.AperturaSinEscaneoTests.test_ajena_o_de_otra_empresa_no_existe --keepdb`
   - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.AperturaSinEscaneoTests.test_vuelta_a_pendiente_baja_la_incidencia --keepdb`
   - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.ConteoIncidenciasTests.test_cuatro_incidencias_cuentan_y_marcar_revisada_las_saca --keepdb`
-  - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 300 --subtarea T3c`
+  - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 300 --subtarea T10`
 
 ### T4 — Integración ola 2 (principal)
 
@@ -349,7 +349,7 @@ commit_base: 794af57
 | T1 | hecha | 48b6109 | PASA (tarea, HEAD 48b6109 en el worktree; b018b02 tras integrar) |
 | T2 | hecha | b018b02 | PASA (tarea T1,T2, HEAD b018b02) |
 | T3 | pendiente | | |
-| T3c | pendiente | | |
+| T10 | pendiente | | |
 | T4 | pendiente | | |
 | T5 | pendiente | | |
 | T6 | pendiente | | |
