@@ -107,6 +107,18 @@ class Visita(ModeloDeEmpresa):
         "precisión (m)", max_digits=7, decimal_places=2, null=True, blank=True
     )
     incidencia_ubicacion = models.BooleanField("incidencia de ubicación", default=False)
+    incidencia_horas = models.BooleanField(
+        "incidencia de horas",
+        default=False,
+        editable=False,
+        help_text="La hora declarada de cierre o de reporte es anterior a la apertura.",
+    )
+    incidencia_apertura_sin_escaneo = models.BooleanField(
+        "incidencia de apertura sin escaneo",
+        default=False,
+        editable=False,
+        help_text="El empleado abrió el turno sin escanear el QR.",
+    )
     # Rol del empleado al abrir la visita: un administrador no cuenta como servicio.
     cuenta_como_servicio = models.BooleanField("cuenta como servicio", default=True)
     creado = models.DateTimeField("creado", auto_now_add=True)
@@ -248,6 +260,16 @@ class Revision(ModeloDeEmpresa):
         "incidencia de servicio",
         default=False,
         help_text="El empleado hizo la revisión con un servicio distinto del asignado.",
+    )
+    incidencia_duplicada = models.BooleanField(
+        "incidencia de revisión duplicada",
+        default=False,
+        help_text="Otro empleado ya había revisado el punto ese día.",
+    )
+    incidencia_sin_ubicacion = models.BooleanField(
+        "incidencia de revisión sin ubicación",
+        default=False,
+        help_text="La revisión llegó sin coordenadas.",
     )
 
     history = HistoricalRecords(
@@ -422,8 +444,10 @@ class ProductoAplicado(ModeloDeEmpresa):
         verbose_name="producto",
     )
     lote = models.CharField("lote", max_length=60)
-    dosis = models.DecimalField("dosis", max_digits=10, decimal_places=3)
-    unidad_dosis = models.CharField("unidad de la dosis", max_length=20)
+    dosis = models.DecimalField(
+        "dosis", max_digits=10, decimal_places=3, null=True, blank=True
+    )
+    unidad_dosis = models.CharField("unidad de la dosis", max_length=20, blank=True)
     unidad = models.CharField(
         "unidad de la cantidad", max_length=10, choices=unidades.CHOICES
     )

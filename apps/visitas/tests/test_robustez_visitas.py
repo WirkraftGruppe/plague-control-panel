@@ -36,6 +36,9 @@ def _producto(producto, **cambios):
 class CantidadNumericaTests(ApiVisitasBase):
     def setUp(self):
         super().setUp()
+        # La dosis enviada solo se guarda en los productos con dosis variable.
+        self.producto.dosis_variable = True
+        self.producto.save()
         self.visita = self._abierta()
 
     def test_cantidad_como_numero_json_da_201_y_valor_exacto(self):

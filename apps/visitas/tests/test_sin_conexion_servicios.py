@@ -165,19 +165,19 @@ class HoraClienteTests(BaseSinConexion):
         pendiente.refresh_from_db()
         self.assertEqual(pendiente.estado, Visita.Estado.PENDIENTE)
 
-    def test_cerrada_en_anterior_a_abierta_falla(self):
+    def test_cerrada_en_anterior_a_abierta_se_guarda_con_incidencia(self):
         visita = self.abrir(abierta_en=hace(hours=2))
         self.revisar(visita, self.general)
-        with self.assertRaises(ValidationError) as contexto:
-            cerrar_visita(
-                visita,
-                quien=self.empleado,
-                cierre=Visita.Cierre.EMPLEADO,
-                cerrada_en=hace(hours=3),
-            )
-        self.assertIn("cerrada_en", contexto.exception.message_dict)
-        visita.refresh_from_db()
-        self.assertEqual(visita.estado, Visita.Estado.ABIERTA)
+        hora = hace(hours=3)
+        cerrada = cerrar_visita(
+            visita,
+            quien=self.empleado,
+            cierre=Visita.Cierre.EMPLEADO,
+            cerrada_en=hora,
+        )
+        self.assertEqual(cerrada.estado, Visita.Estado.REALIZADA)
+        self.assertEqual(cerrada.cerrada_en, hora)
+        self.assertTrue(cerrada.incidencia_horas)
 
     def test_reporte_guarda_reportado_en(self):
         visita = self.abrir(abierta_en=hace(hours=3))
