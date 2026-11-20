@@ -25,25 +25,29 @@ from rest_framework.views import APIView
 from apps.accounts.permisos import EsAdministrador, EsEmpleado
 from apps.empresas.consultas import empresa_de
 
+from .coordinacion import revisiones_de_hoy
 from .models import Foto, Visita
 from .serializers import (
     MAX_BYTES_FOTO,
     MAX_FOTOS,
+    AbrirTurnoSerializer,
     AbrirVisitaSerializer,
     CerrarVisitaSerializer,
     CrearRevisionSerializer,
     NoRevisadoSerializer,
     ReportarNoRevisadoSerializer,
-    RevisionSerializer,
+    RevisionCreadaSerializer,
     VisitaActivaSerializer,
     VisitaRealizadaSerializer,
 )
 from .services import (
+    AperturaNoPermitida,
     NoRevisadoDuplicado,
     RevisionDuplicada,
     VisitaNoAbierta,
     VisitaNoEncontrada,
     VisitaYaCerrada,
+    abrir_turno_sin_escaneo,
     abrir_visita,
     cerrar_visita,
     registrar_no_revisado,
@@ -74,6 +78,12 @@ class VisitaYaCerradaError(APIException):
     default_code = "visita_ya_cerrada"
 
 
+class AperturaNoPermitidaError(APIException):
+    status_code = status.HTTP_409_CONFLICT
+    default_detail = "No se puede abrir este turno sin escanear el QR."
+    default_code = "apertura_no_permitida"
+
+
 class VisitaNoAbiertaError(APIException):
     status_code = status.HTTP_409_CONFLICT
     default_detail = "La visita no está abierta."
@@ -93,7 +103,35 @@ def visitas_activas_del_usuario(request):
     )
 
 
-class MisVisitasView(generics.ListAPIView):
+def revisado_por_otro_de(request, visitas):
+    """`{punto_id: (nombre, realizada_en)}` con la última revisión de hoy de otro
+    empleado en los puntos de las visitas; una sola consulta por llamada."""
+    puntos = {item.punto_id for visita in visitas for item in visita.items.all()}
+    if not puntos:
+        return {}
+    resultado = {}
+    for punto_id, revisiones in revisiones_de_hoy(empresa_de(request), puntos).items():
+        de_otros = [r for r in revisiones if r[0] != request.user.pk]
+        if de_otros:
+            resultado[punto_id] = de_otros[-1][1:]
+    return resultado
+
+
+class ConRevisadoPorOtro:
+    """Agrega al contexto del serializer `revisado_por_otro` de todas las visitas
+    (la página entera o el detalle), calculado en una sola llamada."""
+
+    def get_serializer(self, instancia=None, *args, **kwargs):
+        if instancia is not None:
+            visitas = instancia if kwargs.get("many") else [instancia]
+            kwargs["context"] = {
+                **self.get_serializer_context(),
+                "revisado_por_otro": revisado_por_otro_de(self.request, visitas),
+            }
+        return super().get_serializer(instancia, *args, **kwargs)
+
+
+class MisVisitasView(ConRevisadoPorOtro, generics.ListAPIView):
     """Visitas pendientes y abiertas del usuario autenticado."""
 
     permission_classes = [EsEmpleado | EsAdministrador]
@@ -111,7 +149,7 @@ class MisVisitasView(generics.ListAPIView):
         return super().get(request, *args, **kwargs)
 
 
-class MiVisitaDetalleView(generics.RetrieveAPIView):
+class MiVisitaDetalleView(ConRevisadoPorOtro, generics.RetrieveAPIView):
     """Un turno pendiente o abierto del usuario, con la forma de la lista."""
 
     permission_classes = [EsEmpleado | EsAdministrador]
@@ -178,14 +216,82 @@ class AbrirVisitaView(APIView):
             precision_m=entrada.validated_data["precision_m"],
             abierta_en=entrada.validated_data["abierta_en"],
         )
-        visita = (
-            Visita.objects.de_empresa(empresa_de(request))
-            .select_related("sitio__cliente")
-            .prefetch_related(*PRECARGA_TURNO)
-            .get(pk=visita.pk)
-        )
         return Response(
-            VisitaActivaSerializer(visita).data,
+            _turno_abierto(request, visita),
+            status=status.HTTP_201_CREATED if creada else status.HTTP_200_OK,
+        )
+
+
+def _turno_abierto(request, visita):
+    """Cuerpo de la respuesta de apertura: el turno con la forma de `me/visitas/`."""
+    visita = (
+        Visita.objects.de_empresa(empresa_de(request))
+        .select_related("sitio__cliente")
+        .prefetch_related(*PRECARGA_TURNO)
+        .get(pk=visita.pk)
+    )
+    contexto = {"revisado_por_otro": revisado_por_otro_de(request, [visita])}
+    return VisitaActivaSerializer(visita, context=contexto).data
+
+
+class AbrirTurnoSinEscaneoView(APIView):
+    """Abre un turno pendiente propio sin el QR (queda marcado con una incidencia)."""
+
+    permission_classes = [EsEmpleado | EsAdministrador]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "crear_visita"
+
+    @extend_schema(
+        summary="Abrir un turno sin escanear el QR",
+        operation_id="visitas_abrir_turno_create",
+        description=(
+            "Abre el turno pendiente `<pk>` del usuario sin el QR (la prueba de "
+            "presencia): la visita queda con la incidencia de apertura sin "
+            'escaneo, que cuenta en "Incidencias sin revisar". `abierta_en`, '
+            "`latitud`, `longitud` y `precision_m` son opcionales; las coordenadas "
+            "se guardan sin verificar la distancia. Si el usuario ya tiene una "
+            "visita abierta en el sitio, la devuelve con 200 sin cambios. Una "
+            "revisión sigue exigiendo el `qr_codigo` del punto."
+        ),
+        request=AbrirTurnoSerializer,
+        responses={
+            201: VisitaActivaSerializer,
+            200: VisitaActivaSerializer,
+            400: OpenApiResponse(
+                description="`abierta_en` futura o con atraso excedido, o campos "
+                "inválidos."
+            ),
+            404: OpenApiResponse(
+                description="La visita no existe, es de otro empleado o de otra "
+                "empresa."
+            ),
+            409: OpenApiResponse(
+                description="El turno no se puede abrir sin escanear: no está "
+                "pendiente, está programado para un día posterior o su sitio o "
+                "cliente están inactivos."
+            ),
+        },
+    )
+    def post(self, request, pk):
+        """201 si abre el turno, 200 si ya había una visita abierta en el sitio."""
+        previa = (
+            Visita.objects.de_empresa(empresa_de(request))
+            .filter(pk=pk, empleado=request.user)
+            .first()
+        )
+        if previa is None:
+            raise NotFound("La visita no existe.")
+        entrada = AbrirTurnoSerializer(data=request.data)
+        entrada.is_valid(raise_exception=True)
+        try:
+            visita = abrir_turno_sin_escaneo(pk, request.user, **entrada.validated_data)
+        except Visita.DoesNotExist:
+            raise NotFound("La visita no existe.")
+        except AperturaNoPermitida as no_permitida:
+            raise AperturaNoPermitidaError(" ".join(no_permitida.messages))
+        creada = previa.estado == Visita.Estado.PENDIENTE and visita.pk == previa.pk
+        return Response(
+            _turno_abierto(request, visita),
             status=status.HTTP_201_CREATED if creada else status.HTTP_200_OK,
         )
 
@@ -209,9 +315,14 @@ class CrearRevisionView(APIView):
             "responde 409; "
             "`revision` y `visita` solo vienen si son del mismo empleado. Un "
             "administrador que escanea un punto sin coordenadas, con precisión de a lo "
-            "sumo 50 m, las fija. `servicio` (id, opcional) es el que eligió el "
-            "empleado: si difiere del que decide el servidor, la revisión lo usa y "
-            "queda con una incidencia."
+            "sumo 50 m, las fija. `latitud` y `longitud` son opcionales: sin ellas la "
+            "revisión se guarda con la incidencia de falta de ubicación. `dosis` y "
+            "`unidad_dosis` de cada producto son opcionales: un producto sin "
+            "`dosis_variable` guarda siempre su dosis habitual; con ella, la enviada "
+            "o, si falta, la habitual. La respuesta trae `duplicada_hoy`: otro "
+            "empleado ya revisó el punto ese día. `servicio` (id, opcional) es el "
+            "que eligió el empleado: si difiere del que decide el servidor, la "
+            "revisión lo usa y queda con una incidencia."
         ),
         request={
             "multipart/form-data": OpenApiRequest(
@@ -221,11 +332,12 @@ class CrearRevisionView(APIView):
             )
         },
         responses={
-            201: RevisionSerializer,
+            201: RevisionCreadaSerializer,
             400: OpenApiResponse(
                 description=(
                     "Validación: QR que no es de un punto del sitio, visita no "
-                    "abierta, coordenadas faltantes, punto sin servicio o con el "
+                    "abierta, coordenadas fuera de rango, `lote` vacío "
+                    "(`productos_aplicados.<i>.lote`), punto sin servicio o con el "
                     "servicio dado de baja, `servicio` inactivo o de otra empresa, "
                     "planilla inválida, hora futura o revisión con más horas de "
                     "atraso que `ATRASO_MAXIMO_APP_HORAS` (`campos.realizada_en` "
@@ -273,7 +385,7 @@ class CrearRevisionView(APIView):
                 cuerpo["visita"] = duplicada.revision.visita_id
             return Response(cuerpo, status=status.HTTP_409_CONFLICT)
         return Response(
-            RevisionSerializer(revision).data, status=status.HTTP_201_CREATED
+            RevisionCreadaSerializer(revision).data, status=status.HTTP_201_CREATED
         )
 
 
@@ -303,9 +415,8 @@ class ReportarNoRevisadoView(APIView):
             400: OpenApiResponse(
                 description=(
                     "Punto de otro sitio, inactivo o ya reportado, `reportado_en` "
-                    "futura, anterior a la apertura de la visita (`campos."
-                    "reportado_en`) o con atraso excedido (`code: "
-                    "atraso_excedido`), o campos inválidos."
+                    "futura o con atraso excedido (`code: atraso_excedido`), o "
+                    "campos inválidos."
                 )
             ),
             404: OpenApiResponse(
@@ -376,7 +487,8 @@ class CerrarVisitaView(APIView):
             "visita; si la cerró el sistema o un administrador, 409. Cerrar la "
             "visita de un administrador no cuenta como servicio. `cerrada_en` "
             "(opcional) es la hora del cierre si el empleado estaba sin conexión: no "
-            "puede ser anterior a la apertura, futura ni exceder el atraso máximo."
+            "puede ser futura ni exceder el atraso máximo; una anterior a la apertura "
+            "se guarda y marca la visita con una incidencia de horas."
         ),
         request=CerrarVisitaSerializer,
         responses={
@@ -384,8 +496,7 @@ class CerrarVisitaView(APIView):
             400: OpenApiResponse(
                 description="No tiene al menos una revisión o un reporte de punto "
                 "no revisado, la planilla es inválida o `cerrada_en` es inválida: "
-                "anterior a la apertura (`campos.cerrada_en`) o futura "
-                "(`code: atraso_excedido` si excede el atraso)."
+                "futura (`code: atraso_excedido` si excede el atraso)."
             ),
             404: OpenApiResponse(
                 description="La visita no existe o es de otro usuario."

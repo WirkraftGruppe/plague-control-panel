@@ -15,6 +15,11 @@ urlpatterns = [
     ),
     path("visitas/abrir/", api_views.AbrirVisitaView.as_view(), name="abrir"),
     path(
+        "visitas/<int:pk>/abrir/",
+        api_views.AbrirTurnoSinEscaneoView.as_view(),
+        name="abrir-turno",
+    ),
+    path(
         "visitas/<int:pk>/cerrar/", api_views.CerrarVisitaView.as_view(), name="cerrar"
     ),
     path(
