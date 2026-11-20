@@ -72,7 +72,7 @@
     var ATAJOS = {
       todos: function () { return true; },
       // Los puntos con `data-asignado` (turno de otro empleado) no entran en este atajo.
-      vencidos: function (fila) { return !fila.dataset.asignado && fila.dataset.estado === "vencida" || fila.dataset.estado === "proxima"; },
+      vencidos: function (fila) { return !fila.dataset.asignado && (fila.dataset.estado === "vencida" || fila.dataset.estado === "proxima"); },
       ninguno: function () { return false; },
     };
     raiz.querySelectorAll("[data-atajo]").forEach(function (boton) {

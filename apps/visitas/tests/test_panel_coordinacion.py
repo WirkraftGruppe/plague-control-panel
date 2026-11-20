@@ -59,7 +59,11 @@ class NuevoTurnoAsignadoTests(BaseTurnoTests):
     def test_atajo_vencidos_excluye_asignados(self):
         ruta = Path(__file__).parents[1] / "static/visitas/nuevo_turno.js"
         codigo = ruta.read_text(encoding="utf-8")
-        self.assertIn("!fila.dataset.asignado", codigo)
+        self.assertIn(
+            '!fila.dataset.asignado && (fila.dataset.estado === "vencida" '
+            '|| fila.dataset.estado === "proxima")',
+            codigo,
+        )
 
 
 class FichaTurnoIncidenciasTests(BaseTurnoTests):
