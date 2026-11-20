@@ -114,3 +114,30 @@
 - duración: 39.7 s
 - Veredicto: PASA
 
+## 2026-11-20 12:21 — tarea T8 de 2026-11-20-coordinacion-operarios.md
+
+- HEAD verificado: 6cf68a7
+- Contrato: modificado y aceptado (bdf0cf5, decisión del usuario)
+- Criterios:
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.RevisionApiTests.test_segunda_del_dia_por_otro_201_duplicada_hoy_true --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.RevisionApiTests.test_visita_de_administrador_duplicada_hoy_false --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.RevisionApiTests.test_sin_coordenadas_201_con_incidencia --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.RevisionApiTests.test_sin_dosis_variable_sin_dosis_201_guarda_habitual --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.RevisionApiTests.test_sin_lote_400_en_productos_aplicados_i_lote --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.AbrirSinEscaneoApiTests.test_turno_pendiente_propio_se_abre_con_incidencia --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.AbrirSinEscaneoApiTests.test_turno_ajeno_404 --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.AbrirSinEscaneoApiTests.test_turno_de_otra_empresa_404 --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.AbrirSinEscaneoApiTests.test_turno_no_pendiente_409 --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.AbrirSinEscaneoApiTests.test_revision_sin_qr_codigo_sigue_400 --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.RevisadoPorOtroTests.test_item_revisado_hoy_por_otro_trae_revisado_por_otro --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.RevisadoPorOtroTests.test_revision_propia_o_de_ayer_es_null --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.RevisadoPorOtroTests.test_consultas_iguales_con_5_y_50_items --keepdb`
+  - PASA (exit 0, nuevo: sí) `T8 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_api_coordinacion.RevisadoPorOtroTests.test_detalle_trae_revisado_por_otro --keepdb`
+  - PASA (exit 0, nuevo: —) `T8 [grep-1] grep -n "revisado_hoy_por" docs/contrato-api.md`
+  - PASA (exit 0, nuevo: —) `T8 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas apps.api --keepdb`
+  - PASA (exit 0, nuevo: —) `T8 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 650 --subtarea T8`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 48.3 s
+- Veredicto: PASA
+
