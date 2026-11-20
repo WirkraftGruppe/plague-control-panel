@@ -333,8 +333,8 @@ commit_base: 794af57
 
 | Tarea | Estado | Commit | Recibo |
 |---|---|---|---|
-| T1 | pendiente | | |
-| T2 | pendiente | | |
+| T1 | hecha | 48b6109 | PASA (tarea, HEAD 48b6109 en el worktree; b018b02 tras integrar) |
+| T2 | hecha | b018b02 | PASA (tarea T1,T2, HEAD b018b02) |
 | T3 | pendiente | | |
 | T4 | pendiente | | |
 | T5 | pendiente | | |
