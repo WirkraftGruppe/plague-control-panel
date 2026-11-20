@@ -1,4 +1,5 @@
 {% extends "panel/base.html" %}
+{% load static %}
 {% block panel_contenido %}
   <h1>Cargar visita</h1>
   <p>Sitio: {{ sitio.nombre }} ({{ sitio.cliente.razon_social }})</p>
@@ -20,11 +21,11 @@
     {{ productos.management_form }}
     {% if productos.non_form_errors %}<div class="errores">{{ productos.non_form_errors }}</div>{% endif %}
     {% for fila in productos %}
-      <fieldset class="campo">
+      <fieldset class="campo" data-producto>
         <legend>Producto {{ forloop.counter }}</legend>
         {% for error in fila.non_field_errors %}<small class="error">{{ error }}</small>{% endfor %}
         {% for campo in fila.visible_fields %}
-          <div class="campo{% if campo.errors %} campo-error{% endif %}">
+          <div class="campo{% if campo.errors %} campo-error{% endif %}"{% if campo.name == 'dosis' or campo.name == 'unidad_dosis' %} data-dosis-campo hidden{% endif %}>
             {{ campo.label_tag }}
             {{ campo }}
             {% for error in campo.errors %}<small class="error">{{ error }}</small>{% endfor %}
@@ -37,4 +38,7 @@
       <a class="boton boton-secundario" href="{% url 'panel:sitios:ficha' sitio.pk %}">Cancelar</a>
     </div>
   </form>
+{% endblock %}
+{% block scripts %}
+  <script src="{% static 'visitas/cargar_visita.js' %}"></script>
 {% endblock %}

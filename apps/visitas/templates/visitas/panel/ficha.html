@@ -7,6 +7,8 @@
     {% else %}{% include "panel/partials/etiqueta_estado.html" with tono=visita.estado|tono_estado texto=visita.get_estado_display %}{% endif %}
     {% if visita.incidencia %}{% include "panel/partials/etiqueta_estado.html" with tono="danger" texto="Incidencia" %}{% endif %}
     {% if con_ubicacion %}{% include "panel/partials/etiqueta_estado.html" with tono="danger" texto="Incidencia de ubicación" %}{% endif %}
+    {% if visita.incidencia_horas %}{% include "panel/partials/etiqueta_estado.html" with tono="danger" texto="Horas inconsistentes" %}{% endif %}
+    {% if visita.incidencia_apertura_sin_escaneo %}{% include "panel/partials/etiqueta_estado.html" with tono="danger" texto="Apertura sin escaneo" %}{% endif %}
     {% if visita.incidencia_asignacion %}{% include "panel/partials/etiqueta_estado.html" with tono="danger" texto="Incidencia de asignación" %}{% endif %}
   </p>
   <dl>
@@ -22,9 +24,11 @@
     {% if visita.observaciones %}<dt>Observaciones</dt><dd>{{ visita.observaciones|linebreaksbr }}</dd>{% endif %}
   </dl>
 
-  {% if visita.incidencia or con_ubicacion or no_revisados or revisiones|con_incidencia_servicio %}
+  {% if visita.incidencia or con_ubicacion or con_incidencias_nuevas or no_revisados or revisiones|con_incidencia_servicio %}
     <h2>Incidencia</h2>
     {% if visita.incidencia %}<p>{{ visita.incidencia_detalle|default:"Sin detalle." }}</p>{% endif %}
+    {% if visita.incidencia_horas %}<p>Las horas de apertura o cierre son inconsistentes.</p>{% endif %}
+    {% if visita.incidencia_apertura_sin_escaneo %}<p>El turno se abrió sin escanear el código QR.</p>{% endif %}
     {% if con_ubicacion %}<p>Hay una apertura o una revisión registrada lejos del punto de control.</p>{% endif %}
     {% if visita.incidencia_revisada_en %}
       <p>Revisada por {{ visita.incidencia_revisada_por.get_full_name|default:visita.incidencia_revisada_por.username }} el {{ visita.incidencia_revisada_en|date:"d/m/Y H:i" }}.</p>
@@ -64,6 +68,8 @@
     <section>
       <h3>{{ revision.punto.nombre }} · {{ revision.servicio }}{% if revision.fuera_de_turno %} (fuera de turno){% endif %} · {{ revision.realizada_en|date:"d/m/Y H:i" }}</h3>
       {% if revision.incidencia_servicio %}<p>Servicio distinto del asignado</p>{% endif %}
+      {% if revision.incidencia_sin_ubicacion %}<p>Sin ubicación: la revisión se registró sin coordenadas.</p>{% endif %}
+      {% if revision.incidencia_duplicada %}<p>Punto revisado por otro operario el mismo día</p>{% endif %}
       {% with llegada=revision|llegada_tardia %}{% if llegada %}<p>Llegó {{ llegada|date:"d/m/Y H:i" }} · registrado sin conexión</p>{% endif %}{% endwith %}
       {% if revision.distancia_m is not None %}<p>Distancia al punto: {{ revision.distancia_m }} m{% if revision.incidencia_ubicacion %} (fuera del radio permitido){% endif %}</p>{% endif %}
       {% if revision.filas %}
@@ -73,7 +79,7 @@
       {% endif %}
       {% if revision.productos.all %}
         <h4>Productos aplicados</h4>
-        <ul>{% for aplicado in revision.productos.all %}<li>{{ aplicado.producto }} · lote {{ aplicado.lote }} · dosis {{ aplicado.dosis }} {{ aplicado.unidad_dosis }} · cantidad {{ aplicado.cantidad|floatformat:"-3" }} {{ aplicado.unidad }}</li>{% endfor %}</ul>
+        <ul>{% for aplicado in revision.productos.all %}<li>{{ aplicado.producto }} · lote {{ aplicado.lote }} {% if aplicado.dosis is not None %} · dosis {{ aplicado.dosis|floatformat:"-3" }}{% if aplicado.unidad_dosis %} {{ aplicado.unidad_dosis }}{% endif %}{% endif %} · cantidad {{ aplicado.cantidad|floatformat:"-3" }} {{ aplicado.unidad }}</li>{% endfor %}</ul>
       {% endif %}
       {% if revision.fotos.all %}
         <div class="fotos">

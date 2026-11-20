@@ -72,3 +72,22 @@
 - duración: 34.8 s
 - Veredicto: PASA
 
+## 2026-11-20 11:56 — tarea T6 de 2026-11-20-coordinacion-operarios.md
+
+- HEAD verificado: b6128be
+- Contrato: modificado y aceptado (92a9e82, decisión del usuario)
+- Criterios:
+  - PASA (exit 0, nuevo: sí) `T6 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_coordinacion.NuevoTurnoAsignadoTests.test_punto_de_turno_pendiente_de_otro_destildado_con_nombre --keepdb`
+  - PASA (exit 0, nuevo: sí) `T6 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_coordinacion.NuevoTurnoAsignadoTests.test_turno_se_crea_incluyendo_punto_asignado --keepdb`
+  - PASA (exit 0, nuevo: sí) `T6 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_coordinacion.FichaTurnoIncidenciasTests.test_revision_sin_coordenadas_senalada --keepdb`
+  - PASA (exit 0, nuevo: sí) `T6 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_coordinacion.FichaTurnoIncidenciasTests.test_horas_apertura_y_duplicada_senaladas --keepdb`
+  - PASA (exit 0, nuevo: sí) `T6 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_coordinacion.FichaTurnoIncidenciasTests.test_dosis_vacia_no_muestra_none --keepdb`
+  - PASA (exit 0, nuevo: sí) `T6 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_panel_coordinacion.CargarVisitaDosisTests.test_lote_precargado_y_dosis_solo_en_variable --keepdb`
+  - PASA (exit 0, nuevo: —) `T6 [grep-1] grep -n "data-asignado" apps/visitas/static/visitas/nuevo_turno.js`
+  - PASA (exit 0, nuevo: —) `T6 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas --keepdb`
+  - PASA (exit 0, nuevo: —) `T6 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 500 --subtarea T6`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 31.5 s
+- Veredicto: PASA
+

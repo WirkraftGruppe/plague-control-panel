@@ -206,7 +206,7 @@ Las olas siguen el grafo de FK: `productos` va antes que `visitas`, y `sitios` l
 
 - **Ola**: 3
 - **Depende de**: T4
-- **Puede tocar**: `apps/sitios/api_views.py`, `apps/sitios/serializers.py`, `apps/sitios/panel_views.py`, `apps/sitios/templates/sitios/panel/ficha.html`, `apps/sitios/tests/test_resolver_revisado_hoy.py`, `apps/sitios/tests/test_datos_sin_conexion_limite.py`, `apps/sitios/tests/test_panel_ficha_coordinacion.py`
+- **Puede tocar**: `apps/sitios/api_views.py`, `apps/sitios/serializers.py`, `apps/sitios/panel_views.py`, `apps/sitios/templates/sitios/panel/ficha.html`, `apps/sitios/tests/test_resolver_revisado_hoy.py`, `apps/sitios/tests/test_datos_sin_conexion_limite.py`, `apps/sitios/tests/test_panel_ficha_coordinacion.py`, `apps/sitios/tests/test_api.py`
 - **No puede tocar**: `docs/planes/`, `docs/`, `config/`, `apps/visitas/`, `apps/api/`
 - **Skill a leer antes**: `.agents/skills/django-rest-framework/SKILL.md` (serializers y throttling) y `.agents/skills/api-security-best-practices/SKILL.md` (exposición de datos)
 - **Worktree**: sí
