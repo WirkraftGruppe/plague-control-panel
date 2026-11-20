@@ -376,19 +376,36 @@ commit_base: 794af57
 | Fecha | Modo | Bloqueantes | Decisiones | Menores |
 |---|---|---|---|---|
 | 2026-11-20 10:37 | plan | 2 | 2 | 6 |
+| 2026-11-20 12:25 | cierre | 2 | 0 | 6 |
 
-Auditoría: pendiente
+Auditoría: 2026-11-20 12:25 — APROBADO (`auditor-seguridad`): 0 bloqueantes, 0 importantes, 2 menores (los mismos dos bloqueantes del revisor), 3 observaciones
 Hallazgos (revisión de plan): los 2 bloqueantes (regresión de la dosis en productos existentes; invariantes de `abrir_turno_sin_escaneo`) y los 6 menores corregidos en el plan antes de congelar; las 2 decisiones (producto sin dosis; "mismo día" sin conexión) las tomó el usuario el 2026-11-20.
+Hallazgos (revisión de cierre y auditoría): bloqueante 1, el atajo "Vencidos y próximos" de `nuevo_turno.js` tildaba los puntos próximos asignados a otro (precedencia de `&&` sobre `||`; el `[grep-1]` y el test no lo veían) — corregido en d6a1866 con el test endurecido (falla con el código viejo). Bloqueante 2, `visitas/<pk>/abrir/` aceptaba coordenadas que no guardaba, contra el contrato — el usuario decidió minimizar: el endpoint y el servicio solo admiten `abierta_en` y no guardan ubicación (69652c4, 1d5fb54, 511c902). Los menores y las observaciones, en P-coordinacion-operarios-1 a 13. Una sola ronda, en la raíz (rama del plan), con un commit por subtarea dueña para que cada línea cuente en su presupuesto.
 
 ### Decisiones del plan
 
 - T1 — `cargar_demo` (`apps/panel/**`) va en la subtarea de `productos`, como la transversal del plan — opciones: T1 toca solo el nombre en `apps/panel/` y otra subtarea hace la demo, o T1 hace toda la demo — la segunda — `revisar_plan.py` no admite dos dueños del mismo archivo y el renombre rompería la suite al integrar — autónoma — cómo revertir: mover la demo a una subtarea propia — decidida por Claude, revisable
 - T8 — la API de `visitas` y toda la documentación van juntas en la última ola — la ruta nueva y su fila en el contrato tienen que entrar juntas (`test_contrato_doc`), el contrato tiene un solo dueño y el OpenAPI se regenera con todo integrado — autónoma — decidida por Claude, revisable
 - T5 — la tasa de `datos-sin-conexion` va en la clase (`rate = "30/hour"`), no en `DEFAULT_THROTTLE_RATES` — los settings son del principal y `ThrottleRenovacion` sigue ese patrón — autónoma — cómo revertir: moverla a settings en un plan del principal — decidida por Claude, revisable
+- T8 — toda `AperturaNoPermitida` (no pendiente, programada para un día posterior, sitio o cliente inactivo) responde 409 `apertura_no_permitida` — opciones: 409 solo para "no pendiente" y 400 para el resto, o 409 para todo — la segunda — son conflictos con el estado del recurso y el servicio no distingue la causa; el 400 queda para `abierta_en` inválida — autónoma — cómo revertir: subclases de `AperturaNoPermitida` y mapeo por causa — decidida por Claude, revisable
 
 ## Pendientes que deja este plan
 
 ### Problemas
+
+- P-coordinacion-operarios-1 [menor] `visitas/<pk>/abrir/` responde 409 también con el sitio o el cliente inactivos, mientras `abrir_visita` responde 400 `qr_codigo` para un sitio inactivo (`apps/visitas/services.py:483-484`); está documentado en el contrato, pero no hay test de API para el 409 por sitio o cliente inactivo (solo en el servicio, `test_incidencias_nuevas.py:206-218`).
+- P-coordinacion-operarios-2 [menor] La marca "Punto revisado por dos operarios el mismo día" de la ficha del sitio va en una lista sobre la tabla de turnos (`apps/sitios/templates/sitios/panel/ficha.html:72-78`), no en la fila: `_pestana_turnos.html` estaba fuera del alcance de T5.
+- P-coordinacion-operarios-3 [menor] `abrir_turno_sin_escaneo` (`apps/visitas/services.py`) no excluye las pendientes con revisiones (evidencia migrada), que `_pendiente_para` y el panel sí excluyen, ni fija `origen=APP` y `motivo_manual=""` como `abrir_visita`.
+- P-coordinacion-operarios-4 [menor] En `AbrirTurnoSinEscaneoView`, `creada` se calcula con la visita leída fuera del lock: dos pedidos simultáneos sobre el mismo turno pendiente responden los dos 201 (el contrato dice 200 para el segundo); no hay doble apertura.
+- P-coordinacion-operarios-5 [menor] En un producto de dosis variable, una `dosis` enviada sin `unidad_dosis` se guarda con unidad vacía en vez de la habitual (`apps/visitas/services.py:194-197`) y puede llegar al certificado sin unidad.
+- P-coordinacion-operarios-6 [menor] `test_incidencias_nuevas.HorasInconsistentesTests.test_no_cambia_proximo_vencimiento_ni_stock`: la comprobación de stock no prueba nada, porque la revisión no aplica productos.
+- P-coordinacion-operarios-7 [menor] Warning de `spectacular` por `UnidadEnum` (choice sets duplicados, desde T1); se resuelve con `ENUM_NAME_OVERRIDES` en `config/` (del principal).
+- P-coordinacion-operarios-8 [menor] Método: `verificar.py` solo reconoce subtareas con id entero (`RE_TAREA = ^### T(\d+)\b`) y en la rama `<slug>-T<n>` cuenta todo commit como T<n>; `presupuesto.sh --subtarea T<n>` suma los commits `T<n>b:`; `worktree-crear.sh` acepta `T5a`. Al partir una subtarea hay que usar un id entero nuevo y un worktree propio (ver `docs/metodo/incidentes.md`). Para el plan del método.
+- P-coordinacion-operarios-9 [observación] `revisado_hoy_por.operario` del resolver de QR incluye el `id` de usuario del otro empleado (`apps/sitios/api_views.py:92`); el plan pedía nombre y hora y `propia` ya cubre lo que necesita la app. Quitarlo minimiza.
+- P-coordinacion-operarios-10 [observación] Una revisión con una sola de las dos coordenadas descarta las dos y queda con `incidencia_sin_ubicacion` (`apps/visitas/services.py:807`); no saltea el control (deja la marca), pero oculta la distancia; no hay test de ese caso y un 400 sería más estricto.
+- P-coordinacion-operarios-11 [observación] `condicion_incidencia_sin_revisar` no cuenta `Revision.incidencia_ubicacion` (revisión lejos del punto) y sí la revisión sin ubicación; anterior a este plan, conviene revisarlo aparte.
+- P-coordinacion-operarios-12 [observación] "Cargar visita": `cargar_visita.js` precarga lote y dosis solo en campos vacíos; si el administrador cambia de producto después, el lote anterior queda y lo corrige a mano. Sin tests de JS: los tests comprueban el HTML y los `data-*`.
+- P-coordinacion-operarios-13 [observación] `ThrottleDatosSinConexion` cuenta por caché local: con varios procesos en producción cada uno lleva su cupo, igual que los demás throttles (ver P-limites-ingreso-*).
 
 ### Decisiones
 
@@ -396,6 +413,7 @@ Hallazgos (revisión de plan): los 2 bloqueantes (regresión de la dosis en prod
 - 2026-11-20 — `Producto.unidad_dosis_por_defecto` se renombra a `unidad_dosis_habitual`, junto a `dosis_habitual` y `dosis_variable`; la dosis la define el administrador y el operario la carga solo en productos de dosis variable; el lote sigue obligatorio y se precarga con el último usado; un producto exige dosis habitual o dosis variable, y los existentes se migran como variables — con un QR por estación la dosis casi siempre es la habitual, y la dosis sigue en el certificado — (usuario) — reemplaza a: 2026-09-29 (el empleado completa lote y dosis)
 - 2026-11-20 — una revisión del mismo punto el mismo día (fecha local de `realizada_en`) por otro operario se acepta con aviso (`duplicada_hoy`) e incidencia, sin bloquearla; el nombre y la hora del otro operario se exponen solo para revisiones de hoy, en el resolver de QR y en los ítems de los turnos propios; `me/datos-sin-conexion/` sigue con solo `ultima_revision_fecha` — coordinar sin frenar el trabajo — (usuario) — reemplaza a: (nada)
 - 2026-11-20 — `POST visitas/<pk>/abrir/` abre un turno pendiente propio sin escanear y deja la incidencia "apertura sin escaneo"; sirve para reportar puntos no revisados y no habilita revisiones sin QR — cuando no se puede escanear ningún punto — (usuario) — reemplaza a: (nada)
+- 2026-11-20 — `POST visitas/<pk>/abrir/` no pide ni guarda ubicación: solo admite `abierta_en`; la incidencia "apertura sin escaneo" queda sin dato de dónde se abrió — minimizar datos de localización (Ley 25.326); la revisión de cierre encontró que las coordenadas se aceptaban sin guardarse — (usuario) — reemplaza a: 2026-11-20 (las coordenadas de la apertura sin escaneo se guardan si vienen)
 
 ### Cierra
 
