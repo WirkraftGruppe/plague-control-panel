@@ -103,7 +103,7 @@ Las olas siguen el grafo de FK: `productos` va antes que `visitas`, y `sitios` l
 
 - **Ola**: 2
 - **Depende de**: T2
-- **Puede tocar**: `apps/visitas/models.py`, `apps/visitas/migrations/0005_incidencias_coordinacion.py`, `apps/visitas/services.py`, `apps/visitas/coordinacion.py`, `apps/visitas/tests/test_coordinacion.py`, `apps/visitas/tests/test_incidencias_nuevas.py`, `apps/visitas/tests/test_dosis_registro.py`, `apps/visitas/tests/test_sin_conexion_ajustes.py`, `apps/visitas/tests/test_sin_conexion_servicios.py`, `apps/visitas/tests/test_services.py`, `apps/visitas/tests/test_robustez_visitas.py`, `apps/visitas/tests/test_stock_api.py`
+- **Puede tocar**: `apps/visitas/models.py`, `apps/visitas/migrations/0005_incidencias_coordinacion.py`, `apps/visitas/services.py`, `apps/visitas/coordinacion.py`, `apps/visitas/tests/test_coordinacion.py`, `apps/visitas/tests/test_dosis_registro.py`, `apps/visitas/tests/test_sin_conexion_ajustes.py`, `apps/visitas/tests/test_sin_conexion_servicios.py`, `apps/visitas/tests/test_services.py`, `apps/visitas/tests/test_robustez_visitas.py`, `apps/visitas/tests/test_stock_api.py`
 - **No puede tocar**: `docs/planes/`, `docs/`, `config/`, `apps/api/`, `apps/sitios/`, `apps/panel/`, `apps/productos/`, `apps/visitas/serializers.py`, `apps/visitas/api_views.py`, `apps/visitas/api_urls.py`, `apps/visitas/panel_views.py`, `apps/visitas/panel_forms.py`, `apps/visitas/templates/`, migraciones existentes
 - **Skill a leer antes**: `.agents/skills/django-conventions/SKILL.md` § Task 2: Model Best Practices, § Task 7: Performance Optimization y § Task 8: Testing Django Applications
 - **Worktree**: sí
@@ -153,6 +153,25 @@ Las olas siguen el grafo de FK: `productos` va antes que `visitas`, y `sitios` l
   - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_coordinacion.RevisionesDeHoyTests.test_una_consulta --keepdb`
   - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_coordinacion.AsignadosAOtrosTests.test_pendiente_o_abierta_de_otro_empleado --keepdb`
   - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_coordinacion.AsignadosAOtrosTests.test_excluye_realizadas_canceladas_y_propias --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_dosis_registro.DosisRegistroTests.test_sin_dosis_variable_y_sin_dosis_guarda_habitual --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_dosis_registro.DosisRegistroTests.test_sin_dosis_variable_ignora_dosis_enviada --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_dosis_registro.DosisRegistroTests.test_con_dosis_variable_guarda_la_enviada --keepdb`
+  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_dosis_registro.DosisRegistroTests.test_con_dosis_variable_sin_dosis_guarda_habitual --keepdb`
+  - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py makemigrations --check --dry-run`
+  - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas --keepdb`
+  - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 800 --subtarea T3`
+
+### T3b — Tests de las incidencias nuevas y la apertura sin escaneo (`test_incidencias_nuevas.py`)
+
+- **Ola**: 2
+- **Depende de**: T3 (mismo worktree, `coordinacion-operarios-T3`)
+- **Puede tocar**: `apps/visitas/tests/test_incidencias_nuevas.py`
+- **No puede tocar**: `docs/planes/`, `docs/`, `config/`, `apps/` salvo `apps/visitas/tests/test_incidencias_nuevas.py`
+- **Skill a leer antes**: `.agents/skills/django-conventions/SKILL.md` § Task 8: Testing Django Applications
+- **Worktree**: el de T3
+- **Presupuesto**: 300 líneas agregadas
+- **Qué hacer**: los tests de horas inconsistentes, sin ubicación, duplicada, apertura sin escaneo y conteo de incidencias de T3, separados de T3 porque no entraban en su presupuesto (contrato modificado por el usuario el 2026-11-20).
+- **Criterios**:
   - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.HorasInconsistentesTests.test_reporte_un_minuto_antes_de_abierta_201_con_incidencia --keepdb`
   - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.HorasInconsistentesTests.test_cierre_un_minuto_antes_de_abierta_200_con_incidencia --keepdb`
   - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.HorasInconsistentesTests.test_no_cambia_proximo_vencimiento_ni_stock --keepdb`
@@ -168,13 +187,7 @@ Las olas siguen el grafo de FK: `productos` va antes que `visitas`, y `sitios` l
   - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.AperturaSinEscaneoTests.test_ajena_o_de_otra_empresa_no_existe --keepdb`
   - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.AperturaSinEscaneoTests.test_vuelta_a_pendiente_baja_la_incidencia --keepdb`
   - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.ConteoIncidenciasTests.test_cuatro_incidencias_cuentan_y_marcar_revisada_las_saca --keepdb`
-  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_dosis_registro.DosisRegistroTests.test_sin_dosis_variable_y_sin_dosis_guarda_habitual --keepdb`
-  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_dosis_registro.DosisRegistroTests.test_sin_dosis_variable_ignora_dosis_enviada --keepdb`
-  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_dosis_registro.DosisRegistroTests.test_con_dosis_variable_guarda_la_enviada --keepdb`
-  - `[test]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_dosis_registro.DosisRegistroTests.test_con_dosis_variable_sin_dosis_guarda_habitual --keepdb`
-  - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py makemigrations --check --dry-run`
-  - `[cmd]` `PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas --keepdb`
-  - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 800 --subtarea T3`
+  - `[cmd]` `bash .claude/hooks/presupuesto.sh . '<commit_base>' 300 --subtarea T3b`
 
 ### T4 — Integración ola 2 (principal)
 
@@ -336,6 +349,7 @@ commit_base: 794af57
 | T1 | hecha | 48b6109 | PASA (tarea, HEAD 48b6109 en el worktree; b018b02 tras integrar) |
 | T2 | hecha | b018b02 | PASA (tarea T1,T2, HEAD b018b02) |
 | T3 | pendiente | | |
+| T3b | pendiente | | |
 | T4 | pendiente | | |
 | T5 | pendiente | | |
 | T6 | pendiente | | |
