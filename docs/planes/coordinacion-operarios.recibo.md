@@ -23,3 +23,25 @@
 - duración: 96.1 s
 - Veredicto: PASA
 
+## 2026-11-20 11:43 — tarea T3 de 2026-11-20-coordinacion-operarios.md
+
+- HEAD verificado: 59a152e
+- Contrato: modificado y aceptado (92a9e82, decisión del usuario)
+- Criterios:
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_coordinacion.RevisionesDeHoyTests.test_solo_hoy_y_que_cuentan_como_servicio --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_coordinacion.RevisionesDeHoyTests.test_no_cruza_empresas --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_coordinacion.RevisionesDeHoyTests.test_una_consulta --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_coordinacion.AsignadosAOtrosTests.test_pendiente_o_abierta_de_otro_empleado --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_coordinacion.AsignadosAOtrosTests.test_excluye_realizadas_canceladas_y_propias --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_dosis_registro.DosisRegistroTests.test_sin_dosis_variable_y_sin_dosis_guarda_habitual --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_dosis_registro.DosisRegistroTests.test_sin_dosis_variable_ignora_dosis_enviada --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_dosis_registro.DosisRegistroTests.test_con_dosis_variable_guarda_la_enviada --keepdb`
+  - PASA (exit 0, nuevo: sí) `T3 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_dosis_registro.DosisRegistroTests.test_con_dosis_variable_sin_dosis_guarda_habitual --keepdb`
+  - PASA (exit 0, nuevo: —) `T3 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py makemigrations --check --dry-run`
+  - PASA (exit 0, nuevo: —) `T3 [cmd] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas --keepdb`
+  - PASA (exit 0, nuevo: —) `T3 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 800 --subtarea T3`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 38.4 s
+- Veredicto: PASA
+
