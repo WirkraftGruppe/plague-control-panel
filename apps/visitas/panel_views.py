@@ -288,6 +288,14 @@ class FichaVisita(VistaDeEmpresaMixin, AdministradorRequeridoMixin, DetailView):
         contexto["con_ubicacion"] = visita.incidencia_ubicacion or any(
             r.incidencia_ubicacion for r in contexto["revisiones"]
         )
+        contexto["con_incidencias_nuevas"] = (
+            visita.incidencia_horas
+            or visita.incidencia_apertura_sin_escaneo
+            or any(
+                r.incidencia_duplicada or r.incidencia_sin_ubicacion
+                for r in contexto["revisiones"]
+            )
+        )
         for revision in contexto["revisiones"]:
             revision.filas = filas_planilla(revision.esquema_planilla, revision.datos)
         contexto["historial"] = _historial(visita)

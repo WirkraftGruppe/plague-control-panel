@@ -14,9 +14,9 @@
     <thead><tr><th scope="col">Revisar</th><th scope="col">Punto</th><th scope="col">Estado</th><th scope="col">Servicio</th></tr></thead>
     <tbody>
       {% for fila in form.filas %}
-      <tr data-punto="{{ fila.punto.pk }}" data-estado="{{ fila.estado }}" data-servicio="{{ fila.punto.servicio_id|default_if_none:'' }}">
+      <tr data-punto="{{ fila.punto.pk }}" data-estado="{{ fila.estado }}"{% if fila.asignado_a %} data-asignado="1"{% endif %} data-servicio="{{ fila.punto.servicio_id|default_if_none:'' }}">
         <td><input type="checkbox" name="puntos" value="{{ fila.punto.pk }}" id="punto-{{ fila.punto.pk }}"{% if fila.marcado %} checked{% endif %} aria-label="Revisar {{ fila.punto.nombre }}"></td>
-        <td><label for="punto-{{ fila.punto.pk }}">{{ fila.punto.nombre }}</label></td>
+        <td><label for="punto-{{ fila.punto.pk }}">{{ fila.punto.nombre }}</label>{% if fila.asignado_a %} <small class="ayuda">Asignado a {{ fila.asignado_a }}</small>{% endif %}</td>
         <td>{% include "panel/partials/etiqueta_estado.html" with tono=fila.estado|tono_estado texto=fila.estado_texto %}</td>
         <td>{{ fila.servicio }}{% for error in fila.servicio.errors %}<small class="error">{{ error }}</small>{% endfor %}</td>
       </tr>
