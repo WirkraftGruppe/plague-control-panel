@@ -34,6 +34,7 @@ class UnidadBaseTests(TestCase):
                 "unidad_base": unidad,
                 "contenido_por_envase": "5",
                 "modo_unidad": "unica",
+                "dosis_variable": "on",
                 "activo": "on",
             },
             instance=self.producto,

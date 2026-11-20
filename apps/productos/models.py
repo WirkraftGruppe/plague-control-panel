@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
 
@@ -21,11 +22,24 @@ class Producto(ModeloDeEmpresa):
         help_text="Número de registro ANMAT/SENASA del producto.",
     )
     presentacion = models.CharField("presentación", max_length=100, blank=True)
-    unidad_dosis_por_defecto = models.CharField(
-        "unidad de dosis por defecto",
+    dosis_habitual = models.DecimalField(
+        "dosis habitual",
+        max_digits=10,
+        decimal_places=3,
+        null=True,
+        blank=True,
+        help_text="Concentración de la preparación (p. ej. 5 ml/l).",
+    )
+    unidad_dosis_habitual = models.CharField(
+        "unidad de dosis habitual",
         max_length=20,
         blank=True,
         help_text="Por ejemplo: ml/l.",
+    )
+    dosis_variable = models.BooleanField(
+        "dosis variable",
+        default=False,
+        help_text="La dosis cambia en cada aplicación y no tiene un valor habitual.",
     )
     unidad_base = models.CharField(
         "unidad base",
@@ -60,6 +74,18 @@ class Producto(ModeloDeEmpresa):
 
     def __str__(self):
         return self.nombre_comercial
+
+    def clean(self):
+        super().clean()
+        errores = {}
+        if self.dosis_habitual is not None and not self.unidad_dosis_habitual:
+            errores["unidad_dosis_habitual"] = "Indicá la unidad de la dosis."
+        if self.dosis_habitual is None and not self.dosis_variable:
+            errores["dosis_habitual"] = (
+                "Indicá la dosis habitual o marcá la dosis como variable."
+            )
+        if errores:
+            raise ValidationError(errores)
 
 
 class MovimientoStock(ModeloDeEmpresa):

@@ -101,6 +101,8 @@ PRODUCTOS = (
         Decimal("30"),
         "equivalentes",
         Decimal("400"),
+        Decimal("2.5"),
+        False,
     ),
     (
         "Cebo rodenticida en bloque",
@@ -112,6 +114,8 @@ PRODUCTOS = (
         Decimal("50"),
         "unica",
         Decimal("100"),
+        None,
+        True,
     ),
     (
         "Insecticida residual",
@@ -123,8 +127,13 @@ PRODUCTOS = (
         Decimal("1"),
         "equivalentes",
         Decimal("200"),
+        Decimal("5"),
+        False,
     ),
 )
+
+# Segundo operario de la primera empresa y punto que comparte con el primero.
+EMPLEADO_DEMO_2 = "demo-empleado-2"
 
 # Planilla de punto que se usa si el tipo de servicio no declara campos.
 ESQUEMA_PUNTO = [

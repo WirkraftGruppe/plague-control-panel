@@ -1,5 +1,7 @@
 """Pruebas de la API del catálogo de productos."""
 
+from decimal import Decimal
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from rest_framework.test import APIClient
@@ -24,7 +26,8 @@ class CatalogoTests(TestCase):
             principio_activo="Brodifacoum",
             registro="ANMAT 123",
             presentacion="Bidón 5 l",
-            unidad_dosis_por_defecto="ml/l",
+            dosis_habitual=Decimal("5"),
+            unidad_dosis_habitual="ml/l",
             empresa=una_empresa(),
         )
         Producto.objects.create(
@@ -50,7 +53,10 @@ class CatalogoTests(TestCase):
                     "principio_activo": "Brodifacoum",
                     "registro": "ANMAT 123",
                     "presentacion": "Bidón 5 l",
-                    "unidad_dosis_por_defecto": "ml/l",
+                    "dosis_habitual": "5.000",
+                    "unidad_dosis_habitual": "ml/l",
+                    "dosis_variable": False,
+                    "ultimo_lote": None,
                     "unidad_base": "unidad",
                     "modo_unidad": "unica",
                     "unidades_permitidas": ["unidad"],
