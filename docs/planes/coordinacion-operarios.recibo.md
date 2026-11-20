@@ -45,3 +45,30 @@
 - duración: 38.4 s
 - Veredicto: PASA
 
+## 2026-11-20 11:46 — tarea T10,T4 de 2026-11-20-coordinacion-operarios.md
+
+- HEAD verificado: 834d4a4
+- Contrato: modificado y aceptado (92a9e82, decisión del usuario)
+- Criterios:
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.HorasInconsistentesTests.test_reporte_un_minuto_antes_de_abierta_201_con_incidencia --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.HorasInconsistentesTests.test_cierre_un_minuto_antes_de_abierta_200_con_incidencia --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.HorasInconsistentesTests.test_no_cambia_proximo_vencimiento_ni_stock --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.SinUbicacionTests.test_servicio_guarda_revision_sin_coordenadas_con_incidencia --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.SinUbicacionTests.test_sin_coordenadas_no_fija_ubicacion_del_sitio --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.DuplicadaTests.test_segunda_del_dia_por_otro_marca_incidencia --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.DuplicadaTests.test_visita_de_administrador_no_marca --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.DuplicadaTests.test_revision_de_ayer_no_marca --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.DuplicadaTests.test_sin_conexion_compara_con_el_dia_de_realizada_en --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.AperturaSinEscaneoTests.test_abre_pendiente_propio_con_incidencia --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.AperturaSinEscaneoTests.test_con_otra_abierta_en_el_sitio_devuelve_esa --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.AperturaSinEscaneoTests.test_rechaza_programada_futura_y_sitio_inactivo --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.AperturaSinEscaneoTests.test_ajena_o_de_otra_empresa_no_existe --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.AperturaSinEscaneoTests.test_vuelta_a_pendiente_baja_la_incidencia --keepdb`
+  - PASA (exit 0, nuevo: sí) `T10 [test] PYTHONIOENCODING=utf-8 DJANGO_ENV=development ./venv/Scripts/python.exe manage.py test apps.visitas.tests.test_incidencias_nuevas.ConteoIncidenciasTests.test_cuatro_incidencias_cuentan_y_marcar_revisada_las_saca --keepdb`
+  - PASA (exit 0, nuevo: —) `T10 [cmd] bash .claude/hooks/presupuesto.sh . '<commit_base>' 300 --subtarea T10`
+  - PASA (exit 0, nuevo: —) `T4 [cmd] git log --oneline plan/coordinacion-operarios | grep -q "T3: integra coordinacion-operarios-T3"`
+  - PASA (exit 0, nuevo: —) `versionados limpios (sin cambios versionados; solo las rutas de Puede tocar; plan y recibo excluidos)`
+  - PASA (exit 0, nuevo: —) `commits de la tarea dentro de Puede tocar`
+- duración: 34.8 s
+- Veredicto: PASA
+

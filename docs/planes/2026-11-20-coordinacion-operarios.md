@@ -348,9 +348,9 @@ commit_base: 794af57
 |---|---|---|---|
 | T1 | hecha | 48b6109 | PASA (tarea, HEAD 48b6109 en el worktree; b018b02 tras integrar) |
 | T2 | hecha | b018b02 | PASA (tarea T1,T2, HEAD b018b02) |
-| T3 | pendiente | | |
-| T10 | pendiente | | |
-| T4 | pendiente | | |
+| T3 | hecha | 9d142c5 | PASA (tarea, HEAD 59a152e tras integrar) |
+| T10 | hecha | a5ac19b | PASA (tarea T10,T4, HEAD 834d4a4) |
+| T4 | hecha | 834d4a4 | PASA (tarea T10,T4, HEAD 834d4a4) |
 | T5 | pendiente | | |
 | T6 | pendiente | | |
 | T7 | pendiente | | |
